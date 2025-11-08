@@ -7,7 +7,7 @@
     "migrate": "psql \"$NEON_DATABASE_URL\" -f migrations/001_init.sql"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.0",
+    "@neondatabase/serverless": "^0.10.4",
     "hono": "^4.6.0",
     "zod": "^3.23.8"
   },

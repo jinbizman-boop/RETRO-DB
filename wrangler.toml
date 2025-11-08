@@ -1,16 +1,15 @@
-# wrangler.toml — Cloudflare Pages (정적 + Functions)
+# wrangler.toml — Cloudflare Pages 설정
 name = "retro-db"
 compatibility_date = "2024-11-01"
 
-# ✅ Pages가 정적 파일을 찾을 폴더 (리포 루트 기준)
+# ✅ 리포지토리 루트 기준, 정적 파일 폴더
 pages_build_output_dir = "public"
 
-# ✅ Functions 디렉터리 (기본값 사용 중이므로 생략해도 됨)
+# 기본 Functions 디렉터리는 "functions" (명시 안 해도 기본값)
 # [pages]
 #   functions_directory = "functions"
 
-# ⚠️ 프로덕션 변수는 대시보드에서 관리합니다.
-#    wrangler.toml의 [vars]는 삭제하거나 주석 처리하세요.
+# ⚠️ 프로덕션 환경변수는 대시보드에서 관리. [vars]는 비워둠/삭제.
 # [vars]
 # CORS_ORIGIN = "http://127.0.0.1:8788"
 # JWT_ISSUER  = "retro-games"

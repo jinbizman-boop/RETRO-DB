@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko" data-env="prod">
+<head>
+<meta name="description" content="About — JINBIZ Arcade 소개와 정책, 게임 라인업을 볼 수 있습니다.">
+<meta property="og:title" content="RETRO GAMES – About">
+<meta property="og:description" content="About — JINBIZ Arcade 소개와 정책, 게임 라인업을 볼 수 있습니다.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://retrogames.kr/">
+<meta property="og:image" content="https://retrogames.kr/assets/og-cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>RETRO GAMES – About</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="icon" href="/assets/favicon.ico">
+<style>
+  :root{
+    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff; --ink:#e9f0ff; --bg:#0b001e;
+    --card:#101a33; --card2:#0d1529; --gold1:#ffdf6e; --gold2:#ffb84d; --ok:#16c784; --warn:#ffcc66; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);color:var(--ink);
+    font-family:'Segoe UI', system-ui, Apple SD Gothic Neo, Pretendard, sans-serif}
+  a{color:#cfe2ff;text-decoration:none}
+  header{position:sticky;top:0;background:linear-gradient(180deg,rgba(5,10,30,.9),rgba(5,10,30,.6));backdrop-filter:blur(6px);
+    border-bottom:1px solid rgba(255,255,255,.08);z-index:10}
+  .nav{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+  .brand{font-weight:900;letter-spacing:.5px}
+  .sp{flex:1}
+  .nav a.btn{padding:8px 12px;border-radius:12px;border:1px solid var(--btnBorder);
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);color:var(--btnFg);font-weight:700}
+  main{max-width:1100px;margin:16px auto 48px;padding:0 16px;display:grid;gap:16px}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.35),inset 0 0 32px rgba(255,255,255,.04)}
+  .card h2{margin:0;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .card .body{padding:14px 16px}
+  .grid{display:grid;gap:16px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .kv{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08)}
+  .kv:last-child{border-bottom:0}
+  .tag{display:inline-block;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
+  .list{display:grid;gap:8px}
+  .list .row{display:grid;grid-template-columns:120px 1fr 100px;gap:8px;align-items:center;padding:8px;border-radius:12px;
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn-ghost{padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);
+    color:var(--ink);font-weight:700;cursor:pointer}
+  .btn-gold{padding:8px 12px;border-radius:12px;border:1px solid #7a5600;background:linear-gradient(180deg,var(--gold1),var(--gold2));
+    color:#3a2400;font-weight:900;cursor:pointer}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left;font-size:14px}
+  th{opacity:.8}
+  .muted{opacity:.8}
+  footer{max-width:1100px;margin:32px auto;padding:0 16px;color:#a8b3cf;opacity:.8;font-size:13px}
+  @media(max-width:900px){ .grid.cols-2{grid-template-columns:1fr} .grid.cols-3{grid-template-columns:1fr 1fr} }
+  @media(max-width:640px){ .grid.cols-3{grid-template-columns:1fr} .kv{grid-template-columns:120px 1fr} }
+</style>
+<!-- Load consent -> analytics in order -->
+<script defer src="/assets/js/consent.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
+</head>
+
+<body>
+  <div id="site-header"></div>
+
+<header>
+  <nav class="nav" aria-label="주요 메뉴">
+    <div class="brand">🕹️ JINBIZ Arcade</div>
+    <a class="btn" href="/index.html">홈</a>
+    <a class="btn" href="/shop.html">상점</a>
+    <a class="btn" href="/features/today-lucky.html">오늘의 행운</a>
+    <div class="sp"></div>
+    <a class="btn" href="/user-retro-games.html">내 게임</a>
+    <a class="btn" href="/mypage.html">마이페이지</a>
+  </nav>
+</header>
+
+<main class="grid cols-2">
+  <section class="card">
+    <h2>About JINBIZ Arcade</h2>
+    <div class="body">
+      <p>JINBIZ Arcade는 네온 감성의 레트로 웹 아케이드입니다. 2048, 브릭브레이커, 매치-3, 러너, 테트리스 등 클래식 게임을 웹 기술로 재해석했고, 상점·효과·행운뽑기 등 가벼운 메타 시스템을 얹어 지속적인 재미를 제공합니다.</p>
+      <p class="muted">UI/UX, 컬러, 배치, 게임 플레이는 기존 규격을 기준으로 유지됩니다.</p>
+      <div class="btn-row" style="margin-top:6px">
+        <a class="btn-ghost" href="/user-retro-games.html">내 게임</a>
+        <a class="btn-gold" href="/features/today-lucky.html">오늘의 행운</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>정책</h2>
+    <div class="body list">
+      <div class="row"><div>개인정보/쿠키</div><div>서비스 품질 향상을 위한 최소한의 분석 쿠키를 사용합니다. (동의 기반)</div><div><a class="btn-ghost" href="/help.html#privacy">자세히</a></div></div>
+      <div class="row"><div>광고</div><div>일부 화면에 광고 영역이 노출될 수 있습니다.</div><div></div></div>
+      <div class="row"><div>문의</div><div>문의/피드백은 Help 페이지를 참고하세요.</div><div><a class="btn-ghost" href="/help.html#contact">문의</a></div></div>
+    </div>
+  </section>
+
+  <section class="card" style="grid-column:1 / -1">
+    <h2>게임 라인업</h2>
+    <div class="body grid cols-3">
+      <div class="card"><div class="body"><strong>2048</strong><div class="muted">슬라이드 퍼즐</div></div></div>
+      <div class="card"><div class="body"><strong>BrickBreaker</strong><div class="muted">클래식 브레이커</div></div></div>
+      <div class="card"><div class="body"><strong>Match‑3</strong><div class="muted">타일 매칭</div></div></div>
+      <div class="card"><div class="body"><strong>Dino Runner</strong><div class="muted">장애물 달리기</div></div></div>
+      <div class="card"><div class="body"><strong>Tetris</strong><div class="muted">블록 스택</div></div></div>
+      <div class="card"><div class="body"><strong>Lucky Spin</strong><div class="muted">하루 1회</div></div></div>
+    </div>
+  </section>
+</main>
+
+<footer class="muted">
+  ©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI<a href="/about.html">About</a> · <a href="/help.html">Help</a>
+</footer>
+<script>
+  // Safe analytics init hook (if consent.js sets window.analyticsInit elsewhere)
+  window.analyticsInit = window.analyticsInit || function(){ try{ console.debug('analyticsInit (extra pages)'); }catch(e){} };
+</script>
+  <div id="site-footer"></div>
+</body></html>

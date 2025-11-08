@@ -1,0 +1,12 @@
+name = "retro-games"
+compatibility_date = "2025-11-03"
+pages_build_output_dir = "public"
+# compatibility_flags = ["nodejs_compat"]
+
+[vars]
+CORS_ORIGIN = "http://127.0.0.1:8788"
+JWT_ISSUER  = "retro-games"
+JWT_AUD     = "retro-games-web"
+
+[observability]
+enabled = true

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<!--#include file="/partials/head-seo.html" -->
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>소셜 로그인 처리 중…</title>
+  <style>
+    html,body{height:100%;margin:0;background:#0b001e;color:#e9f1ff;font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+    .card{width:min(720px,92vw);background:rgba(2,0,20,.55);border:2px solid #3e2b7b;border-radius:16px;box-shadow:0 0 24px #0008,inset 0 0 16px #2a0085;padding:24px;text-align:center}
+    h1{margin:0 0 12px;font-size:22px;color:#ffdf6e;text-shadow:0 0 10px #ffb84d}
+    .msg{opacity:.9}
+    .hint{opacity:.75;font-size:13px;margin-top:12px}
+    .ok{color:#9cf}
+    .err{color:#ff9a9a}
+    .small{font-size:12px;opacity:.75;margin-top:14px}
+  </style>
+</head>
+<body>
+  <!--#include file=\"/partials/header.html\" -->
+  <div class="wrap">
+    <div class="card">
+      <h1>계정 확인 중…</h1>
+      <div id="status" class="msg">브라우저로 되돌아가고 있습니다.</div>
+      <div id="detail" class="hint"></div>
+      <div class="small">문제가 지속되면 <a href="/login.html" style="color:#9cf">로그인 화면</a>으로 돌아가 다시 시도해주세요.</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const provider = (location.pathname.match(/\/auth\/(\w+)\//)||[])[1] || 'social';
+  const qs = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : location.hash);
+  const mode = qs.get("mode") || "login";
+  const state = qs.get("state") || hash.get("state");
+  const code = qs.get("code") || hash.get("code");
+  const error = qs.get("error") || hash.get("error");
+  const errorDesc = qs.get("error_description") || hash.get("error_description");
+  const statusEl = document.getElementById("status");
+  const detailEl = document.getElementById("detail");
+
+  function done(ok, msg){
+    statusEl.textContent = msg;
+    statusEl.className = "msg " + (ok ? "ok" : "err");
+    setTimeout(function(){
+      location.replace(ok ? "/mypage.html" : "/login.html");
+    }, 1200);
+  }
+
+  if(error){
+    detailEl.textContent = (errorDesc || error);
+    return done(false, "권한 동의가 취소되었거나 오류가 발생했습니다.");
+  }
+
+  if(!code || !state){
+    return done(false, "코드 또는 상태 정보가 누락되었습니다.");
+  }
+
+  try{
+    const key = provider + "_oauth_state_" + mode;
+    const expected = sessionStorage.getItem(key);
+    if(!expected || expected !== state){
+      return done(false, "요청 무결성 확인에 실패했습니다 (state mismatch).");
+    }
+  }catch(e){ /* ignore storage issues */ }
+
+  fetch("/auth/" + provider + "/exchange", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code, state, mode,
+      redirectUri: location.origin + "/auth/" + provider + "/callback.html?mode=" + encodeURIComponent(mode)
+    })
+  }).then(async (res) => {
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    await res.json().catch(()=>({}));
+    done(true, "로그인 성공! 계정 정보를 불러오는 중…");
+  }).catch((err) => {
+    console.error(err);
+    detailEl.textContent = "서버 통신 실패: " + (err.message || err);
+    done(false, "로그인 처리에 실패했습니다.");
+  });
+})();
+</script>
+<!--#include file="/partials/header.html" -->
+</body>
+</html>

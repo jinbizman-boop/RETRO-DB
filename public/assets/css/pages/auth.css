@@ -1,0 +1,243 @@
+/* =========================================================
+   RETRO GAMES – Auth Pages (login.html / signup.html)
+   Path: public/assets/css/pages/auth.css
+   Description: 로그인/회원가입 공통 스타일 (네온/레트로 테마)
+   ========================================================= */
+
+/* ---- Theme Tokens ------------------------------------------------------- */
+:root{
+  --gold1:#ffdf6e; --gold2:#ffb84d; --blue1:#2b7bff; --bg:#0b001e;
+  --ink:#e9f0ff; --muted:#b9c3ff; --panel:#0200148c; /* rgba(2,0,20,.55) */
+  --border:#3e2b7b; --bevel:#2a0085;
+  --n:#03C75A; --f:#1877F2; --k:#FEE500; --g:#DB4437; /* social brand */
+  --ok:#17c964; --warn:#f5a524; --err:#f31260;
+  --radius-lg:24px; --radius-md:14px; --radius-sm:10px;
+  --shadow-1:0 0 30px #0008, inset 0 0 20px #2a0085;
+  --shadow-2:0 8px 16px rgba(0,0,0,.35);
+  --focus:#7aa2ff;
+}
+
+/* ---- Base --------------------------------------------------------------- */
+*{box-sizing:border-box}
+html,body{height:100%}
+html,body{
+  margin:0;
+  color:var(--ink);
+  background:radial-gradient(circle at 40% -10%, #320076, var(--bg) 70%);
+  font-family:'Segoe UI', system-ui, Apple SD Gothic Neo, -apple-system, Roboto, 'Noto Sans KR', sans-serif;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit}
+
+/* ---- Page Grid ---------------------------------------------------------- */
+.wrap{
+  min-height:100%;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+}
+
+/* ---- Header ------------------------------------------------------------- */
+header{
+  position:relative;
+  text-align:center;
+  padding:22px 16px;
+}
+.title{
+  font-size:36px;
+  font-weight:900;
+  letter-spacing:.5px;
+  color:var(--gold1);
+  text-shadow:0 0 18px var(--gold2);
+  margin:0;
+}
+.subtitle{
+  opacity:.9;
+  margin:6px 0 0;
+  font-size:14px;
+  color:var(--muted);
+}
+.actions{
+  position:absolute;
+  right:16px; top:50%;
+  transform:translateY(-50%);
+  display:flex; gap:8px;
+}
+.btn-top{
+  padding:8px 14px;
+  border-radius:12px;
+  border:1px solid #3a4ef0;
+  background:linear-gradient(180deg, #0c1e3f, #071933);
+  font-weight:700;
+  color:#e9f0ff;
+  box-shadow:0 6px 12px #0006;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+.btn-top:hover{ transform:translateY(-1px); box-shadow:0 10px 18px #0008; }
+.btn-top:active{ transform:translateY(0); box-shadow:0 4px 10px #0008; }
+.btn-top.alt{
+  background:linear-gradient(180deg, var(--gold1), var(--gold2));
+  color:#3a2400;
+  border-color:#c98c32;
+}
+
+/* ---- Divider ------------------------------------------------------------ */
+.divider{
+  height:1px; width:100%;
+  background:linear-gradient(90deg, transparent, #6a4df5 35%, #6a4df5 65%, transparent);
+  opacity:.5;
+}
+
+/* ---- Panel (Card) ------------------------------------------------------- */
+main{
+  display:grid; place-items:center;
+  padding:24px 16px;
+}
+.panel{
+  width:min(720px, 92vw);
+  background:var(--panel);
+  border:2px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-1);
+  padding:26px 28px;
+  backdrop-filter:saturate(140%) blur(6px);
+}
+.panel h2{
+  margin:0 0 12px;
+  font-size:22px; font-weight:800;
+  color:var(--gold1);
+  text-shadow:0 0 10px #bff2b5;
+}
+.hint{
+  opacity:.85; color:var(--muted);
+  font-size:14px; margin:2px 0 18px;
+}
+
+/* ---- Social Login ------------------------------------------------------- */
+.socials{
+  display:grid; gap:14px;
+}
+.sbtn{
+  display:flex; align-items:center; gap:14px;
+  padding:16px;
+  border-radius:var(--radius-md);
+  border:1px solid #334;
+  background:linear-gradient(180deg, #0f1030, #0b0d24);
+  color:#fff;
+  cursor:pointer;
+  box-shadow:var(--shadow-2);
+  transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.sbtn:hover{ transform:translateY(-1px); box-shadow:0 12px 20px rgba(0,0,0,.45); filter:brightness(1.05); }
+.sbtn:active{ transform:translateY(0); box-shadow:var(--shadow-2); filter:brightness(0.98); }
+.sbtn .ico{
+  width:22px; height:22px; display:grid; place-items:center; flex:none;
+  border-radius:6px; overflow:hidden;
+}
+.sbtn .label{ font-weight:800; letter-spacing:.2px; }
+.sbtn .desc{ margin-left:auto; opacity:.75; font-size:12px; }
+
+/* Brand color accents */
+.sbtn.naver   { border-color: #0f4; }
+.sbtn.kakao   { border-color: #ffd83b; color:#1a1a1a; }
+.sbtn.google  { border-color: #8aa2ff; }
+.sbtn.facebook{ border-color: #4e8dff; }
+
+/* optional: light tint backgrounds on icons */
+.ico.naver   { background:#03C75A22 }
+.ico.kakao   { background:#FEE50055 }
+.ico.google  { background:#DB443722 }
+.ico.facebook{ background:#1877F255 }
+
+/* ---- Classic Form (if present on signup.html) --------------------------- */
+.form{
+  display:grid; gap:14px; margin-top:10px;
+}
+.field{
+  display:grid; gap:6px;
+}
+.label{
+  font-size:13px; color:var(--muted);
+}
+.input, .select{
+  width:100%;
+  padding:14px 14px;
+  border-radius:12px;
+  border:1px solid #334;
+  background:linear-gradient(180deg, #0f1030, #0b0d24);
+  color:var(--ink);
+  outline:none;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+.input::placeholder{ color:#9fb0ff; opacity:.65; }
+.input:focus, .select:focus{
+  border-color:var(--focus);
+  box-shadow:0 0 0 3px #7aa2ff33;
+}
+.row{
+  display:grid; gap:12px;
+  grid-template-columns:1fr 1fr;
+}
+.help{ font-size:12px; color:#9fb0ff; opacity:.9; }
+
+/* Submit */
+.actions-row{
+  display:flex; gap:10px; align-items:center; justify-content:flex-end;
+  margin-top:6px;
+}
+.btn{
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid #3a4ef0;
+  background:linear-gradient(180deg, #0c1e3f, #071933);
+  color:#e9f0ff; font-weight:800;
+  cursor:pointer;
+  transition:transform .12s ease, box-shadow .12s ease;
+  box-shadow:0 8px 16px rgba(0,0,0,.35);
+}
+.btn:hover{ transform:translateY(-1px); box-shadow:0 12px 22px rgba(0,0,0,.5); }
+.btn:active{ transform:translateY(0) }
+.btn.primary{
+  border-color:#c98c32;
+  background:linear-gradient(180deg, var(--gold1), var(--gold2));
+  color:#2e1c00;
+}
+
+/* ---- Footer ------------------------------------------------------------- */
+footer{
+  padding:18px 16px 28px;
+  text-align:center; font-size:12px; color:#9fb0ff;
+  opacity:.85;
+}
+footer .links{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+footer .links a{ opacity:.95 }
+footer .links a:hover{ text-decoration:underline }
+
+/* ---- Utilities ---------------------------------------------------------- */
+.visually-hidden{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
+/* ---- Accessibility ------------------------------------------------------ */
+:focus-visible{
+  outline:2px solid var(--focus);
+  outline-offset:2px;
+  border-radius:10px;
+}
+@media (prefers-reduced-motion: reduce){
+  *{ transition:none !important; animation:none !important; }
+}
+
+/* ---- Responsive --------------------------------------------------------- */
+@media (max-width: 768px){
+  .title{ font-size:28px }
+  .actions{ position:static; transform:none; justify-content:center; margin-top:12px }
+  .panel{ padding:22px 18px }
+  .row{ grid-template-columns:1fr }
+}
+@media (max-width: 420px){
+  .sbtn{ padding:14px }
+  .sbtn .desc{ display:none }
+  .btn-top{ padding:8px 12px }
+}

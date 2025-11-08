@@ -1,0 +1,253 @@
+/* =========================================================
+   RETRO GAMES – Base Styles
+   Path: public/assets/css/base.css
+   Description: 전역 리셋, 테마 토큰, 타이포, 유틸리티, 공통 컴포넌트
+   ========================================================= */
+
+/* ---- Theme Tokens ------------------------------------------------------- */
+:root{
+  /* Brand */
+  --gold1:#ffdf6e; --gold2:#ffb84d;
+  --blue1:#2b7bff; --blue2:#0048ff;
+  --bg:#0b001e; --bg2:#0a0622; --panel:#0200148c; /* rgba(2,0,20,.55) */
+
+  /* Text & Accents */
+  --ink:#e9f0ff; --ink-dim:#cfd8ff; --muted:#b9c3ff;
+  --ok:#17c964; --warn:#f5a524; --err:#f31260; --info:#3aa0ff;
+
+  /* Borders & Depth */
+  --border:#3e2b7b; --bevel:#2a0085;
+  --radius-xl:24px; --radius-lg:18px; --radius-md:12px; --radius-sm:8px;
+  --shadow-1:0 0 30px #0008, inset 0 0 20px #2a0085;
+  --shadow-2:0 10px 18px rgba(0,0,0,.38);
+  --focus:#7aa2ff;
+
+  /* Layout */
+  --container:1200px;
+  --gap:16px; --gapY:24px;
+}
+
+/* ---- Reset / Normalize -------------------------------------------------- */
+*{box-sizing:border-box}
+*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+html{scroll-behavior:smooth; -webkit-text-size-adjust:100%}
+body{
+  margin:0; color:var(--ink);
+  background:radial-gradient(circle at 40% -10%, #320076, var(--bg) 70%);
+  font-family:'Segoe UI', system-ui, Apple SD Gothic Neo, -apple-system, Roboto, 'Noto Sans KR', sans-serif;
+  line-height:1.5;
+}
+img,svg,video,canvas{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{
+  outline:2px solid var(--focus);
+  outline-offset:2px;
+  border-radius:6px;
+}
+::selection{background:#2646ffcc;color:#fff}
+
+/* ---- Layout helpers ----------------------------------------------------- */
+.container{width:100%;max-width:var(--container);margin:0 auto;padding:0 16px}
+.wrap{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
+.section{margin-top:var(--gapY);padding:0 16px}
+
+/* ---- Typography --------------------------------------------------------- */
+.h1,.h2,.h3,.h4{font-weight:900;letter-spacing:.2px;margin:0 0 8px}
+.h1{font-size:36px}
+.h2{font-size:28px}
+.h3{font-size:20px}
+.h4{font-size:16px}
+.subtitle{color:var(--muted);opacity:.9}
+.lead{font-size:18px;opacity:.95}
+.small{font-size:12px;opacity:.85}
+
+/* ---- Cards / Panels ----------------------------------------------------- */
+.panel{
+  background:var(--panel);
+  border:2px solid var(--border);
+  border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-1);
+  backdrop-filter:saturate(140%) blur(6px);
+}
+.card{
+  background:radial-gradient(circle at 30% -40%, #1a0550 0%, rgba(10,0,35,.8) 60%), linear-gradient(180deg, rgba(6,0,22,.7), rgba(2,0,14,.7));
+  border:1px solid #3b2c7a;border-radius:18px;
+  box-shadow:0 0 24px #0009, inset 0 0 18px #1a0055;
+}
+
+/* ---- Buttons ------------------------------------------------------------ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:8px;padding:10px 14px;border-radius:var(--radius-md);
+  border:1px solid #3a4ef0;
+  background:linear-gradient(180deg,#0c1e3f,#071933);
+  color:#e9f0ff;font-weight:800;box-shadow:0 8px 16px rgba(0,0,0,.35);
+  transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 12px 20px rgba(0,0,0,.45);filter:brightness(1.05)}
+.btn:active{transform:translateY(0)}
+.btn.primary{
+  border-color:#c98c32;
+  background:linear-gradient(180deg,var(--gold1),var(--gold2));
+  color:#2e1c00;
+}
+.btn.ghost{
+  background:transparent;border-color:#4052ff88;color:var(--ink)
+}
+.btn.danger{
+  border-color:#ff5a8a;background:linear-gradient(180deg,#3a0c1e,#310716);color:#ffd9e3
+}
+.btn.block{display:flex;width:100%}
+
+/* ---- Forms -------------------------------------------------------------- */
+.form{display:grid;gap:14px}
+.field{display:grid;gap:6px}
+.label{font-size:13px;color:var(--muted)}
+.input,.textarea,.select{
+  width:100%;padding:12px 14px;border-radius:12px;
+  border:1px solid #334;background:linear-gradient(180deg,#0f1030,#0b0d24);
+  color:var(--ink);outline:none;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+.textarea{min-height:120px;resize:vertical}
+.input::placeholder,.textarea::placeholder{color:#9fb0ff;opacity:.65}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--focus);box-shadow:0 0 0 3px #7aa2ff33}
+.help{font-size:12px;color:#9fb0ff;opacity:.9}
+.is-ok{color:var(--ok)} .is-warn{color:var(--warn)} .is-err{color:var(--err)}
+
+/* ---- Header / Footer commons ------------------------------------------- */
+.header{position:relative;text-align:center;padding:22px 16px}
+.header .title{font-size:36px;font-weight:900;color:var(--gold1);text-shadow:0 0 18px var(--gold2);margin:0}
+.header .subtitle{margin:6px 0 0}
+.header .actions{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;gap:8px}
+.divider{height:1px;background:linear-gradient(90deg,transparent,#6a4df5 35%,#6a4df5 65%,transparent);opacity:.5}
+.footer{padding:18px 16px 28px;text-align:center;font-size:12px;color:#9fb0ff;opacity:.85}
+.footer .links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.footer .links a:hover{text-decoration:underline}
+
+/* ---- Modal (generic) ---------------------------------------------------- */
+.modal{
+  position:fixed;inset:0;background:rgba(5,0,20,.55);
+  backdrop-filter:saturate(140%) blur(6px);
+  display:none;align-items:center;justify-content:center;z-index:999;
+}
+.modal.show{display:flex}
+.dialog{
+  width:min(560px,92vw);
+  background:radial-gradient(circle at 30% -40%, #1a0550 0%, rgba(10,0,35,.9) 60%), linear-gradient(180deg, rgba(6,0,22,.9), rgba(2,0,14,.9));
+  border:2px solid var(--border);border-radius:18px;
+  box-shadow:0 0 28px #000a, inset 0 0 24px var(--bevel);
+  padding:26px 22px;text-align:center;position:relative
+}
+.dialog h3{margin:0 0 8px;font-size:22px;color:var(--gold1);text-shadow:0 0 12px #ffd991}
+.dialog p{opacity:.9;margin:0 0 18px;color:var(--muted)}
+.dialog .actions{display:flex;gap:12px;justify-content:center}
+.dialog .x{position:absolute;top:10px;right:12px;border:0;background:transparent;color:#fff;opacity:.7;font-size:22px;cursor:pointer}
+
+/* ---- Tables ------------------------------------------------------------- */
+.table{
+  width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;
+  background:linear-gradient(180deg,#0d0f2a,#0a0d23);border:1px solid #334;border-radius:14px
+}
+.table th,.table td{padding:12px 14px;border-bottom:1px solid #263;color:#dfe6ff}
+.table th{font-weight:800;color:#bcd1ff;text-align:left;background:linear-gradient(180deg,#10143a,#0c0f2e)}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:#0f1436}
+
+/* ---- Badges / Chips ----------------------------------------------------- */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 10px;border-radius:999px;border:1px solid #3a4ef0;
+  background:linear-gradient(180deg,#0c1e3f,#071933);font-weight:800;font-size:12px
+}
+.badge.gold{border-color:#c98c32;background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#2e1c00}
+.badge.ok{border-color:#18cc9a;color:#d6fff2}
+.badge.err{border-color:#ff5a8a;color:#ffdbe8}
+
+/* ---- Grid / Flex Utilities --------------------------------------------- */
+.row{display:flex;gap:var(--gap);flex-wrap:wrap}
+.col{flex:1 1 0}
+.grid{display:grid;gap:var(--gap)}
+.grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.grid.cols-4{grid-template-columns:repeat(4,1fr)}
+.center{display:grid;place-items:center}
+.flex{display:flex}.items-center{align-items:center}.justify-center{justify-content:center}
+.space-between{justify-content:space-between}
+.mt-0{margin-top:0}.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}.mt-32{margin-top:32px}
+.mb-0{margin-bottom:0}.mb-8{margin-bottom:8px}.mb-16{margin-bottom:16px}.mb-24{margin-bottom:24px}.mb-32{margin-bottom:32px}
+.p-8{padding:8px}.p-12{padding:12px}.p-16{padding:16px}.p-24{padding:24px}
+.hidden{display:none !important}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---- Arcade / Canvas Helpers ------------------------------------------- */
+.arcade{
+  position:relative; background:radial-gradient(circle at 50% -40%, #10103a 0%, #070622 60%), #06061a;
+  border-radius:var(--radius-xl); border:2px solid var(--border); box-shadow:var(--shadow-1);
+  padding:12px; overflow:hidden;
+}
+.arcade .screen{position:relative;aspect-ratio:16/9;background:#0b0f23;border:1px solid #2d3366;border-radius:14px;overflow:hidden}
+.arcade canvas{width:100%;height:100%;display:block}
+.crt::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(rgba(255,255,255,.03), transparent 40%), repeating-linear-gradient(0deg, rgba(0,0,0,.12), rgba(0,0,0,.12) 2px, transparent 2px, transparent 4px);
+  mix-blend-mode:overlay
+}
+.scanlines::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.18), rgba(0,0,0,.18) 2px, rgba(255,255,255,.05) 2px, rgba(255,255,255,.05) 4px)
+}
+
+/* ---- Glow Utilities ----------------------------------------------------- */
+.glow-blue{box-shadow:0 0 22px #2b7bff66}
+.glow-gold{box-shadow:0 0 22px #ffdf6e66}
+.text-glow{ text-shadow:0 0 14px #7aa2ff55 }
+
+/* ---- Scrollbar ---------------------------------------------------------- */
+*{scrollbar-color:#3c50ff #0a0d25;scrollbar-width:thin}
+::-webkit-scrollbar{height:10px;width:10px}
+::-webkit-scrollbar-thumb{background:#3c50ff;border-radius:999px}
+::-webkit-scrollbar-track{background:#0a0d25}
+
+/* ---- Toast (simple) ----------------------------------------------------- */
+.toast{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  background:linear-gradient(180deg,#0f1030,#0b0d24);
+  border:1px solid #3a4ef0;color:#e9f0ff;padding:10px 14px;border-radius:12px;
+  box-shadow:0 10px 18px rgba(0,0,0,.4);z-index:1000
+}
+
+/* ---- Animations --------------------------------------------------------- */
+@keyframes pulse-glow{
+  0%,100%{filter:drop-shadow(0 0 0 #2b7bff)}
+  50%{filter:drop-shadow(0 0 10px #2b7bff)}
+}
+.pulse{animation:pulse-glow 1.8s ease-in-out infinite}
+
+/* ---- Responsive --------------------------------------------------------- */
+@media (max-width:1024px){
+  .grid.cols-4{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:768px){
+  .grid.cols-3{grid-template-columns:repeat(2,1fr)}
+  .header .title{font-size:30px}
+}
+@media (max-width:480px){
+  .grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr}
+  .header .title{font-size:26px}
+}
+
+/* ---- Reduced Motion ----------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important; animation:none !important}
+}
+
+/* ---- Print (basic) ------------------------------------------------------ */
+@media print{
+  body{background:#fff;color:#000}
+  .panel,.card,.arcade{box-shadow:none;border-color:#ccc;background:#fff}
+  .footer,.header .actions,.modal{display:none !important}
+}

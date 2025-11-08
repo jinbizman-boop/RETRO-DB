@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko" data-env="prod">
+<head>
+<meta name="description" content="도움말 — FAQ, 조작키, 개인정보/쿠키, 문의 안내를 확인하세요.">
+<meta property="og:title" content="RETRO GAMES – Help">
+<meta property="og:description" content="도움말 — FAQ, 조작키, 개인정보/쿠키, 문의 안내를 확인하세요.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://retrogames.kr/">
+<meta property="og:image" content="https://retrogames.kr/assets/og-cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>RETRO GAMES – Help</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="icon" href="/assets/favicon.ico">
+<style>
+  :root{
+    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff; --ink:#e9f0ff; --bg:#0b001e;
+    --card:#101a33; --card2:#0d1529; --gold1:#ffdf6e; --gold2:#ffb84d; --ok:#16c784; --warn:#ffcc66; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);color:var(--ink);
+    font-family:'Segoe UI', system-ui, Apple SD Gothic Neo, Pretendard, sans-serif}
+  a{color:#cfe2ff;text-decoration:none}
+  header{position:sticky;top:0;background:linear-gradient(180deg,rgba(5,10,30,.9),rgba(5,10,30,.6));backdrop-filter:blur(6px);
+    border-bottom:1px solid rgba(255,255,255,.08);z-index:10}
+  .nav{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+  .brand{font-weight:900;letter-spacing:.5px}
+  .sp{flex:1}
+  .nav a.btn{padding:8px 12px;border-radius:12px;border:1px solid var(--btnBorder);
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);color:var(--btnFg);font-weight:700}
+  main{max-width:1100px;margin:16px auto 48px;padding:0 16px;display:grid;gap:16px}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.35),inset 0 0 32px rgba(255,255,255,.04)}
+  .card h2{margin:0;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .card .body{padding:14px 16px}
+  .grid{display:grid;gap:16px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .kv{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08)}
+  .kv:last-child{border-bottom:0}
+  .tag{display:inline-block;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
+  .list{display:grid;gap:8px}
+  .list .row{display:grid;grid-template-columns:120px 1fr 100px;gap:8px;align-items:center;padding:8px;border-radius:12px;
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn-ghost{padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);
+    color:var(--ink);font-weight:700;cursor:pointer}
+  .btn-gold{padding:8px 12px;border-radius:12px;border:1px solid #7a5600;background:linear-gradient(180deg,var(--gold1),var(--gold2));
+    color:#3a2400;font-weight:900;cursor:pointer}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left;font-size:14px}
+  th{opacity:.8}
+  .muted{opacity:.8}
+  footer{max-width:1100px;margin:32px auto;padding:0 16px;color:#a8b3cf;opacity:.8;font-size:13px}
+  @media(max-width:900px){ .grid.cols-2{grid-template-columns:1fr} .grid.cols-3{grid-template-columns:1fr 1fr} }
+  @media(max-width:640px){ .grid.cols-3{grid-template-columns:1fr} .kv{grid-template-columns:120px 1fr} }
+</style>
+<!-- Load consent -> analytics in order -->
+<script defer src="/assets/js/consent.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
+</head>
+
+<body>
+  <div id="site-header"></div>
+
+<header>
+  <nav class="nav" aria-label="주요 메뉴">
+    <div class="brand">🕹️ JINBIZ Arcade</div>
+    <a class="btn" href="/index.html">홈</a>
+    <a class="btn" href="/shop.html">상점</a>
+    <a class="btn" href="/features/today-lucky.html">오늘의 행운</a>
+    <div class="sp"></div>
+    <a class="btn" href="/user-retro-games.html">내 게임</a>
+    <a class="btn" href="/mypage.html">마이페이지</a>
+  </nav>
+</header>
+
+<main class="grid cols-2">
+  <section class="card" id="faq">
+    <h2>자주 묻는 질문 (FAQ)</h2>
+    <div class="body list">
+      <div class="row"><div>로그인이 안돼요</div><div>브라우저 쿠키 차단 상태인지 확인하고, 다른 OAuth 방법을 시도해보세요.</div><div></div></div>
+      <div class="row"><div>게임이 느려요</div><div>다른 탭/앱을 닫고, 저전력 모드를 해제하거나 데스크톱에서 플레이를 권장합니다.</div><div></div></div>
+      <div class="row"><div>점수가 저장되지 않아요</div><div>네트워크 상태를 확인하고 재시도하세요. 지속되면 하단 문의 채널로 제보해주세요.</div><div></div></div>
+      <div class="row"><div>행운뽑기 규칙</div><div>하루 1회 기회가 주어지며, 적립 코인/효과는 즉시 반영됩니다.</div><div></div></div>
+    </div>
+  </section>
+
+  <section class="card" id="controls">
+    <h2>조작키 / 기본 규칙</h2>
+    <div class="body">
+      <ul>
+        <li><strong>2048</strong>: 방향키(←↑→↓)로 타일을 이동하세요.</li>
+        <li><strong>BrickBreaker</strong>: 좌/우 키 또는 마우스로 패들을 이동하세요.</li>
+        <li><strong>Match‑3</strong>: 마우스/터치로 타일을 교환해 매칭하세요.</li>
+        <li><strong>Dino Runner</strong>: 스페이스(점프), ↓(숙이기).</li>
+        <li><strong>Tetris</strong>: ←→(이동), ↑(회전), ↓(하강), Space(하드드롭).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" id="privacy">
+    <h2>개인정보 및 쿠키</h2>
+    <div class="body">
+      <p>분석은 <span class="tag">동의 기반</span>으로만 초기화되며, 설정은 브라우저 <code>localStorage</code>에 저장됩니다. 브라우저 캐시/사이트 데이터를 삭제하면 동의 배너가 다시 표시됩니다.</p>
+      <div class="btn-row">
+        <button class="btn-ghost" id="btnResetConsent">동의 초기화</button>
+        <a class="btn-ghost" href="/about.html">About 보기</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="contact" style="grid-column:1 / -1">
+    <h2>문의 / 피드백</h2>
+    <div class="body">
+      <p>버그 제보, 제안 사항은 아래 채널로 알려주세요.</p>
+      <ul>
+        <li>이메일: <a href="mailto:support@jinbizman.example">support@jinbizman.example</a></li>
+        <li>이슈 트래커: <a href="/help.html#">/issues</a> (배포 환경 기준)</li>
+      </ul>
+      <div class="btn-row">
+        <a class="btn-gold" href="/features/today-lucky.html">오늘의 행운 뽑기</a>
+        <a class="btn-ghost" href="/shop.html">상점</a>
+        <a class="btn-ghost" href="/user-retro-games.html">내 게임</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="muted">
+  ©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI<a href="/about.html">About</a> · <a href="/help.html">Help</a>
+</footer>
+<script>
+  // Safe analytics init hook (if consent.js sets window.analyticsInit elsewhere)
+  window.analyticsInit = window.analyticsInit || function(){ try{ console.debug('analyticsInit (extra pages)'); }catch(e){} };
+</script>
+  <div id="site-footer"></div>
+</body></html>
+
+<script>
+  document.getElementById('btnResetConsent')?.addEventListener('click', ()=>{
+    try{ localStorage.removeItem('rg_analytics_consent'); alert('동의가 초기화되었습니다. 페이지를 새로고침하면 배너가 다시 표시됩니다.'); }catch(e){}
+  });
+</script>

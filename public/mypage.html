@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko" data-env="prod">
+<head>
+<meta name="description" content="마이페이지 — 프로필, 지갑, 인벤토리, 최근 게임 기록을 확인하세요.">
+<meta property="og:title" content="RETRO GAMES – 마이페이지">
+<meta property="og:description" content="마이페이지 — 프로필, 지갑, 인벤토리, 최근 게임 기록을 확인하세요.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://retrogames.kr/">
+<meta property="og:image" content="https://retrogames.kr/assets/og-cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>RETRO GAMES – 마이페이지</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="icon" href="/assets/favicon.ico">
+<style>
+  :root{
+    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff; --ink:#e9f0ff; --bg:#0b001e;
+    --card:#101a33; --card2:#0d1529; --gold1:#ffdf6e; --gold2:#ffb84d; --ok:#16c784; --warn:#ffcc66; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);color:var(--ink);
+    font-family:'Segoe UI', system-ui, Apple SD Gothic Neo, Pretendard, sans-serif}
+  a{color:#cfe2ff;text-decoration:none}
+  header{position:sticky;top:0;background:linear-gradient(180deg,rgba(5,10,30,.9),rgba(5,10,30,.6));backdrop-filter:blur(6px);
+    border-bottom:1px solid rgba(255,255,255,.08);z-index:10}
+  .nav{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+  .brand{font-weight:900;letter-spacing:.5px}
+  .sp{flex:1}
+  .nav a.btn{padding:8px 12px;border-radius:12px;border:1px solid var(--btnBorder);
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);color:var(--btnFg);font-weight:700}
+  main{max-width:1100px;margin:16px auto 48px;padding:0 16px;display:grid;gap:16px}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.35),inset 0 0 32px rgba(255,255,255,.04)}
+  .card h2{margin:0;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .card .body{padding:14px 16px}
+  .grid{display:grid;gap:16px}
+  .grid.cols-2{grid-template-columns:1fr 1fr}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .kv{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08)}
+  .kv:last-child{border-bottom:0}
+  .tag{display:inline-block;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
+  .list{display:grid;gap:8px}
+  .list .row{display:grid;grid-template-columns:120px 1fr 100px;gap:8px;align-items:center;padding:8px;border-radius:12px;
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn-ghost{padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);
+    color:var(--ink);font-weight:700;cursor:pointer}
+  .btn-gold{padding:8px 12px;border-radius:12px;border:1px solid #7a5600;background:linear-gradient(180deg,var(--gold1),var(--gold2));
+    color:#3a2400;font-weight:900;cursor:pointer}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left;font-size:14px}
+  th{opacity:.8}
+  .muted{opacity:.8}
+  footer{max-width:1100px;margin:32px auto;padding:0 16px;color:#a8b3cf;opacity:.8;font-size:13px}
+  @media(max-width:900px){ .grid.cols-2{grid-template-columns:1fr} .grid.cols-3{grid-template-columns:1fr 1fr} }
+  @media(max-width:640px){ .grid.cols-3{grid-template-columns:1fr} .kv{grid-template-columns:120px 1fr} }
+</style>
+<!-- Load consent -> analytics in order -->
+<script defer src="/assets/js/consent.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
+</head>
+
+<body>
+  <div id="site-header"></div>
+
+<header>
+  <nav class="nav" aria-label="주요 메뉴">
+    <div class="brand">🕹️ JINBIZ Arcade</div>
+    <a class="btn" href="/index.html">홈</a>
+    <a class="btn" href="/shop.html">상점</a>
+    <a class="btn" href="/features/today-lucky.html">오늘의 행운</a>
+    <div class="sp"></div>
+    <a class="btn" href="/user-retro-games.html">내 게임</a>
+    <a class="btn" href="/mypage.html">마이페이지</a>
+  </nav>
+</header>
+
+<main class="grid cols-2">
+  <section class="card">
+    <h2>프로필</h2>
+    <div class="body">
+      <div class="kv"><div>닉네임</div><div id="nick" class="muted">-</div></div>
+      <div class="kv"><div>이메일</div><div id="email" class="muted">-</div></div>
+      <div class="kv"><div>가입일</div><div id="joined" class="muted">-</div></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn-ghost" id="btnRefresh">새로고침</button>
+        <a class="btn-ghost" href="/user-retro-games.html">내 게임으로</a>
+        <a class="btn-gold" href="/features/today-lucky.html">오늘의 행운 뽑기</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>지갑</h2>
+    <div class="body">
+      <div class="kv"><div>코인</div><div id="coins">0</div></div>
+      <div class="kv"><div>경험치</div><div id="xp">0</div></div>
+      <div class="kv"><div>연속 출석</div><div id="streak">0</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>보유 아이템</h2>
+    <div class="body" id="inventory">
+      <div class="muted">상점에서 구매한 아이템이 여기에 표시됩니다.</div>
+      <div class="btn-row" style="margin-top:10px">
+        <a class="btn-ghost" href="/shop.html">상점으로 가기</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>적용 중인 효과</h2>
+    <div class="body" id="effects">
+      <div class="muted">획득한 부스트/배수 효과가 있으면 자동 적용됩니다.</div>
+    </div>
+  </section>
+
+  <section class="card" style="grid-column:1 / -1">
+    <h2>최근 게임 기록</h2>
+    <div class="body">
+      <table id="runs">
+        <thead><tr><th>게임</th><th>점수</th><th>플레이 시간</th><th>일시</th></tr></thead>
+        <tbody><tr><td colspan="4" class="muted">기록을 불러오는 중...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="muted">
+  ©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI<a href="/about.html">About</a> · <a href="/help.html">Help</a>
+</footer>
+<script>
+  // Safe analytics init hook (if consent.js sets window.analyticsInit elsewhere)
+  window.analyticsInit = window.analyticsInit || function(){ try{ console.debug('analyticsInit (extra pages)'); }catch(e){} };
+</script>
+  <div id="site-footer"></div>
+</body></html>
+
+<script>
+(async function(){
+  const $ = s => document.querySelector(s);
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  async function tryFetch(urls, opt){
+    for(const u of urls){
+      try{ const r = await fetch(u, opt); if(r.ok) return await r.json(); }catch(e){}
+    }
+    return null;
+  }
+
+  $('#btnRefresh')?.addEventListener('click', ()=>location.reload());
+
+  // 1) 프로필
+  const me = await tryFetch(['/api/me','/users/me','/auth/me']);
+  if(me){
+    set('nick', me.nickname || me.name || me.username || '-');
+    set('email', me.email || '-');
+    try{ set('joined', (me.createdAt || me.joinedAt || '').slice(0,10)); }catch(e){}
+  }
+
+  // 2) 지갑
+  const wallet = await tryFetch(['/wallet/summary','/api/wallet','/users/me/wallet']);
+  if(wallet){
+    set('coins', wallet.coins ?? wallet.coin ?? 0);
+    set('xp', wallet.xp ?? wallet.exp ?? 0);
+    set('streak', wallet.streak ?? 0);
+  }
+
+  // 3) 인벤토리
+  const inv = await tryFetch(['/shop/inventory','/api/inventory','/users/me/inventory']);
+  const invBox = $('#inventory');
+  if(invBox && inv && Array.isArray(inv.items||inv.inventory)){
+    const items = inv.items || inv.inventory;
+    if(items.length){
+      invBox.innerHTML = '<div class="list" id="invList"></div><div class="muted" style="margin-top:6px">* 일부 효과는 자동 적용됩니다.</div>';
+      const list = document.getElementById('invList');
+      for(const it of items){
+        const row = document.createElement('div');
+        row.className='row';
+        row.innerHTML = `<div class="tag">${it.sku || it.code || it.name || 'item'}</div>
+                         <div>${it.title || it.label || it.name || ''}</div>
+                         <div class="muted">${it.qty ?? it.quantity ?? 1}개</div>`;
+        list.appendChild(row);
+      }
+    }
+  }
+
+  // 4) 효과
+  const eff = await tryFetch(['/shop/effects','/api/effects','/users/me/effects']);
+  const effBox = $('#effects');
+  if(effBox && eff && Array.isArray(eff.effects || eff.active)){
+    const arr = eff.effects || eff.active;
+    if(arr.length){
+      effBox.innerHTML = '<div class="list" id="effList"></div>';
+      const list = document.getElementById('effList');
+      for(const e of arr){
+        const row = document.createElement('div');
+        row.className='row';
+        row.innerHTML = `<div class="tag">${e.key || e.code}</div>
+                         <div>${e.title || e.name || ''}</div>
+                         <div class="muted">${e.multiplier ? (e.multiplier+'x') : ''}</div>`;
+        list.appendChild(row);
+      }
+    }
+  }
+
+  // 5) 최근 게임 기록
+  const runs = await tryFetch(['/games/runs','/api/game-runs','/users/me/game-runs']);
+  const tbody = document.querySelector('#runs tbody');
+  if(tbody && runs && Array.isArray(runs.items || runs.runs)){
+    const arr = runs.items || runs.runs;
+    if(arr.length){
+      tbody.innerHTML='';
+      for(const r of arr.slice(0,20)){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.game || r.slug || r.title || '-'}</td>
+                        <td>${r.score ?? '-'}</td>
+                        <td>${r.duration ? (Math.round(r.duration/1000)+'s') : '-'}</td>
+                        <td>${(r.playedAt || r.createdAt || '').toString().slice(0,19).replace('T',' ')}</td>`;
+        tbody.appendChild(tr);
+      }
+    }else{
+      tbody.innerHTML='<tr><td colspan="4" class="muted">아직 게임 기록이 없습니다.</td></tr>';
+    }
+  }
+})();
+</script>

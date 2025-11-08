@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "WebWorker"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+
+    /* Remove failing package reference; pick up any local/global .d.ts instead */
+    "types": [],
+    "typeRoots": ["./types", "./node_modules/@types"],
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"]
+    },
+    "customConditions": ["worker", "workerd", "browser"]
+  },
+  "include": [
+    "functions/**/*.ts",
+    "functions/**/*.tsx",
+    "types/**/*.d.ts",
+    "env.d.ts"
+  ],
+  "exclude": ["node_modules", "dist", ".wrangler"]
+}

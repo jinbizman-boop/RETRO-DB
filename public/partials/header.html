@@ -1,0 +1,34 @@
+<!-- public/partials/header.html -->
+<!-- Use this INSIDE. Contains only markup/scripts that are valid in the body. --><nav class="container">
+    <a class="brand" href="/index.html">RETRO GAMES</a>
+    <ul class="nav" id="site-nav">
+      <li><a href="/index.html#games">Games</a></li>
+      <li><a href="/shop.html">Shop</a></li>
+      <li><a href="/user-retro-games.html">My Page</a></li>
+      <li><a href="/features/today-lucky.html">Lucky Spin</a></li>
+    </ul>
+    <div id="auth-slot"><!-- app.js에서 세션상태로 버튼/아바타 바인딩 --></div>
+  </nav><!-- Active link highlight (unchanged behavior) -->
+<script>
+  (function(){
+    try{
+      var here = location.pathname + (location.hash || "");
+      var nav = document.getElementById("site-nav");
+      if(!nav) return;
+      var links = nav.querySelectorAll("a[href]");
+      links.forEach(function(a){
+        var href = a.getAttribute("href");
+        var isActive = (href === here) ||
+                       (href === location.pathname) ||
+                       (href === "/index.html#games" && here.indexOf("/index.html#games") === 0);
+        if(isActive){
+          a.setAttribute("aria-current","page");
+          a.classList && a.classList.add("is-active");
+        }
+      });
+    }catch(e){}
+  })();
+</script>
+
+<!-- Consent banner logic is body-safe; keep here to preserve original behavior -->
+<script defer src="/assets/js/consent.js"></script>

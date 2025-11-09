@@ -1,1 +1,19 @@
-﻿# wrangler.toml ??Cloudflare Pages + Pages Functions# ?꾨줈?앺듃: RETRO GAMES (static: /public, functions: /functions)# ?좑툘 ?꾨줈?뺤뀡 ?섍꼍蹂?섎뒗 Cloudflare Pages ??쒕낫???꾨줈?앺듃 ??Settings ??Environment variables)?먯꽌 ?ㅼ젙.# ?좑툘 濡쒖뺄 媛쒕컻 ?섍꼍蹂?섎뒗 .dev.vars ?뚯씪???ъ슜(.gitignore濡?愿由?.name = "retro-db"compatibility_date = "2024-11-01"# Node ?댁옣 API(Buffer/crypto/path ?? ?ъ슜 ??沅뚯옣compatibility_flags = ["nodejs_compat"]# ?뺤쟻 ?곗텧臾??대뜑(由ы룷吏?좊━ 猷⑦듃 湲곗?)# ?덈? ../public 媛숈? ?곸쐞 寃쎈줈瑜??ъ슜?섏? 留덉꽭??pages_build_output_dir = "public"# Pages Functions ?꾩튂(?쇱슦?? /functions/api.ts ??/api)[pages]functions_directory = "functions"# 濡쒖뺄 誘몃━蹂닿린 ?ㅼ젙 (wrangler pages dev)[dev]ip = "127.0.0.1"port = 8788local_protocol = "http"# 濡쒖뺄 ?꾩슜 媛믪? .dev.vars 濡?二쇱엯(??釉붾줉? 鍮꾩썙?먮뒗 寃껋쓣 沅뚯옣)[vars]# ?덉떆) 濡쒖뺄 ?뚯뒪?몄슜(?ㅼ꽌踰?媛믪? 諛섎뱶????쒕낫?쒖뿉 ?낅젰)# CORS_ORIGIN = "http://127.0.0.1:8788"# JWT_ISSUER  = "retro-games"# JWT_AUD     = "retro-games-client"# 二쇱쓽: ?꾨줈?뺤뀡??NEON_DATABASE_URL/JWT_SECRET ?깆? ?ш린???ｌ? ?딆뒿?덈떎.# 愿李?濡쒓렇(?먰븯硫??쒖꽦??[observability]enabled = false# 踰덈뱾/?고???ESM 肄붾뱶 湲곕낯 媛??# ?뺤쟻 ?ъ씠?몃씪 鍮뚮뱶 紐낅졊? 鍮꾩썙?먭퀬, dev ??public 蹂寃?媛먯?留?耳?땲??[build]command = ""          # 鍮뚮뱶 ?놁쓬(?뺤쟻 ?대뜑 洹몃?濡??ъ슜)watch_dir = "public"  # 濡쒖뺄 dev ??蹂寃?媛먯? ?대뜑
+# wrangler.toml — Cloudflare Pages + Pages Functions
+# 프로젝트: RETRO GAMES (static: /public, functions: /functions)
+
+name = "retro-db"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Pages가 정적 산출물을 가져갈 폴더
+pages_build_output_dir = "public"
+
+# Pages Functions 위치(예: /functions/api.ts → /api)
+[pages]
+functions_directory = "functions"
+
+# 로컬 미리보기 설정 (wrangler pages dev)
+[dev]
+ip = "127.0.0.1"
+port = 8788
+local_protocol = "http"

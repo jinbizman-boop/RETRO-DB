@@ -1,4 +1,4 @@
-﻿# wrangler.toml — Cloudflare Pages + Pages Functions
+# wrangler.toml — Cloudflare Pages + Pages Functions
 # 프로젝트: RETRO GAMES (static: /public, functions: /functions)
 # ⚠️ 프로덕션 환경변수는 Cloudflare Pages 대시보드(프로젝트 → Settings → Environment variables)에서 설정.
 # ⚠️ 로컬 개발 환경변수는 .dev.vars 파일을 사용(.gitignore로 관리).

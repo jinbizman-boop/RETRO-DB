@@ -1,16 +1,15 @@
-# wrangler.toml — Cloudflare Pages + Pages Functions (안정형)
-# 프로젝트: RETRO DB (static: /public, functions: /functions)
+﻿# wrangler.toml — Cloudflare Pages + Pages Functions (stable/minimal)
+# Project: RETRO DB (static: /public, functions: /functions)
 
 name = "retro-db"
 compatibility_date = "2024-11-01"
 
-# Node API가 필요할 때만 주석 해제 (먼저는 비활성로 빌드 통과 → 필요시 활성)
-# compatibility_flags = ["nodejs_compat"]
-
-# Pages가 정적 산출물을 읽어갈 폴더 (레포 루트 기준)
+# Pages will read static outputs from this directory (repo root based)
 pages_build_output_dir = "public"
 
-# ⚠️ 주의:
-# - [pages], [site], [build], routes, main, workers_dev, triggers 등 Workers 전용/구식 키는 넣지 않기
-# - Functions는 레포 루트의 /functions 디렉터리로 자동 인식됨 (별도 지정 불필요)
-# - 대시보드(Build settings)의 Output directory는 반드시 "public"
+# Notes:
+# - DO NOT add Workers-only or legacy keys (main, routes, workers_dev, triggers, [pages], [site], [build], etc.)
+# - Functions are auto-detected from /functions at repo root; no extra config needed
+# - In Cloudflare Pages dashboard, set Output directory = "public"
+# - If Node APIs are absolutely required later, you may add:
+#   # compatibility_flags = ["nodejs_compat"]

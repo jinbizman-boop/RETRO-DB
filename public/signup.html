@@ -1,78 +1,183 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="prod">
 <head>
-<meta name="description" content="회원가입 — SNS 또는 일반 회원가입으로 보상 시스템을 경험하세요.">
-<meta property="og:title" content="회원가입 – RETRO GAMES">
-<meta property="og:description" content="회원가입 — SNS 또는 일반 회원가입으로 보상 시스템을 경험하세요.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://retrogames.kr/">
-<meta property="og:image" content="https://retrogames.kr/assets/og-cover.png">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-<link rel="alternate icon" href="/favicon.ico">
+  <!-- SEO / OG (기존 유지) -->
+  <meta name="description" content="회원가입 — SNS 또는 일반 회원가입으로 보상 시스템을 경험하세요.">
+  <meta property="og:title" content="회원가입 – RETRO GAMES">
+  <meta property="og:description" content="회원가입 — SNS 또는 일반 회원가입으로 보상 시스템을 경험하세요.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://retrogames.kr/">
+  <meta property="og:image" content="https://retrogames.kr/assets/og-cover.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
 
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>회원가입 – RETRO GAMES</title>
-<style>
-  :root{
-    --gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--bg:#0b001e;
-    --n:#03C75A;--k:#FEE500;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;color:#fff}
-  .wrap{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
+  <!-- 기본 -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>회원가입 – RETRO GAMES</title>
 
-  header{position:relative;text-align:center;padding:22px 16px}
-  .title{font-size:36px;font-weight:900;letter-spacing:.5px;color:var(--gold1);text-shadow:0 0 18px var(--gold2)}
-  .subtitle{opacity:.9;margin:6px 0 0}
-  .actions{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;gap:8px}
-  .btn-top{padding:8px 14px;border-radius:12px;border:1px solid #3e2b7b;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer}
-  .btn-top.alt{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#3a2400}
+  <style>
+    :root{
+      /* 컬러 */
+      --gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--bg:#0b001e;
+      --n:#03C75A;--k:#FEE500;
+      /* 안전 여백(노치) */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      /* 유동 치수 */
+      --container:max(340px, min(1000px, 94vw));
+      --panel-radius:24px;
+      --gap:clamp(14px, 2.2vw, 22px);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;margin:0;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;color:#fff;
+      -webkit-text-size-adjust:100%; text-size-adjust:100%;
+    }
+    body{padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
 
-  main{display:grid;place-items:center;padding:24px 16px}
-  .panel{width:min(920px,94vw);background:rgba(2,0,20,.55);border:2px solid #3e2b7b;border-radius:24px;box-shadow:0 0 30px #0008,inset 0 0 20px #2a0085;padding:28px;transform:translateY(-44px)}
-  .panel h2{margin:0 0 16px;font-size:22px;font-weight:800;color:var(--gold1);text-shadow:0 0 10px #bf8}
-  .hint{opacity:.85;font-size:14px;margin-bottom:12px}
-  .grid{display:grid;gap:22px}
-  @media (min-width:980px){ .grid{grid-template-columns:1fr 1.35fr;align-items:start} }
+    /* 상단 사이트맵/링크 리스트가 주입되더라도 완전 숨김 */
+    #site-header, .site-map, nav.site-map, .top-nav, .site-nav { display:none !important; }
 
-  .card{background:rgba(10,0,40,.35);border:1px solid #3e2b7b;border-radius:16px;padding:18px}
-  .socials{display:grid;gap:14px}
-  .sbtn{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:none;font-weight:800;font-size:18px;cursor:pointer;color:#fff;box-shadow:0 8px 16px rgba(0,0,0,.35);transition:transform .08s ease, box-shadow .12s ease}
-  .sbtn:focus-visible{outline:3px solid #fff8;outline-offset:2px}
-  .sbtn:hover{transform:translateY(-2px);box-shadow:0 10px 18px rgba(0,0,0,.45)}
-  .sbtn svg{width:28px;height:28px}
-  .sbtn.kakao{background:var(--k);color:#111}
-  .sbtn.naver{background:var(--n)}
+    .wrap{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
 
-  form{display:grid;gap:12px}
-  label{display:grid;gap:6px;font-weight:700}
-  input[type="text"],input[type="password"],input[type="email"],input[type="date"],input[type="tel"]{padding:12px 12px;border-radius:10px;border:1px solid #3e2b7b;background:rgba(0,0,0,.35);color:#fff}
-  fieldset{border:1px dashed #3e2b7b;border-radius:12px;padding:12px}
-  legend{padding:0 6px;font-weight:800;color:#e9f0ff;opacity:.9}
-  .row{display:grid;gap:12px}
-  @media (min-width:560px){ .row2{grid-template-columns:1fr 1fr} .row3{grid-template-columns:1fr 1fr 1fr} .row4{grid-template-columns:1fr 1fr 1fr 1fr} }
-  .submit{padding:12px 16px;border-radius:12px;border:1px solid #3e2b7b;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer}
-  .msg{min-height:18px;font-size:13px;opacity:.95}
-  .ok{color:#9be59b}
-  .err{color:#ffb4b4}
+    header{
+      position:relative;text-align:center;
+      padding:clamp(16px,2vw,22px) clamp(12px,2vw,16px);
+    }
+    .title{
+      font-size:clamp(28px,3.2vw,36px);
+      font-weight:900;letter-spacing:.5px;color:var(--gold1);
+      text-shadow:0 0 18px var(--gold2); line-height:1.15;
+    }
+    .subtitle{
+      opacity:.9;margin:6px 0 0;
+      font-size:clamp(13px, 1.6vw, 16px);
+    }
+    .actions{
+      position:absolute;right:clamp(12px,2.4vw,16px);top:50%;transform:translateY(-50%);
+      display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:min(48vw, 420px);
+    }
+    .btn-top{
+      padding:8px 14px;border-radius:12px;border:1px solid #3e2b7b;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer;
+      font-size:clamp(12px,1.2vw,14px)
+    }
+    .btn-top.alt{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#3a2400}
 
-  footer{padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px}
-  .divider{height:4px;width:100%;background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);filter:blur(1px);box-shadow:0 0 18px #0088ff88;margin:10px 0}
+    .divider{
+      height:4px;width:100%;
+      background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);
+      filter:blur(1px);box-shadow:0 0 18px #0088ff88;margin:10px 0
+    }
 
-  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);z-index:10000;font-size:12px}
-  .cookie-banner .spacer{flex:1}
-  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
-</style>
+    main{display:grid;place-items:center;padding:24px 16px}
+    .panel{
+      width:var(--container);
+      background:rgba(2,0,20,.55);
+      border:2px solid #3e2b7b;border-radius:var(--panel-radius);
+      box-shadow:0 0 30px #0008,inset 0 0 20px #2a0085;
+      padding:clamp(18px,2.4vw,28px);
+      transform:translateY(clamp(-26px,-3.4vw,-44px));
+    }
+    .panel h2{
+      margin:0 0 16px;font-size:clamp(20px,2vw,22px);
+      font-weight:800;color:var(--gold1);text-shadow:0 0 10px #bf8
+    }
+
+    .grid{display:grid;gap:var(--gap)}
+    /* 좌(간편가입) : 우(일반가입) 비율 — 큰 화면에서만 분리 */
+    @media (min-width:980px){ .grid{grid-template-columns:1fr 1.35fr;align-items:start} }
+
+    .card{
+      background:rgba(10,0,40,.35);border:1px solid #3e2b7b;border-radius:16px;
+      padding:clamp(14px,1.8vw,18px)
+    }
+    .hint{opacity:.86;font-size:clamp(13px,1.4vw,14px);margin-bottom:12px}
+
+    .socials{display:grid;gap:14px}
+    .sbtn{
+      display:flex;align-items:center;gap:14px;
+      padding:clamp(12px,1.8vw,14px) clamp(14px,2.2vw,16px);
+      border-radius:12px;border:none;font-weight:800;
+      font-size:clamp(16px,1.8vw,18px);
+      cursor:pointer;color:#fff;box-shadow:0 8px 16px rgba(0,0,0,.35);
+      transition:transform .08s ease, box-shadow .12s ease; touch-action:manipulation;
+    }
+    .sbtn:focus-visible{outline:3px solid #fff8;outline-offset:2px}
+    .sbtn:hover{transform:translateY(-2px);box-shadow:0 10px 18px rgba(0,0,0,.45)}
+    .sbtn svg{width:28px;height:28px}
+    .sbtn.kakao{background:var(--k);color:#111}
+    .sbtn.naver{background:var(--n)}
+
+    form{display:grid;gap:12px}
+    label{display:grid;gap:6px;font-weight:700;font-size:clamp(13px,1.4vw,14px)}
+    input[type="text"],input[type="password"],input[type="email"],input[type="date"],input[type="tel"],select{
+      padding:12px 12px;border-radius:10px;border:1px solid #3e2b7b;
+      background:rgba(0,0,0,.35);color:#fff;font-size:clamp(14px,1.6vw,15px)
+    }
+    fieldset{border:1px dashed #3e2b7b;border-radius:12px;padding:12px}
+    legend{padding:0 6px;font-weight:800;color:#e9f0ff;opacity:.9}
+
+    .row{display:grid;gap:12px}
+    @media (min-width:560px){
+      .row2{grid-template-columns:1fr 1fr}
+      .row3{grid-template-columns:1fr 1fr 1fr}
+      .row4{grid-template-columns:1fr 1fr 1fr 1fr}
+    }
+
+    .submit{
+      padding:12px 16px;border-radius:12px;border:1px solid #3e2b7b;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;
+      box-shadow:0 6px 12px #0006;cursor:pointer
+    }
+    .submit:hover{filter:brightness(1.06)}
+    .msg{min-height:18px;font-size:13px;opacity:.95}
+    .ok{color:#9be59b}.err{color:#ffb4b4}
+
+    footer{padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px}
+
+    .cookie-banner{
+      position:fixed;left:12px;right:12px;bottom:12px;
+      display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+      border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      z-index:10000;font-size:12px
+    }
+    .cookie-banner .spacer{flex:1}
+    .cookie-banner button{
+      padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer
+    }
+    .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+
+    /* 동작 줄이기/고대비 접근성 */
+    @media (prefers-reduced-motion: reduce){
+      .sbtn{transition:none}.sbtn:hover{transform:none}
+    }
+    @media (prefers-contrast: more){ .hint{opacity:1} }
+
+    /* 작은 화면에서 상단 버튼 줄바꿈 및 헤더 안전 여백 */
+    @media (max-width:860px){
+      .actions{position:static;transform:none;justify-content:center;margin-top:8px}
+      header{padding-top:calc(clamp(16px,2vw,22px) + var(--safe-top))}
+    }
+  </style>
 </head>
 
+<!-- 전역 스크립트 (기존 유지) -->
 <script defer src="assets/js/app.js"></script>
 <script defer src="assets/js/analytics.js"></script>
 
 <body>
-  <div id="site-header"></div>
+  <!-- 상단 사이트맵 주입 지점 제거 -->
+  <!-- <div id="site-header"></div> -->
 
   <div class="wrap">
     <header>
@@ -89,6 +194,7 @@
       <section class="panel" aria-labelledby="join-title">
         <h2 id="join-title">회원가입</h2>
         <div class="grid">
+          <!-- 간편 회원가입 -->
           <div class="card">
             <p class="hint">네이버 또는 카카오 계정으로 간편 회원가입하세요.</p>
             <div class="socials">
@@ -103,6 +209,7 @@
             </div>
           </div>
 
+          <!-- 일반 회원가입 -->
           <div class="card">
             <p class="hint">아래 항목을 입력해 일반 회원가입을 진행하세요.</p>
             <form id="signupForm" novalidate>
@@ -139,7 +246,7 @@
                     <input type="date" name="birth" required>
                   </label>
                   <label>핸드폰 번호
-                    <input type="tel" name="phone" required inputmode="tel" placeholder="010-1234-5678" pattern="^0\d{1,2}-?\d{3,4}-?\d{4}$">
+                    <input type="tel" name="phone" required inputmode="tel" placeholder="010-1234-5678" pattern="^0\\d{1,2}-?\\d{3,4}-?\\d{4}$">
                   </label>
                 </div>
               </fieldset>
@@ -160,6 +267,7 @@
     <footer>©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI</footer>
   </div>
 
+  <!-- 쿠키 동의 배너 -->
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
     <div class="spacer"></div>
@@ -167,96 +275,97 @@
     <button class="agree" type="button">동의</button>
   </div>
 
-<script>
-  const BASE = "/";
-  function goHomeSafe(){ if (window.goHome) return window.goHome(); location.href = BASE + "index.html"; }
-  function goLoginSafe(){ if (window.goLogin) return window.goLogin(); location.href = BASE + "login.html"; }
+  <script>
+    const BASE = "/";
+    function goHomeSafe(){ if (window.goHome) return window.goHome(); location.href = BASE + "index.html"; }
+    function goLoginSafe(){ if (window.goLogin) return window.goLogin(); location.href = BASE + "login.html"; }
 
-  // OAuth
-  function startOAuth(provider, mode){
-    const url = `/auth/oauth/${provider}?mode=${encodeURIComponent(mode||'signup')}`;
-    location.href = url;
-  }
-
-  // 일반 회원가입
-  const $form = document.getElementById('signupForm');
-  const $msg = document.getElementById('signupMsg');
-
-  function samePwd(p, c){ return p && c && p === c; }
-
-  $form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    $msg.textContent = '';
-
-    const fd = new FormData($form);
-    const payload = {
-      username: (fd.get('username')||'').toString().trim(),
-      email: (fd.get('email')||'').toString().trim(),
-      password: (fd.get('password')||'').toString(),
-      gender: (fd.get('gender')||'').toString(),
-      birth: (fd.get('birth')||'').toString(),
-      phone: (fd.get('phone')||'').toString().replace(/\D/g,''),
-      agree: !!fd.get('agree')
-    };
-
-    // 기본 검증
-    if(payload.username.length < 3){ return fail('아이디는 3자 이상이어야 합니다.'); }
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(payload.email)){ return fail('이메일 형식을 확인해주세요.'); }
-    if(payload.password.length < 6){ return fail('비밀번호는 6자 이상이어야 합니다.'); }
-    if(!samePwd(fd.get('password'), fd.get('passwordConfirm'))){ return fail('비밀번호가 일치하지 않습니다.'); }
-    if(!payload.gender){ return fail('성별을 선택해주세요.'); }
-    if(!payload.birth){ return fail('생년월일을 선택해주세요.'); }
-    if(!(fd.get('phone')||'').toString().match(/^0\d{8,10}$/)){ return fail('핸드폰 번호를 확인해주세요. 예: 01012345678'); }
-    if(!payload.agree){ return fail('약관 동의가 필요합니다.'); }
-
-    try{
-      const res = await fetch('/auth/local/signup', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload),
-        credentials: 'include'
-      });
-      if(!res.ok){
-        const t = await res.text();
-        throw new Error(t||'회원가입 실패');
-      }
-      $msg.textContent = '가입 완료! 로그인 페이지로 이동합니다.';
-      $msg.className = 'msg ok';
-      setTimeout(()=>{ location.href = BASE + 'login.html'; }, 800);
-    }catch(err){
-      fail('회원가입 실패: ' + (err.message||'서버 오류'));
+    // OAuth
+    function startOAuth(provider, mode){
+      const url = `/auth/oauth/${provider}?mode=${encodeURIComponent(mode||'signup')}`;
+      location.href = url;
     }
-  });
 
-  function fail(t){
-    $msg.textContent = t;
-    $msg.className = 'msg err';
-    return false;
-  }
+    // 일반 회원가입
+    const $form = document.getElementById('signupForm');
+    const $msg = document.getElementById('signupMsg');
 
-  // Cookie consent
-  (function(){
-    try{
-      var KEY='rg_analytics_consent';
-      function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
-      var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
-      var el=document.getElementById('cookieBanner');
-      if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
-      if(!el){ return; }
-      el.style.display='flex';
-      var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
-      if(agree) agree.addEventListener('click', function(){
-        try{ localStorage.setItem(KEY,'yes'); }catch(e){}
-        el.style.display='none'; init();
-      });
-      if(deny) deny.addEventListener('click', function(){
-        try{ localStorage.setItem(KEY,'no'); }catch(e){}
-        el.style.display='none';
-      });
-    }catch(e){}
-  })();
-</script>
+    function samePwd(p, c){ return p && c && p === c; }
 
+    $form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $msg.textContent = '';
+
+      const fd = new FormData($form);
+      const payload = {
+        username: (fd.get('username')||'').toString().trim(),
+        email: (fd.get('email')||'').toString().trim(),
+        password: (fd.get('password')||'').toString(),
+        gender: (fd.get('gender')||'').toString(),
+        birth: (fd.get('birth')||'').toString(),
+        phone: (fd.get('phone')||'').toString().replace(/\\D/g,''),
+        agree: !!fd.get('agree')
+      };
+
+      // 기본 검증
+      if(payload.username.length < 3){ return fail('아이디는 3자 이상이어야 합니다.'); }
+      if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(payload.email)){ return fail('이메일 형식을 확인해주세요.'); }
+      if(payload.password.length < 6){ return fail('비밀번호는 6자 이상이어야 합니다.'); }
+      if(!samePwd(fd.get('password'), fd.get('passwordConfirm'))){ return fail('비밀번호가 일치하지 않습니다.'); }
+      if(!payload.gender){ return fail('성별을 선택해주세요.'); }
+      if(!payload.birth){ return fail('생년월일을 선택해주세요.'); }
+      if(!(fd.get('phone')||'').toString().match(/^0\\d{8,10}$/)){ return fail('핸드폰 번호를 확인해주세요. 예: 01012345678'); }
+      if(!payload.agree){ return fail('약관 동의가 필요합니다.'); }
+
+      try{
+        const res = await fetch('/auth/local/signup', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+        if(!res.ok){
+          const t = await res.text();
+          throw new Error(t||'회원가입 실패');
+        }
+        $msg.textContent = '가입 완료! 로그인 페이지로 이동합니다.';
+        $msg.className = 'msg ok';
+        setTimeout(()=>{ location.href = BASE + 'login.html'; }, 800);
+      }catch(err){
+        fail('회원가입 실패: ' + (err.message||'서버 오류'));
+      }
+    });
+
+    function fail(t){
+      $msg.textContent = t;
+      $msg.className = 'msg err';
+      return false;
+    }
+
+    // Cookie consent
+    (function(){
+      try{
+        var KEY='rg_analytics_consent';
+        function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
+        var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
+        var el=document.getElementById('cookieBanner');
+        if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
+        if(!el){ return; }
+        el.style.display='flex';
+        var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
+        if(agree) agree.addEventListener('click', function(){
+          try{ localStorage.setItem(KEY,'yes'); }catch(e){}
+          el.style.display='none'; init();
+        });
+        if(deny) deny.addEventListener('click', function(){
+          try{ localStorage.setItem(KEY,'no'); }catch(e){}
+          el.style.display='none';
+        });
+      }catch(e){}
+    })();
+  </script>
+
+  <!-- 하단 푸터 주입 지점(유지) -->
   <div id="site-footer"></div>
   <script defer src="/assets/js/consent.js"></script>
 </body>

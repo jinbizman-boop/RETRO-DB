@@ -1,95 +1,484 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="prod">
 <head>
-<!--#include file="/partials/head-seo.html" -->
+  <!--#include file="/partials/head-seo.html" -->
 
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RETRO GAMES – Neon Home (Logged-in)</title>
-<style>
-  :root{--gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--blue2:#0048ff;--bg:#0b001e;--gapY:24px}
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;color:#fff}
-  .wrap{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>RETRO GAMES – Neon Home (Logged-in)</title>
 
-  /* Header */
-  header{position:relative;text-align:center;padding:22px 12px;display:block}
-  .title{font-size:36px;font-weight:900;letter-spacing:.5px;color:var(--gold1);text-shadow:0 0 18px var(--gold2)}
-  .subtitle{opacity:.9;margin:0;text-align:center;margin-bottom:6px}
+  <style>
+    :root{
+      --gold1:#ffdf6e;
+      --gold2:#ffb84d;
+      --blue1:#2b7bff;
+      --blue2:#0048ff;
+      --bg:#0b001e;
+      --gapY:24px;
 
-  /* 좌측 HUD */
-  .hudTop{
-    position:absolute;left:40px;top:50%;transform:translateY(-50%);
-    display:flex;flex-wrap:wrap;gap:8px 8px;align-items:center;justify-content:flex-start;max-width:48vw;
-  }
+      /* 안전 여백(노치) */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
 
-  /* 우측 설정 버튼 */
-  .auth{position:absolute;right:40px;top:50%;transform:translateY(-50%);display:flex;gap:10px}
-  .authbtn{padding:8px 14px;border-radius:12px;border:1px solid #3e2b7b;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer}
-  .authbtn.alt{display:none}
+    *{box-sizing:border-box}
 
-  /* Main */
-  main{max-width:1200px;margin:0 auto;padding:0 22px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-height:0}
-  .stack{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:18px;transform:translateY(-36px)}
+    html,body{
+      height:100%;
+      margin:0;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;
+      color:#fff;
+      -webkit-text-size-adjust:100%;
+      text-size-adjust:100%;
+    }
 
-  /* Pill */
-  .pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:16px;background:linear-gradient(180deg,#0c1430,#0a0f26);border:1px solid #3857bd;box-shadow:0 6px 16px #0008,inset 0 0 18px #102265;white-space:nowrap}
-  .pill .icon{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);box-shadow:0 0 10px #6fb0ffaa}
-  .pill .label{font-weight:900;letter-spacing:.3px}
-  .amount{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
-  .unit{opacity:.8;margin-left:2px;font-size:12px}
+    body{
+      padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    }
 
-  /* 접근성용 숨김 텍스트 */
-  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+    .wrap{
+      min-height:100%;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+    }
 
-  /* 황금 리본 버튼 */
-  .ctaWrap{display:flex;justify-content:center;margin:0}
-  .goldBtn{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:22px 64px;min-width:min(72vw,720px);border:none;border-radius:14px;cursor:pointer;background:radial-gradient(120% 200% at 50% -80%, #fff6b0 0%, #ffd24a 38%, #ffb320 68%, #f39a15 100%),linear-gradient(180deg,#ffe889 0%,#ffc83d 40%,#ffb020 100%);box-shadow:0 10px 18px rgba(0,0,0,.38),inset 0 6px 14px rgba(255,255,255,.55),inset 0 -12px 18px rgba(176,88,0,.45);isolation:isolate;transform:translateZ(0)}
-  .goldBtn::before,.goldBtn::after{content:"";position:absolute;top:50%;width:110px;height:34px;margin-top:-10px;background:linear-gradient(180deg,#ffd870 0%,#f2a41b 85%),linear-gradient(180deg,#ffec9c,#ffcf47);box-shadow:0 8px 12px rgba(0,0,0,.25), inset 0 -8px 10px rgba(140,70,0,.35);z-index:-1}
-  .goldBtn::before{left:-64px;border-radius:6px 0 6px 6px;transform:skewX(-18deg)}
-  .goldBtn::after{right:-64px;border-radius:0 6px 6px 6px;transform:skewX(18deg)}
-  .goldBtn span{background:linear-gradient(180deg,#fffef2,#fffbe2);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;font-size:26px;letter-spacing:.3px;text-shadow:0 0 12px rgba(255,255,200,.9),0 0 24px rgba(255,230,150,.75);white-space:nowrap}
-  .goldBtn:hover{transform:translateY(-2px)}
-  .goldBtn:hover,.goldBtn:focus-visible{box-shadow:0 14px 22px rgba(0,0,0,.42),inset 0 7px 16px rgba(255,255,255,.6),inset 0 -14px 20px rgba(176,88,0,.5);outline:2px solid rgba(255,220,120,.6);outline-offset:2px}
+    /* Header 기본 레이아웃 (데스크톱 기준) */
+    header{
+      position:relative;
+      text-align:center;
+      padding:22px 18px;
+      display:block;
+    }
+    .title{
+      font-size:clamp(28px,3.2vw,36px);
+      font-weight:900;
+      letter-spacing:.5px;
+      color:var(--gold1);
+      text-shadow:0 0 18px var(--gold2);
+    }
+    .subtitle{
+      opacity:.9;
+      margin:0;
+      text-align:center;
+      margin-bottom:6px;
+      font-size:clamp(13px,1.6vw,16px);
+    }
 
-  .rowTop{display:flex;justify-content:center;align-items:stretch;gap:28px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px;padding-bottom:6px;scrollbar-width:none}
-  .rowTop::-webkit-scrollbar{display:none}
+    /* 좌측 HUD */
+    .hudTop{
+      position:absolute;
+      left:40px;
+      top:50%;
+      transform:translateY(-50%);
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px 8px;
+      align-items:center;
+      justify-content:flex-start;
+      max-width:48vw;
+    }
 
-  .card{flex:0 0 200px;width:200px;height:300px;display:grid;grid-template-rows:120px 44px 1fr 54px;background:linear-gradient(180deg,#0a0030,#000);border:3px solid #3e2b7b;border-radius:22px;box-shadow:0 0 30px #0008,inset 0 0 20px #2a0085;padding:16px 14px;cursor:pointer;transition:box-shadow .14s ease;text-align:center}
-  .card:hover{box-shadow:0 0 36px #007affaa,inset 0 0 26px #001a44}
-  .thumb{display:grid;place-items:center;width:100%;height:100%}
-  .card h3{margin:6px 0 0;font-size:18px;font-weight:800;color:var(--gold1);text-shadow:0 0 10px #bf8;display:flex;align-items:center;justify-content:center}
-  .meta{font-size:11px;opacity:.85;padding:0 6px;display:flex;align-items:center;justify-content:center;text-align:center}
-  .btnbar{display:flex;align-items:center;justify-content:center;gap:10px}
-  .btn{flex:1;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid #2d3690;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;box-shadow:0 6px 12px #0006;font-size:12px}
-  .btn:hover{filter:brightness(1.06)}
+    /* 우측 설정 버튼 */
+    .auth{
+      position:absolute;
+      right:40px;
+      top:50%;
+      transform:translateY(-50%);
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .authbtn{
+      padding:8px 14px;
+      border-radius:12px;
+      border:1px solid #3e2b7b;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:900;
+      color:#e9f0ff;
+      box-shadow:0 6px 12px #0006;
+      cursor:pointer;
+      font-size:13px;
+      white-space:nowrap;
+    }
+    .authbtn.alt{display:none;}
 
-  footer{padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px;margin-top:var(--gapY)}
-  #fx{position:fixed;inset:0;pointer-events:none;opacity:.5}
-  .divider{height:4px;width:100%;background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);filter:blur(1px);box-shadow:0 0 18px #0088ff88;margin:0}
+    /* Main 영역 */
+    .content{
+      width:100%;
+      display:flex;
+      justify-content:center;
+    }
 
-  @media (max-width:1200px){ .hudTop{left:16px;gap:8px} }
-  @media (max-width:1024px){ .auth{right:16px}.rowTop{gap:24px}.stack{transform:translateY(-24px)}.goldBtn{min-width:min(84vw,720px)} }
-  @media (max-width:680px){
-    .auth{right:12px}
-    .stack{transform:translateY(-16px)}
-    .goldBtn{min-width:min(92vw,640px);padding:18px 52px}
-    .goldBtn::before{left:-52px;width:90px;height:30px}
-    .goldBtn::after{right:-52px;width:90px;height:30px}
-  }
+    main{
+      max-width:1200px;
+      width:100%;
+      margin:0 auto;
+      padding:0 22px 12px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap:0;
+      min-height:0;
+    }
 
-  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
-    display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-    border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
-    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-    z-index:10000;font-size:12px}
-  .cookie-banner .spacer{flex:1}
-  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+    .stack{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap:18px;
+      transform:translateY(-36px);
+      width:100%;
+    }
 
-</style>
+    /* Pill HUD */
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#0c1430,#0a0f26);
+      border:1px solid #3857bd;
+      box-shadow:0 6px 16px #0008,inset 0 0 18px #102265;
+      white-space:nowrap;
+    }
+    .pill .icon{
+      width:22px;
+      height:22px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);
+      box-shadow:0 0 10px #6fb0ffaa;
+      font-size:14px;
+    }
+    .pill .label{
+      font-weight:900;
+      letter-spacing:.3px;
+    }
+    .amount{
+      font-size:18px;
+      color:#ffe9a3;
+      text-shadow:0 0 8px #ffd86a;
+    }
+    .unit{
+      opacity:.8;
+      margin-left:2px;
+      font-size:12px;
+    }
 
+    /* 접근성용 숨김 텍스트 */
+    .sr-only{
+      position:absolute;
+      width:1px;
+      height:1px;
+      padding:0;
+      margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
+    /* 황금 리본 버튼 */
+    .ctaWrap{
+      display:flex;
+      justify-content:center;
+      margin:0;
+      width:100%;
+    }
+    .goldBtn{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:22px 64px;
+      min-width:min(72vw,720px);
+      max-width:100%;
+      border:none;
+      border-radius:14px;
+      cursor:pointer;
+      background:radial-gradient(120% 200% at 50% -80%, #fff6b0 0%, #ffd24a 38%, #ffb320 68%, #f39a15 100%),linear-gradient(180deg,#ffe889 0%,#ffc83d 40%,#ffb020 100%);
+      box-shadow:0 10px 18px rgba(0,0,0,.38),inset 0 6px 14px rgba(255,255,255,.55),inset 0 -12px 18px rgba(176,88,0,.45);
+      isolation:isolate;
+      transform:translateZ(0);
+    }
+    .goldBtn::before,
+    .goldBtn::after{
+      content:"";
+      position:absolute;
+      top:50%;
+      width:110px;
+      height:34px;
+      margin-top:-10px;
+      background:linear-gradient(180deg,#ffd870 0%,#f2a41b 85%),linear-gradient(180deg,#ffec9c,#ffcf47);
+      box-shadow:0 8px 12px rgba(0,0,0,.25), inset 0 -8px 10px rgba(140,70,0,.35);
+      z-index:-1;
+    }
+    .goldBtn::before{
+      left:-64px;
+      border-radius:6px 0 6px 6px;
+      transform:skewX(-18deg);
+    }
+    .goldBtn::after{
+      right:-64px;
+      border-radius:0 6px 6px 6px;
+      transform:skewX(18deg);
+    }
+    .goldBtn span{
+      background:linear-gradient(180deg,#fffef2,#fffbe2);
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      font-weight:900;
+      font-size:26px;
+      letter-spacing:.3px;
+      text-shadow:0 0 12px rgba(255,255,200,.9),0 0 24px rgba(255,230,150,.75);
+      white-space:nowrap;
+    }
+    .goldBtn:hover{
+      transform:translateY(-2px);
+    }
+    .goldBtn:hover,
+    .goldBtn:focus-visible{
+      box-shadow:0 14px 22px rgba(0,0,0,.42),inset 0 7px 16px rgba(255,255,255,.6),inset 0 -14px 20px rgba(176,88,0,.5);
+      outline:2px solid rgba(255,220,120,.6);
+      outline-offset:2px;
+    }
+
+    /* 카드 리스트 */
+    .rowTop{
+      display:flex;
+      justify-content:center;
+      align-items:stretch;
+      gap:28px;
+      flex-wrap:nowrap;
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      margin-top:8px;
+      padding-bottom:6px;
+      scrollbar-width:none;
+      width:100%;
+    }
+    .rowTop::-webkit-scrollbar{display:none;}
+
+    .card{
+      flex:0 0 clamp(190px, 28vw, 220px);
+      width:clamp(190px, 28vw, 220px);
+      height:300px;
+      display:grid;
+      grid-template-rows:120px 44px 1fr 54px;
+      background:linear-gradient(180deg,#0a0030,#000);
+      border:3px solid #3e2b7b;
+      border-radius:22px;
+      box-shadow:0 0 30px #0008,inset 0 0 20px #2a0085;
+      padding:16px 14px;
+      cursor:pointer;
+      transition:box-shadow .14s ease, transform .12s ease;
+      text-align:center;
+    }
+    .card:hover{
+      box-shadow:0 0 36px #007affaa,inset 0 0 26px #001a44;
+      transform:translateY(-3px);
+    }
+
+    .thumb{
+      display:grid;
+      place-items:center;
+      width:100%;
+      height:100%;
+    }
+    .card h3{
+      margin:6px 0 0;
+      font-size:18px;
+      font-weight:800;
+      color:var(--gold1);
+      text-shadow:0 0 10px #bf8;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .meta{
+      font-size:11px;
+      opacity:.85;
+      padding:0 6px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+    }
+    .btnbar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+    }
+    .btn{
+      flex:1;
+      height:38px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:12px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:800;
+      color:#e9f0ff;
+      box-shadow:0 6px 12px #0006;
+      font-size:12px;
+    }
+    .btn:hover{filter:brightness(1.06);}
+
+    footer{
+      padding:12px 16px;
+      text-align:center;
+      color:#aab;
+      opacity:.9;
+      font-size:12px;
+      margin-top:var(--gapY);
+    }
+
+    #fx{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      opacity:.5;
+    }
+
+    .divider{
+      height:4px;
+      width:100%;
+      background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);
+      filter:blur(1px);
+      box-shadow:0 0 18px #0088ff88;
+      margin:0;
+    }
+
+    /* 반응형 보완 */
+
+    @media (max-width:1200px){
+      .hudTop{left:18px;gap:8px;}
+    }
+
+    @media (max-width:1024px){
+      .auth{right:18px;}
+      .rowTop{gap:24px;}
+      .stack{transform:translateY(-24px);}
+      .goldBtn{min-width:min(84vw,720px);}
+    }
+
+    /* 태블릿 / 작은 노트북: 헤더 요소가 겹치지 않도록 재배치 */
+    @media (max-width:860px){
+      header{
+        padding-top:calc(16px + var(--safe-top));
+        padding-bottom:16px;
+      }
+      .hudTop,
+      .auth{
+        position:static;
+        transform:none;
+        max-width:100%;
+      }
+      .hudTop{
+        justify-content:center;
+        margin-top:10px;
+      }
+      .auth{
+        justify-content:center;
+        margin-top:6px;
+      }
+      .title{
+        font-size:clamp(24px,6vw,30px);
+      }
+      .subtitle{
+        margin-top:4px;
+      }
+    }
+
+    @media (max-width:680px){
+      .stack{transform:translateY(-16px);}
+      .goldBtn{
+        min-width:min(92vw,640px);
+        padding:18px 52px;
+      }
+      .goldBtn span{
+        font-size:22px;
+        letter-spacing:.2px;
+      }
+      .goldBtn::before{
+        left:-52px;
+        width:90px;
+        height:30px;
+      }
+      .goldBtn::after{
+        right:-52px;
+        width:90px;
+        height:30px;
+      }
+      .card{
+        flex:0 0 72vw;
+        width:72vw;
+        max-width:260px;
+      }
+    }
+
+    @media (max-width:480px){
+      main{
+        padding:0 14px 10px;
+      }
+      .rowTop{
+        gap:20px;
+      }
+      .card{
+        flex:0 0 78vw;
+        width:78vw;
+      }
+      .pill{
+        padding:6px 10px;
+      }
+      .amount{
+        font-size:16px;
+      }
+    }
+
+    .cookie-banner{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:12px;
+      display:none;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #2b3f8f;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      z-index:10000;
+      font-size:12px;
+    }
+    .cookie-banner .spacer{flex:1;}
+    .cookie-banner button{
+      padding:8px 12px;
+      border-radius:10px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:800;
+      color:#e9f0ff;
+      cursor:pointer;
+    }
+    .cookie-banner .agree{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#3a2400;
+      border-color:#7a5600;
+    }
+  </style>
 </head>
 
 <!-- 프로젝트 전역 API (모듈 아님) -->
@@ -97,23 +486,29 @@
 <script defer src="assets/js/analytics.js"></script>
 
 <body>
-  <!--#include file=\"/partials/header.html\" -->
+  <!--#include file="/partials/header.html" -->
   <canvas id="fx"></canvas>
+
   <div class="wrap">
     <header>
       <!-- 좌측: HUD -->
       <div class="hudTop" aria-label="보상 현황">
         <div class="pill coins" title="보유 코인">
-          <div class="icon">🪙</div><div id="coinVal" class="amount">0</div><div class="unit">COINS</div>
+          <div class="icon">🪙</div>
+          <div id="coinVal" class="amount">0</div>
+          <div class="unit">COINS</div>
         </div>
         <div class="pill xp" title="경험치">
-          <div class="icon">🏆</div><div id="xpVal" class="amount">0</div><div class="unit">XP</div>
+          <div class="icon">🏆</div>
+          <div id="xpVal" class="amount">0</div>
+          <div class="unit">XP</div>
           <span id="xpCap" class="sr-only">/ 20K</span>
           <span class="sr-only" aria-hidden="true"><span id="xpBar"></span></span>
         </div>
         <!-- SHOP 이동 버튼(디자인 유지) -->
         <button class="pill shop" onclick="goShop()" title="상점">
-          <div class="icon">🛍️</div><div class="label">SHOP</div>
+          <div class="icon">🛍️</div>
+          <div class="label">SHOP</div>
         </button>
       </div>
 
@@ -121,8 +516,11 @@
       <div class="subtitle">오늘의 미니게임을 선택하세요!</div>
 
       <!-- 우측: 설정 -->
-      <div class="auth"><button class="authbtn" onclick="alert('설정 열기(작업예정)')">⚙️ 설정</button></div>
+      <div class="auth">
+        <button class="authbtn" onclick="alert('설정 열기(작업예정)')">⚙️ 설정</button>
+      </div>
     </header>
+
     <div class="divider"></div>
 
     <section class="content">
@@ -130,34 +528,83 @@
         <div class="stack">
           <!-- 오늘의 행운 -->
           <div class="ctaWrap">
-            <div class="goldBtn" role="button" tabindex="0" onclick="goLucky()" onkeypress="if(event.key==='Enter') goLucky()" aria-label="오늘의 행운 뽑기"><span>오늘의 행운 뽑기</span></div>
+            <div
+              class="goldBtn"
+              role="button"
+              tabindex="0"
+              onclick="goLucky()"
+              onkeypress="if(event.key==='Enter') goLucky()"
+              aria-label="오늘의 행운 뽑기"
+            >
+              <span>오늘의 행운 뽑기</span>
+            </div>
           </div>
 
           <!-- 게임 카드 -->
           <div class="rowTop">
             <div class="card" onclick="goGame('2048')">
-              <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="12" y="12" width="96" height="96" rx="18" fill="#7a9cff"/><text x="60" y="78" text-anchor="middle" font-size="46" font-family="system-ui,Segoe UI" font-weight="900" fill="#0b1a3f">2048</text></svg></div>
-              <h3>2048</h3><div class="meta">난이도 1–100 · 보드 4×4~6×6</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <div class="thumb">
+                <svg width="80" height="80" viewBox="0 0 120 120">
+                  <rect x="12" y="12" width="96" height="96" rx="18" fill="#7a9cff"/>
+                  <text x="60" y="78" text-anchor="middle" font-size="46" font-family="system-ui,Segoe UI" font-weight="900" fill="#0b1a3f">2048</text>
+                </svg>
+              </div>
+              <h3>2048</h3>
+              <div class="meta">난이도 1–100 · 보드 4×4~6×6</div>
+              <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('brick-breaker')">
-              <div class="thumb"><svg width="90" height="80" viewBox="0 0 130 120"><rect x="14" y="20" width="102" height="18" rx="8" fill="#8ea3ff"/><rect x="14" y="44" width="102" height="18" rx="8" fill="#c4ceff"/><rect x="48" y="88" width="60" height="10" rx="5" fill="#70ffa8"/><circle cx="42" cy="74" r="7" fill="#ffd166"/></svg></div>
-              <h3>Brick Breaker</h3><div class="meta">프리셋/특수볼/리플레이</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <div class="thumb">
+                <svg width="90" height="80" viewBox="0 0 130 120">
+                  <rect x="14" y="20" width="102" height="18" rx="8" fill="#8ea3ff"/>
+                  <rect x="14" y="44" width="102" height="18" rx="8" fill="#c4ceff"/>
+                  <rect x="48" y="88" width="60" height="10" rx="5" fill="#70ffa8"/>
+                  <circle cx="42" cy="74" r="7" fill="#ffd166"/>
+                </svg>
+              </div>
+              <h3>Brick Breaker</h3>
+              <div class="meta">프리셋/특수볼/리플레이</div>
+              <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('retro-match')">
-              <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="18" y="22" width="28" height="28" rx="6" fill="#ff9aa6"/><rect x="46" y="22" width="28" height="28" rx="6" fill="#92ff9a"/><rect x="74" y="22" width="28" height="28" rx="6" fill="#7ad7ff"/></svg></div>
-              <h3>Retro Match</h3><div class="meta">타임 어택 · 특수 타일</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <div class="thumb">
+                <svg width="80" height="80" viewBox="0 0 120 120">
+                  <rect x="18" y="22" width="28" height="28" rx="6" fill="#ff9aa6"/>
+                  <rect x="46" y="22" width="28" height="28" rx="6" fill="#92ff9a"/>
+                  <rect x="74" y="22" width="28" height="28" rx="6" fill="#7ad7ff"/>
+                </svg>
+              </div>
+              <h3>Retro Match</h3>
+              <div class="meta">타임 어택 · 특수 타일</div>
+              <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('retro-running')">
-              <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="16" y="84" width="88" height="8" fill="#6ec36e"/><circle cx="52" cy="46" r="10" fill="#ffddea"/></svg></div>
-              <h3>Retro Runner</h3><div class="meta">2단 점프 · 아이템 · 낮/밤</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <div class="thumb">
+                <svg width="80" height="80" viewBox="0 0 120 120">
+                  <rect x="16" y="84" width="88" height="8" fill="#6ec36e"/>
+                  <circle cx="52" cy="46" r="10" fill="#ffddea"/>
+                </svg>
+              </div>
+              <h3>Retro Runner</h3>
+              <div class="meta">2단 점프 · 아이템 · 낮/밤</div>
+              <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('tetris')">
-              <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="18" y="60" width="24" height="24" fill="#7ad7ff"/><rect x="42" y="60" width="24" height="24" fill="#ffe17a"/><rect x="66" y="60" width="24" height="24" fill="#caa5ff"/><rect x="42" y="36" width="24" height="24" fill="#92ff9a"/></svg></div>
-              <h3>Tetris</h3><div class="meta">홀드/넥스트 · 가비지 라인</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <div class="thumb">
+                <svg width="80" height="80" viewBox="0 0 120 120">
+                  <rect x="18" y="60" width="24" height="24" fill="#7ad7ff"/>
+                  <rect x="42" y="60" width="24" height="24" fill="#ffe17a"/>
+                  <rect x="66" y="60" width="24" height="24" fill="#caa5ff"/>
+                  <rect x="42" y="36" width="24" height="24" fill="#92ff9a"/>
+                </svg>
+              </div>
+              <h3>Tetris</h3>
+              <div class="meta">홀드/넥스트 · 가비지 라인</div>
+              <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
           </div>
         </div>
@@ -168,98 +615,146 @@
     <footer>©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI</footer>
   </div>
 
-<script>
-  const BASE = "/";
-  /* ✅ 경로 매핑: retro-match 별칭 추가(브라우저 카드 슬러그와 일치), brick-match도 유지 */
-  const GAME = {
-    "2048":           BASE + "games/2048.html",
-    "brick-breaker":  BASE + "games/brick-breaker.html",
-    "brick-match":    BASE + "games/brick-match.html",
-    "retro-match":    BASE + "games/brick-match.html", // alias for legacy/card slug
-    "retro-running":  BASE + "games/retro-running.html",
-    "tetris":         BASE + "games/tetris.html"
-  };
-  const LUCKY = BASE + "features/today-lucky.html";
+  <script>
+    const BASE = "/";
 
-  /* ✅ 버그 수정: 존재하지 않는 GAMES 대신 GAME 사용 */
-  function goGame(slug){ if (GAME[slug]) window.location.href = GAME[slug]; }
-  function goLucky(){ window.location.href = LUCKY; }
-  function goShop(){ window.location.href = BASE + "shop.html"; }
-
-  /* 2) 보상 집계 (coins/tickets/xp) – 디자인은 코인/XP만 표시 */
-  const NUM = n => Number.isFinite(+n) ? +n : 0;
-  function readTotals(){
-    return {
-      coins:   NUM(localStorage.getItem('rg_coins')   || 0),
-      tickets: NUM(localStorage.getItem('rg_tickets') || 0), // UI에는 미표시, 저장만
-      xp:      NUM(localStorage.getItem('rg_xp')      || 0),
-      xpCap:   NUM(localStorage.getItem('rg_xp_cap')  || 20000)
+    /* 경로 매핑 */
+    const GAME = {
+      "2048":           BASE + "games/2048.html",
+      "brick-breaker":  BASE + "games/brick-breaker.html",
+      "brick-match":    BASE + "games/brick-match.html",
+      "retro-match":    BASE + "games/brick-match.html", // alias
+      "retro-running":  BASE + "games/retro-running.html",
+      "tetris":         BASE + "games/tetris.html"
     };
-  }
-  function writeTotals(t){
-    localStorage.setItem('rg_coins',   t.coins);
-    localStorage.setItem('rg_tickets', t.tickets);
-    localStorage.setItem('rg_xp',      t.xp);
-    localStorage.setItem('rg_xp_cap',  t.xpCap);
-  }
-  function addReward({coins=0,tickets=0,xp=0}={}){
-    const t = readTotals();
-    t.coins   += NUM(coins);
-    t.tickets += NUM(tickets);
-    t.xp      += NUM(xp);
-    writeTotals(t);
-    renderHUD();
-  }
+    const LUCKY = BASE + "features/today-lucky.html";
 
-  /* URL 파라미터 보상 (?coins=&tickets=&xp=) */
-  (function consumeQueryReward(){
-    const p = new URLSearchParams(location.search);
-    const c = NUM(p.get('coins')), tk = NUM(p.get('tickets')), x = NUM(p.get('xp'));
-    if (c || tk || x){
-      addReward({coins:c,tickets:tk,xp:x});
-      history.replaceState({}, "", location.pathname);
+    function goGame(slug){
+      if (GAME[slug]) window.location.href = GAME[slug];
     }
-  })();
+    function goLucky(){
+      window.location.href = LUCKY;
+    }
+    function goShop(){
+      window.location.href = BASE + "shop.html";
+    }
 
-  /* localStorage 큐 보상 (rg_reward) */
-  (function consumeQueuedReward(){
-    const raw = localStorage.getItem('rg_reward');
-    if(!raw) return;
-    try{
-      const r = JSON.parse(raw)||{};
-      if (r && (r.coins||r.tickets||r.xp)) addReward(r);
-    }catch(e){}
-    localStorage.removeItem('rg_reward');
-  })();
+    /* 보상 집계 (coins/tickets/xp) */
+    const NUM = n => Number.isFinite(+n) ? +n : 0;
 
-  /* 3) HUD 렌더링 */
-  function fmt(n){ return Number(n).toLocaleString('en-US'); }
-  function renderHUD(){
-    const t = readTotals();
-    const coinEl = document.getElementById('coinVal');
-    const xpEl   = document.getElementById('xpVal');
-    if (coinEl) coinEl.textContent = fmt(t.coins);
-    if (xpEl)   xpEl.textContent   = fmt(t.xp);
+    function readTotals(){
+      return {
+        coins:   NUM(localStorage.getItem('rg_coins')   || 0),
+        tickets: NUM(localStorage.getItem('rg_tickets') || 0),
+        xp:      NUM(localStorage.getItem('rg_xp')      || 0),
+        xpCap:   NUM(localStorage.getItem('rg_xp_cap')  || 20000)
+      };
+    }
 
-    // 진행률(접근성용)
-    const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1,t.xpCap)) * 100));
-    const xpBar = document.getElementById('xpBar'); if (xpBar) xpBar.style.width = pct + "%";
-    const xpCap = document.getElementById('xpCap'); if (xpCap) xpCap.textContent = "/ " + (t.xpCap >= 1000 ? fmt(t.xpCap/1000)+"K" : fmt(t.xpCap));
-  }
-  renderHUD();
-  window.addEventListener('storage', e=>{
-    if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)) renderHUD();
-  });
+    function writeTotals(t){
+      localStorage.setItem('rg_coins',   t.coins);
+      localStorage.setItem('rg_tickets', t.tickets);
+      localStorage.setItem('rg_xp',      t.xp);
+      localStorage.setItem('rg_xp_cap',  t.xpCap);
+    }
 
-  /* 4) 배경 파티클 */
-  const c=document.getElementById('fx');const g=c.getContext('2d');
-  function fit(){const d=window.devicePixelRatio||1;c.width=innerWidth*d;c.height=innerHeight*d;g.setTransform(d,0,0,d,0,0);}fit();addEventListener('resize',fit);
-  let pts=[];for(let i=0;i<80;i++){pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2});}
-  function loop(){g.clearRect(0,0,c.width,c.height);for(const p of pts){g.beginPath();g.arc(p.x,p.y,p.r,0,Math.PI*2);g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;g.fill();p.y+=p.s;if(p.y>innerHeight){p.y=-10;p.x=Math.random()*innerWidth;}}requestAnimationFrame(loop);}loop();
+    function addReward({coins=0,tickets=0,xp=0}={}){
+      const t = readTotals();
+      t.coins   += NUM(coins);
+      t.tickets += NUM(tickets);
+      t.xp      += NUM(xp);
+      writeTotals(t);
+      renderHUD();
+    }
 
-  /* 외부 적립 호출 예: window.RG_addReward({coins:100,tickets:1,xp:250}); */
-  window.RG_addReward = addReward;
-</script>
+    /* URL 파라미터 보상 (?coins=&tickets=&xp=) */
+    (function consumeQueryReward(){
+      const p = new URLSearchParams(location.search);
+      const c = NUM(p.get('coins'));
+      const tk = NUM(p.get('tickets'));
+      const x = NUM(p.get('xp'));
+      if (c || tk || x){
+        addReward({coins:c,tickets:tk,xp:x});
+        history.replaceState({}, "", location.pathname);
+      }
+    })();
+
+    /* localStorage 큐 보상 (rg_reward) */
+    (function consumeQueuedReward(){
+      const raw = localStorage.getItem('rg_reward');
+      if(!raw) return;
+      try{
+        const r = JSON.parse(raw)||{};
+        if (r && (r.coins||r.tickets||r.xp)) addReward(r);
+      }catch(e){}
+      localStorage.removeItem('rg_reward');
+    })();
+
+    /* HUD 렌더링 */
+    function fmt(n){ return Number(n).toLocaleString('en-US'); }
+
+    function renderHUD(){
+      const t = readTotals();
+      const coinEl = document.getElementById('coinVal');
+      const xpEl   = document.getElementById('xpVal');
+      if (coinEl) coinEl.textContent = fmt(t.coins);
+      if (xpEl)   xpEl.textContent   = fmt(t.xp);
+
+      const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1,t.xpCap)) * 100));
+      const xpBar = document.getElementById('xpBar');
+      if (xpBar) xpBar.style.width = pct + "%";
+      const xpCap = document.getElementById('xpCap');
+      if (xpCap) xpCap.textContent = "/ " + (t.xpCap >= 1000 ? fmt(t.xpCap/1000)+"K" : fmt(t.xpCap));
+    }
+
+    renderHUD();
+    window.addEventListener('storage', e=>{
+      if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)) renderHUD();
+    });
+
+    /* 배경 파티클 */
+    const c=document.getElementById('fx');
+    const g=c.getContext('2d');
+
+    function fit(){
+      const d=window.devicePixelRatio||1;
+      c.width=innerWidth*d;
+      c.height=innerHeight*d;
+      g.setTransform(d,0,0,d,0,0);
+    }
+    fit();
+    addEventListener('resize',fit);
+
+    let pts=[];
+    for(let i=0;i<80;i++){
+      pts.push({
+        x:Math.random()*innerWidth,
+        y:Math.random()*innerHeight*0.9,
+        r:Math.random()*2+0.5,
+        s:Math.random()*0.6+0.2
+      });
+    }
+
+    function loop(){
+      g.clearRect(0,0,c.width,c.height);
+      for(const p of pts){
+        g.beginPath();
+        g.arc(p.x,p.y,p.r,0,Math.PI*2);
+        g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;
+        g.fill();
+        p.y+=p.s;
+        if(p.y>innerHeight){
+          p.y=-10;
+          p.x=Math.random()*innerWidth;
+        }
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    /* 외부 적립 호출 예 */
+    window.RG_addReward = addReward;
+  </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
@@ -269,68 +764,69 @@
   </div>
 
   <script>
-  (function(){
-    try{
-      var KEY='rg_analytics_consent';
-      function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
-      var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
-      var el=document.getElementById('cookieBanner');
-      if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
-      if(!el){ return; } // no banner -> do not init
-      el.style.display='flex';
-      var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
-      if(agree) agree.addEventListener('click', function(){
-        try{ localStorage.setItem(KEY,'yes'); }catch(e){}
-        el.style.display='none'; init();
-      });
-      if(deny) deny.addEventListener('click', function(){
-        try{ localStorage.setItem(KEY,'no'); }catch(e){}
-        el.style.display='none';
-      });
-    }catch(e){ /* no-op */ }
-  })();
+    (function(){
+      try{
+        var KEY='rg_analytics_consent';
+        function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
+        var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
+        var el=document.getElementById('cookieBanner');
+        if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
+        if(!el){ return; }
+        el.style.display='flex';
+        var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
+        if(agree) agree.addEventListener('click', function(){
+          try{ localStorage.setItem(KEY,'yes'); }catch(e){}
+          el.style.display='none'; init();
+        });
+        if(deny) deny.addEventListener('click', function(){
+          try{ localStorage.setItem(KEY,'no'); }catch(e){}
+          el.style.display='none';
+        });
+      }catch(e){}
+    })();
   </script>
 
+  <!-- RG-OAUTH-CALLBACK-HANDLER -->
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var code = params.get('code');
+        if(!code) return;
 
-<!-- RG-OAUTH-CALLBACK-HANDLER -->
-<script>
-(function(){
-  try{
-    // Only run if URL has 'code' from Kakao/Naver
-    var params = new URLSearchParams(location.search);
-    var code = params.get('code');
-    if(!code) return;
+        var state = params.get('state');
+        var provider = (params.get('provider')||'').toLowerCase();
+        if(!provider){
+          provider = document.referrer.includes('naver') ? 'naver' : 'kakao';
+        }
 
-    var state = params.get('state');
-    // Try to infer provider: referrer or presence of 'nid.naver.com' in state isn't reliable, allow manual override via ?provider=naver
-    var provider = (params.get('provider')||'').toLowerCase();
-    if(!provider){
-      provider = document.referrer.includes('naver') ? 'naver' : 'kakao';
-    }
+        var endpoint = provider === 'naver'
+          ? '/auth/oauth/naver/callback'
+          : '/auth/oauth/kakao/callback';
 
-    var endpoint = provider === 'naver' ? '/auth/oauth/naver/callback' : '/auth/oauth/kakao/callback';
-    // Exchange code -> token -> profile -> cookie session
-    fetch(endpoint, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({ code: code, state: state })
-    }).then(async function(r){
-      var data = null; try{ data = await r.json(); }catch(e){}
-      if(!r.ok || !data || !data.ok){
-        console.error('OAuth callback failed', r.status, data);
-        return;
-      }
-      // Success → strip query and stay on this page (it's the logged-in home)
-      history.replaceState({}, "", location.pathname);
-      // Optional: welcome toast
-      try{ console.log('로그인 완료:', data.user && (data.user.provider+': '+data.user.name)); }catch(e){}
-    }).catch(function(err){
-      console.error('OAuth error', err);
-    });
-  }catch(e){ /* noop */ }
-})();
-</script>
+        fetch(endpoint, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          credentials: 'include',
+          body: JSON.stringify({ code: code, state: state })
+        }).then(async function(r){
+          var data = null;
+          try{ data = await r.json(); }catch(e){}
+          if(!r.ok || !data || !data.ok){
+            console.error('OAuth callback failed', r.status, data);
+            return;
+          }
+          history.replaceState({}, "", location.pathname);
+          try{
+            console.log('로그인 완료:', data.user && (data.user.provider+': '+data.user.name));
+          }catch(e){}
+        }).catch(function(err){
+          console.error('OAuth error', err);
+        });
+      }catch(e){}
+    })();
+  </script>
+
   <!--#include file="/partials/footer.html" -->
 </body>
 </html>

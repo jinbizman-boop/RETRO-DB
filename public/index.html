@@ -4,31 +4,25 @@
   <!-- 기존 서버 사이드 인클루드 훅(유지) -->
   <!--#include file="/partials/head-seo.html" -->
 
-  <!-- 기본 메타 (기존 유지) -->
+  <!-- 기본 메타 (고도화: viewport-fit=cover 추가) -->
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>RETRO GAMES – Neon Home</title>
 
   <!-- ─────────────────────────────────────────────────────────────
-       5️⃣ SEO / 메타태그 / 오픈그래프 (추가)
-       - 기존 UI/UX/디자인/레이아웃/스크립트 손대지 않고 <head>만 강화
-       - 필요한 항목만 켜고, 불필요한 중복은 피함
+       5️⃣ SEO / 메타태그 / 오픈그래프 (유지)
        ───────────────────────────────────────────────────────────── -->
-
-  <!-- 검색엔진 기본 -->
   <meta name="description" content="RETRO GAMES — 2048, 테트리스, 브릭브레이커, 러너 등 고전 미니게임을 온라인에서 가볍게 즐기세요. 회원가입 후 오늘의 행운 뽑기도 참여할 수 있어요!" />
   <meta name="keywords" content="retro games, 레트로 게임, 고전 게임, 2048, 테트리스, 브릭브레이커, 러너, 미니게임, 아케이드" />
   <meta name="author" content="진비즈 매니지먼트" />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://retrogames.kr/" />
 
-  <!-- 사이트 소유/지역 정보 -->
   <meta name="application-name" content="RETRO GAMES" />
   <meta name="theme-color" content="#0b001e" />
   <meta http-equiv="x-ua-compatible" content="IE=edge" />
   <meta name="format-detection" content="telephone=no,email=no,address=no" />
 
-  <!-- Open Graph (SNS/메신저 미리보기) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="RETRO GAMES" />
   <meta property="og:locale" content="ko_KR" />
@@ -40,28 +34,17 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="RETRO GAMES – 고전 미니게임 아케이드" />
   <meta name="twitter:description" content="2048 · 테트리스 · 브릭브레이커 · 러너를 가볍게! 오늘의 행운 뽑기도 도전하세요." />
   <meta name="twitter:image" content="https://retrogames.kr/assets/img/og-banner.png" />
 
-  <!-- 파비콘/아이콘/PWA (파일 있으면 자동 사용) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon.png" />
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
-  <!-- 크로스 브라우징용 색상 -->
   <meta name="msapplication-TileColor" content="#0b001e" />
-
-  <!-- 국제화(선택) : 기본 한국어, 필요시 다른 언어 추가 -->
   <link rel="alternate" href="https://retrogames.kr/" hreflang="ko" />
 
-  <!-- 프리커넥트 (외부 폰트/분석을 추가할 때 유용) : 현재 시스템 폰트만 사용하므로 보류
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  -->
-
-  <!-- 구조화 데이터: Website -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -78,126 +61,241 @@
   }
   </script>
 
-  <!-- 구조화 데이터: Organization (로고/연락처는 필요 시 보강) -->
   <script type="application/ld+json">
   {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "진비즈 매니지먼트",
-    "url": "https://retrogames.kr/",
-    "logo": "https://retrogames.kr/assets/img/og-banner.png",
-    "contactPoint": [{
-      "@type": "ContactPoint",
-      "contactType": "customer support",
-      "email": "jinbizman@gmail.com",
-      "availableLanguage": ["ko"]
+    "@context":"https://schema.org",
+    "@type":"Organization",
+    "name":"진비즈 매니지먼트",
+    "url":"https://retrogames.kr/",
+    "logo":"https://retrogames.kr/assets/img/og-banner.png",
+    "contactPoint":[{
+      "@type":"ContactPoint",
+      "contactType":"customer support",
+      "email":"jinbizman@gmail.com",
+      "availableLanguage":["ko"]
     }]
   }
   </script>
 
-  <!-- 캐싱 힌트(정적 리소스가 크면 효과적) : 필요 시 사용
-  <meta http-equiv="Cache-Control" content="public, max-age=3600" />
-  -->
-
-  <!-- 스타일 (기존 유지) -->
+  <!-- 스타일 (반응형/안정화 확장) -->
   <style>
-  :root{--gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--blue2:#0048ff;--bg:#0b001e;--gapY:24px}
+  :root{
+    /* 색상 */
+    --gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--blue2:#0048ff;--bg:#0b001e;
+    /* 여백/치수 스케일(화면폭 기반 유동) */
+    --gapY:clamp(16px, 2.2vw, 24px);
+    --container:max(320px, min(1200px, 92vw));
+    --cardW:clamp(170px, 18vw, 200px);
+    --cardAR: 2/3; /* 카드 종횡비 고정 */
+    --radius-xl:22px;
+    --shadow-outer:0 0 30px #0008;
+    --shadow-inner:inset 0 0 20px #2a0085;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+  }
+
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;color:#fff}
-  .wrap{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
+  html,body{
+    height:100%;margin:0;
+    background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+    font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;color:#fff;
+    -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  }
+  body{padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
+
+  .wrap{
+    min-height:100%;
+    display:grid;grid-template-rows:auto 1fr auto;
+  }
+
   /* Header */
-  header{position:relative;text-align:center;padding:22px 12px;display:block}
-  .title{font-size:36px;font-weight:900;letter-spacing:.5px;color:var(--gold1);text-shadow:0 0 18px var(--gold2)}
-  .subtitle{opacity:.9;margin:0;text-align:center;margin-bottom:6px}
-  .auth{position:absolute;right:40px;top:50%;transform:translateY(-50%);display:flex;gap:10px}
-  .authbtn{padding:8px 14px;border-radius:12px;border:1px solid #3e2b7b;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer}
+  header{
+    position:relative;text-align:center;display:block;
+    padding:clamp(16px,2vw,22px) 12px;
+  }
+  .title{
+    font-size:clamp(28px, 3.2vw, 36px);
+    font-weight:900;letter-spacing:.5px;color:var(--gold1);
+    text-shadow:0 0 18px var(--gold2);line-height:1.15;
+  }
+  .subtitle{
+    opacity:.9;margin:0 0 6px;text-align:center;
+    font-size:clamp(13px, 1.5vw, 16px);
+  }
+  .auth{
+    position:absolute;right:clamp(12px,3vw,40px);
+    top:50%;transform:translateY(-50%);
+    display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;
+    max-width:min(48vw, 420px);
+  }
+  .authbtn{
+    padding:8px 14px;border-radius:12px;border:1px solid #3e2b7b;
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;
+    box-shadow:0 6px 12px #0006;cursor:pointer;font-size:clamp(12px,1.2vw,14px)
+  }
   .authbtn.alt{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#3a2400}
 
   /* Main */
-  main{max-width:1200px;margin:0 auto;padding:0 22px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-height:0}
-  .stack{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;transform:translateY(-140px)}
+  main{
+    width:var(--container);max-width:var(--container);
+    margin:0 auto;padding:0 clamp(12px,2vw,22px);
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-height:0
+  }
+  .stack{
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;
+    transform:translateY(clamp(-80px, -11vw, -140px));
+    will-change:transform;
+  }
 
   .ctaWrap{display:flex;justify-content:center;margin:0}
   .goldBtn{
     position:relative;display:inline-flex;align-items:center;justify-content:center;
-    padding:22px 64px;min-width:min(72vw,720px);
+    padding:clamp(16px,2.2vw,22px) clamp(42px,5.6vw,64px);
+    min-width:min(72vw,720px);
     border:none;border-radius:14px;cursor:pointer;
     background:
       radial-gradient(120% 200% at 50% -80%, #fff6b0 0%, #ffd24a 38%, #ffb320 68%, #f39a15 100%),
       linear-gradient(180deg,#ffe889 0%,#ffc83d 40%,#ffb020 100%);
     box-shadow:0 10px 18px rgba(0,0,0,.38), inset 0 6px 14px rgba(255,255,255,.55), inset 0 -12px 18px rgba(176,88,0,.45);
     isolation:isolate;transform:translateZ(0);
+    touch-action:manipulation;
   }
   .goldBtn::before,.goldBtn::after{
-    content:"";position:absolute;top:50%;width:110px;height:34px;margin-top:-10px;
+    content:"";position:absolute;top:50%;width:clamp(78px,7.6vw,110px);height:clamp(26px,3.2vw,34px);margin-top:-10px;
     background:linear-gradient(180deg,#ffd870 0%,#f2a41b 85%), linear-gradient(180deg,#ffec9c,#ffcf47);
     box-shadow:0 8px 12px rgba(0,0,0,.25), inset 0 -8px 10px rgba(140,70,0,.35);z-index:-1;
   }
-  .goldBtn::before{ left:-64px; border-radius:6px 0 6px 6px; transform:skewX(-18deg)}
-  .goldBtn::after{ right:-64px; border-radius:0 6px 6px 6px; transform:skewX(18deg)}
-  .goldBtn span{background:linear-gradient(180deg,#fffef2,#fffbe2);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;font-size:26px;letter-spacing:.3px;text-shadow:0 0 12px rgba(255,255,200,.9),0 0 24px rgba(255,230,150,.75);white-space:nowrap}
+  .goldBtn::before{ left:clamp(-52px,-5.6vw,-64px); border-radius:6px 0 6px 6px; transform:skewX(-18deg)}
+  .goldBtn::after{ right:clamp(-52px,-5.6vw,-64px); border-radius:0 6px 6px 6px; transform:skewX(18deg)}
+  .goldBtn span{
+    background:linear-gradient(180deg,#fffef2,#fffbe2);-webkit-background-clip:text;background-clip:text;color:transparent;
+    font-weight:900;font-size:clamp(20px,2.2vw,26px);letter-spacing:.3px;
+    text-shadow:0 0 12px rgba(255,255,200,.9),0 0 24px rgba(255,230,150,.75);white-space:nowrap
+  }
   .goldBtn:hover{transform:translateY(-2px)}
-  .goldBtn:hover,.goldBtn:focus-visible{box-shadow:0 14px 22px rgba(0,0,0,.42), inset 0 7px 16px rgba(255,255,255,.6), inset 0 -14px 20px rgba(176,88,0,.5);outline:2px solid rgba(255,220,120,.6);outline-offset:2px}
+  .goldBtn:hover,.goldBtn:focus-visible{
+    box-shadow:0 14px 22px rgba(0,0,0,.42), inset 0 7px 16px rgba(255,255,255,.6), inset 0 -14px 20px rgba(176,88,0,.5);
+    outline:2px solid rgba(255,220,120,.6);outline-offset:2px
+  }
 
-  .rowTop{display:flex;justify-content:center;align-items:stretch;gap:28px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:24px;padding-bottom:6px;scrollbar-width:none}
+  .rowTop{
+    display:flex;justify-content:center;align-items:stretch;gap:clamp(18px, 2.4vw, 28px);
+    flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    margin-top:24px;padding: 0 2px 6px 2px;scrollbar-width:none;
+    scroll-snap-type:x mandatory; scroll-padding: 12px;
+    max-width:var(--container);
+  }
   .rowTop::-webkit-scrollbar{display:none}
 
   .card{
-    flex:0 0 200px;width:200px;height:300px;
-    display:grid;grid-template-rows:120px 44px 1fr 54px;
+    flex:0 0 var(--cardW); width:var(--cardW);
+    aspect-ratio:var(--cardAR); /* 2:3 비율 유지 */
+    display:grid;grid-template-rows:1fr 44px 1fr 54px;
     background:linear-gradient(180deg,#0a0030,#000);
-    border:3px solid #3e2b7b;border-radius:22px;
-    box-shadow:0 0 30px #0008,inset 0 0 20px #2a0085;
-    padding:16px 14px;cursor:pointer;transition:box-shadow .14s ease;text-align:center;
+    border:3px solid #3e2b7b;border-radius:var(--radius-xl);
+    box-shadow:var(--shadow-outer),var(--shadow-inner);
+    padding:16px 14px;cursor:pointer;transition:box-shadow .14s ease,text-shadow .14s ease, transform .14s ease;
+    text-align:center;scroll-snap-align:start;
+    contain:content;
   }
-  .card:hover{box-shadow:0 0 36px #007affaa,inset 0 0 26px #001a44}
+  @supports not (aspect-ratio: 2/3){
+    /* 구형 브라우저 폴백: 높이 고정으로 근사 */
+    .card{height:clamp(260px, 32vw, 300px)}
+  }
+  .card:hover{box-shadow:0 0 36px #007affaa,inset 0 0 26px #001a44; transform:translateY(-2px)}
   .thumb{display:grid;place-items:center;width:100%;height:100%}
-  .card h3{margin:6px 0 0;font-size:18px;font-weight:800;color:var(--gold1);text-shadow:0 0 10px #bf8;display:flex;align-items:center;justify-content:center}
-  .meta{font-size:11px;opacity:.85;padding:0 6px;display:flex;align-items:center;justify-content:center;text-align:center}
+  .card h3{
+    margin:6px 0 0;font-size:clamp(16px, 1.8vw, 18px);font-weight:800;color:var(--gold1);
+    text-shadow:0 0 10px #bf8;display:flex;align-items:center;justify-content:center
+  }
+  .meta{
+    font-size:clamp(10px, 1.2vw, 11px);opacity:.85;padding:0 6px;
+    display:flex;align-items:center;justify-content:center;text-align:center
+  }
   .btnbar{display:flex;align-items:center;justify-content:center;gap:10px}
-  .btn{flex:1;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid #2d3690;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;box-shadow:0 6px 12px #0006;font-size:12px}
+  .btn{
+    flex:1;min-width:84px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;
+    border:1px solid #2d3690;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;
+    box-shadow:0 6px 12px #0006;font-size:12px
+  }
   .btn:hover{filter:brightness(1.06)}
   .badge{display:none}
 
-  footer{padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px;margin-top:var(--gapY)}
-  #fx{position:fixed;inset:0;pointer-events:none;opacity:.5}
-  .divider{height:4px;width:100%;background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);filter:blur(1px);box-shadow:0 0 18px #0088ff88;margin:0}
+  footer{
+    padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px;margin-top:var(--gapY)
+  }
+  #fx{position:fixed;inset:0;pointer-events:none;opacity:.55}
+  .divider{
+    height:4px;width:100%;
+    background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);
+    filter:blur(1px);box-shadow:0 0 18px #0088ff88;margin:0
+  }
 
-  @media (max-width:1024px){
-    .goldBtn{min-width:min(84vw,720px)}
-    .auth{right:16px}
-    .rowTop{gap:24px}
-    .stack{transform:translateY(-108px)}
+  /* 중간 브레이크포인트 */
+  @media (max-width:1200px){
+    .stack{transform:translateY(clamp(-64px,-9vw,-108px))}
+  }
+  @media (max-width:860px){
+    .auth{position:static;transform:none;justify-content:center;margin-top:10px}
+    header{padding-top:calc(clamp(16px,2vw,22px) + var(--safe-top))}
   }
   @media (max-width:680px){
-    .goldBtn{min-width:min(92vw,640px);padding:18px 52px}
-    .goldBtn::before{left:-52px;width:90px;height:30px}
-    .goldBtn::after{right:-52px;width:90px;height:30px}
-    .auth{right:12px}
-    .stack{transform:translateY(-74px)}
+    .goldBtn{min-width:min(92vw,640px);padding:clamp(14px,2.2vw,18px) clamp(34px,6vw,52px)}
+    .goldBtn::before{left:clamp(-46px,-6vw,-52px);width:clamp(78px,14vw,90px);height:clamp(22px,4.4vw,30px)}
+    .goldBtn::after{right:clamp(-46px,-6vw,-52px);width:clamp(78px,14vw,90px);height:clamp(22px,4.4vw,30px)}
+    .stack{transform:translateY(clamp(-46px,-7vw,-74px))}
   }
-  .content{display:block;padding-top:0;margin-top:0}
+
+  /* 선호 설정: 동작 줄이기 */
+  @media (prefers-reduced-motion: reduce){
+    .goldBtn,.card{transition:none}
+    .goldBtn:hover{transform:none}
+  }
+
+  /* 고대비/다크 선호(현재 테마 유지, 접근성 텍스트 대비 상향) */
+  @media (prefers-contrast: more){
+    .meta{opacity:.95}
+  }
 
   /* ===== Popup (Auth Modal) ===== */
-  .modal{position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:999}
+  .modal{
+    position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;z-index:999;padding:16px
+  }
   .modal.show{display:flex}
-  .dialog{width:min(520px,92vw);background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:26px 22px;text-align:center;position:relative}
+  .dialog{
+    width:min(520px,92vw);
+    background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);
+    border:2px solid #3e2b7b;border-radius:20px;
+    box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
+    padding:26px 22px;text-align:center;position:relative
+  }
   .dialog h3{margin:0 0 8px;font-size:22px;color:var(--gold1);text-shadow:0 0 12px #ffd991}
   .dialog p{opacity:.9;margin:0 0 18px}
-  .actions{display:flex;gap:12px;justify-content:center}
-  .cta{flex:1;min-width:140px;padding:12px 16px;border-radius:12px;border:1px solid #3e2b7b;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 8px 16px #0006;cursor:pointer}
+  .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .cta{
+    flex:1;min-width:140px;padding:12px 16px;border-radius:12px;border:1px solid #3e2b7b;
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 8px 16px #0006;cursor:pointer
+  }
   .cta.alt{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#3a2400}
   .x{position:absolute;top:10px;right:12px;border:0;background:transparent;color:#fff;opacity:.7;font-size:22px;cursor:pointer}
   .x:hover{opacity:1}
 
-  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
+  /* 쿠키 배너 */
+  .cookie-banner{
+    position:fixed;left:12px;right:12px;bottom:12px;
     display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
     border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
     box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-    z-index:10000;font-size:12px}
+    z-index:10000;font-size:12px
+  }
   .cookie-banner .spacer{flex:1}
-  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
+  .cookie-banner button{
+    padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer
+  }
   .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
   </style>
 </head>
@@ -230,7 +328,7 @@
             </div>
           </div>
 
-          <div class="rowTop">
+          <div class="rowTop" aria-label="게임 목록 가로 스크롤">
             <div class="card" onclick="requireAuth()">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="12" y="12" width="96" height="96" rx="18" fill="#7a9cff"/><text x="60" y="78" text-anchor="middle" font-size="46" font-family="system-ui,Segoe UI" font-weight="900" fill="#0b1a3f">2048</text></svg></div>
               <h3>2048</h3><div class="meta">난이도 1–100 · 보드 4×4~6×6</div><div class="btnbar"><div class="btn">PLAY</div></div>
@@ -310,11 +408,33 @@
     }
   });
 
-  /* 배경 별빛 효과(기존) */
-  const c=document.getElementById('fx');const g=c.getContext('2d');
-  function fit(){const d=window.devicePixelRatio||1;c.width=innerWidth*d;c.height=innerHeight*d;g.setTransform(d,0,0,d,0,0);}fit();addEventListener('resize',fit);
+  /* 배경 별빛 효과(기존) — 고해상도 스케일/리사이즈 스로틀 */
+  const c=document.getElementById('fx');const g=c.getContext('2d',{alpha:true});
+  function fit(){
+    const d=Math.min(2, window.devicePixelRatio||1); // 과도한 dpr 제한(성능)
+    const w=innerWidth, h=innerHeight;
+    c.width=Math.floor(w*d); c.height=Math.floor(h*d);
+    c.style.width=w+'px'; c.style.height=h+'px';
+    g.setTransform(d,0,0,d,0,0);
+  }
+  fit();
+  let rq=null, ticking=false;
+  addEventListener('resize', ()=>{
+    if(ticking) return; ticking=true;
+    rq=requestAnimationFrame(()=>{ fit(); ticking=false; });
+  });
+
   let pts=[];for(let i=0;i<80;i++){pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2});}
-  function loop(){g.clearRect(0,0,c.width,c.height);for(const p of pts){g.beginPath();g.arc(p.x,p.y,p.r,0,Math.PI*2);g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;g.fill();p.y+=p.s;if(p.y>innerHeight){p.y=-10;p.x=Math.random()*innerWidth;}}requestAnimationFrame(loop);}loop();
+  function loop(){
+    g.clearRect(0,0,c.width,c.height);
+    for(const p of pts){
+      g.beginPath();g.arc(p.x,p.y,p.r,0,Math.PI*2);
+      g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;g.fill();
+      p.y+=p.s;if(p.y>innerHeight){p.y=-10;p.x=Math.random()*innerWidth;}
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
   </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">

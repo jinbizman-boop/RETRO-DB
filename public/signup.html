@@ -278,8 +278,16 @@
 
   <script>
     const BASE = "/";
-    function goHomeSafe(){ if (window.goHome) return window.goHome(); location.href = BASE + "index.html"; }
-    function goLoginSafe(){ if (window.goLogin) return window.goLogin(); location.href = BASE + "login.html"; }
+
+    function goHomeSafe(){
+      if (window.goHome) return window.goHome();
+      location.href = BASE + "index.html";
+    }
+
+    function goLoginSafe(){
+      if (window.goLogin) return window.goLogin();
+      location.href = BASE + "login.html";
+    }
 
     // OAuth
     function startOAuth(provider, mode){
@@ -296,6 +304,7 @@
     $form.addEventListener('submit', async (e) => {
       e.preventDefault();
       $msg.textContent = '';
+      $msg.className   = 'msg'; // 상태 초기화
 
       const fd = new FormData($form);
       const rawPhone = (fd.get('phone') || '').toString();
@@ -308,6 +317,7 @@
         birth:    (fd.get('birth')||'').toString(),
         // 숫자만 추출: \D 를 사용
         phone:    rawPhone.replace(/\D/g,''),
+        // 서버에서는 true / "true" / 1 / "1" / "on" 등을 허용하도록 구현
         agree:    !!fd.get('agree')
       };
 
@@ -347,23 +357,61 @@
       }
 
       try{
-        const res = await fetch('/auth/local/signup', {
+        // ★ Cloudflare Functions 경로에 맞게 수정: /api/auth/signup
+        const res = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify(payload),
           credentials: 'include'
         });
 
+        // 서버에서 내려주는 JSON 에러코드를 해석해서 사용자 친화 메시지로 변환
         if (!res.ok){
-          const t = await res.text();
-          throw new Error(t || '회원가입 실패');
+          let data = null;
+          try{
+            // 가능한 경우 JSON 파싱 시도 (signup.ts는 항상 { error: string } 형태 반환)
+            data = await res.json();
+          }catch(_){
+            // JSON 파싱 실패 시에는 text로 한 번 더 읽어본다
+            try{
+              const txt = await res.text();
+              if (txt) data = { error: txt };
+            }catch(__){}
+          }
+
+          const code = data && typeof data.error === 'string' ? data.error : null;
+
+          // 백엔드 signup.ts에서 정의한 에러코드 매핑
+          if (code === 'email_taken' || code === 'Email already registered'){
+            return fail('이미 등록된 이메일입니다.');
+          }
+          if (code === 'username_taken'){
+            return fail('이미 사용 중인 아이디입니다.');
+          }
+          if (code === 'agree_required'){
+            return fail('약관 동의가 필요합니다.');
+          }
+          if (code === 'too_many_requests' || res.status === 429){
+            return fail('가입 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.');
+          }
+          if (code === 'method_not_allowed' || res.status === 405){
+            return fail('잘못된 요청입니다. 페이지를 새로고침 후 다시 시도해주세요.');
+          }
+
+          // 그 외 알 수 없는 에러
+          const fallback = code || `서버 오류 (코드: ${res.status})`;
+          return fail('회원가입 실패: ' + fallback);
         }
 
+        // 정상 가입
         $msg.textContent = '가입 완료! 로그인 페이지로 이동합니다.';
         $msg.className  = 'msg ok';
+
         setTimeout(()=>{ location.href = BASE + 'login.html'; }, 800);
       }catch(err){
-        fail('회원가입 실패: ' + (err.message || '서버 오류'));
+        // 네트워크 오류 등
+        const m = (err && (err.message || err.toString())) || '서버 오류';
+        fail('회원가입 실패: ' + m);
       }
     });
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="ko" data-env="prod">
 <head>
   <!-- SEO / OG (기존 유지) -->
@@ -227,8 +227,15 @@
 
   <script>
     const BASE = "/";
-    function goHomeSafe(){ if (window.goHome) return window.goHome(); location.href = BASE + "index.html"; }
-    function goSignupSafe(){ if (window.goSignup) return window.goSignup(); location.href = BASE + "signup.html"; }
+
+    function goHomeSafe(){
+      if (window.goHome) return window.goHome();
+      location.href = BASE + "index.html";
+    }
+    function goSignupSafe(){
+      if (window.goSignup) return window.goSignup();
+      location.href = BASE + "signup.html";
+    }
 
     // OAuth (서버 라우트가 준비되어 있으면 바로 연결)
     function startOAuth(provider, mode){
@@ -240,36 +247,79 @@
     const $login = document.getElementById('loginForm');
     const $loginMsg = document.getElementById('loginMsg');
 
+    function loginFail(msg){
+      $loginMsg.textContent = msg;
+      $loginMsg.className = 'msg err';
+    }
+
     $login.addEventListener('submit', async (e) => {
       e.preventDefault();
       $loginMsg.textContent = '';
+      $loginMsg.className = 'msg';
+
       const fd = new FormData($login);
-      const payload = {
-        username: (fd.get('username')||'').toString().trim(),
-        password: (fd.get('password')||'').toString()
-      };
-      if(payload.username.length<3 || payload.password.length<6){
-        $loginMsg.textContent = '아이디/비밀번호를 확인해주세요.';
-        $loginMsg.className = 'msg err';
-        return;
+      const identifier = (fd.get('username')||'').toString().trim(); // 아이디 또는 이메일
+      const password   = (fd.get('password')||'').toString();
+
+      if(identifier.length < 3 || password.length < 6){
+        return loginFail('아이디/비밀번호를 확인해주세요.');
       }
+
+      // 백엔드 login.ts 규약에 맞게: email 또는 username 중 하나를 전송
+      const payload = identifier.includes('@')
+        ? { email: identifier, password }
+        : { username: identifier, password };
+
       try{
-        const res = await fetch('/auth/local/login', {
+        // ★ Cloudflare Functions 경로에 맞게 수정: /api/auth/login
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
+          headers: { 'Content-Type':'application/json' },
           body: JSON.stringify(payload),
           credentials: 'include'
         });
+
         if(!res.ok){
-          const t = await res.text();
-          throw new Error(t||'로그인 실패');
+          let data = null;
+          try{
+            data = await res.json();
+          }catch(_){
+            try{
+              const txt = await res.text();
+              if (txt) data = { error: txt };
+            }catch(__){}
+          }
+
+          const code = data && typeof data.error === 'string' ? data.error : null;
+
+          // 백엔드 login.ts 에서 사용 중인 에러 코드 매핑
+          if (code === 'invalid_credentials'){
+            return loginFail('아이디 또는 비밀번호가 올바르지 않습니다.');
+          }
+          if (code === 'account_locked'){
+            return loginFail('로그인 시도가 너무 많아 계정이 잠겼습니다. 잠시 후 다시 시도해주세요.');
+          }
+          if (code === 'too_many_requests' || res.status === 429){
+            return loginFail('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.');
+          }
+          if (code === 'method_not_allowed' || res.status === 405){
+            return loginFail('잘못된 요청입니다. 페이지를 새로고침 후 다시 시도해주세요.');
+          }
+          if (code === 'identifier_required' || code === 'username_required' || code === 'password_required'){
+            return loginFail('아이디와 비밀번호를 모두 입력해주세요.');
+          }
+
+          const fallback = code || `서버 오류 (코드: ${res.status})`;
+          return loginFail('로그인 실패: ' + fallback);
         }
+
+        // 정상 로그인
         $loginMsg.textContent = '로그인 성공! 잠시 후 홈으로 이동합니다.';
         $loginMsg.className = 'msg ok';
         setTimeout(()=>{ location.href = BASE + 'index.html'; }, 600);
       }catch(err){
-        $loginMsg.textContent = '로그인 실패: ' + (err.message||'서버 오류');
-        $loginMsg.className = 'msg err';
+        const msg = (err && (err.message || err.toString())) || '서버 오류';
+        loginFail('로그인 실패: ' + msg);
       }
     });
 

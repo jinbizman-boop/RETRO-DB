@@ -161,7 +161,7 @@
       display:grid;
       place-items:center;
       border-radius:50%;
-      background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7ff);
+      background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7fff);
       box-shadow:0 0 10px #6fb0ffaa;
       font-size:14px;
     }
@@ -348,6 +348,67 @@
     }
     .btn:hover{filter:brightness(1.06);}
 
+    /* 광고 배너 */
+    .adBanner{
+      width:100%;
+      display:flex;
+      justify-content:center;
+      margin-top:8px;
+    }
+    .adBanner-inner{
+      width:100%;
+      max-width:1200px;
+      padding:14px 18px;
+      border-radius:18px;
+      border:1px solid #3250c2;
+      background:linear-gradient(90deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
+      box-shadow:0 8px 20px rgba(0,0,0,.65),0 0 22px rgba(40,120,255,.55);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      text-decoration:none;
+      color:#e9f0ff;
+      cursor:pointer;
+    }
+    .adBadge{
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.8px;
+      text-transform:uppercase;
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#3a2400;
+      box-shadow:0 0 10px rgba(255,230,150,.75);
+      flex-shrink:0;
+    }
+    .adTextWrap{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .adTitle{
+      font-size:13px;
+      font-weight:800;
+      color:#fff9da;
+      text-shadow:0 0 8px rgba(255,220,140,.9);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .adDesc{
+      font-size:11px;
+      opacity:.9;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .adBanner-inner:hover{
+      filter:brightness(1.06);
+      box-shadow:0 10px 24px rgba(0,0,0,.75),0 0 26px rgba(60,140,255,.8);
+    }
+
     footer{
       padding:12px 16px;
       text-align:center;
@@ -457,6 +518,15 @@
       }
       .amount{
         font-size:16px;
+      }
+      .adBanner-inner{
+        padding:10px 12px;
+      }
+      .adTitle{
+        font-size:12px;
+      }
+      .adDesc{
+        font-size:10px;
       }
     }
 
@@ -860,6 +930,17 @@
               <div class="meta">홀드/넥스트 · 가비지 라인</div>
               <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
+          </div>
+
+          <!-- 가로형 광고 배너 -->
+          <div class="adBanner" aria-label="광고 배너">
+            <a href="#" class="adBanner-inner">
+              <span class="adBadge">AD</span>
+              <div class="adTextWrap">
+                <span class="adTitle">RETRO GAMES 스폰서 배너 영역</span>
+                <span class="adDesc">이 공간에 파트너사 이벤트/프로모션 이미지 또는 링크가 들어갑니다.</span>
+              </div>
+            </a>
           </div>
         </div>
       </main>

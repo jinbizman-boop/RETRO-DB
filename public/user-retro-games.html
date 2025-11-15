@@ -85,7 +85,7 @@
       gap:8px 8px;
       align-items:center;
       justify-content:flex-start;
-      max-width:48vw;
+      max-width:60vw;
     }
 
     /* 우측 설정 버튼 */
@@ -503,6 +503,218 @@
       border-color:#7a5600;
     }
 
+    /* 랭킹 모달 스타일 */
+    .rank-modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.65);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9000;
+    }
+    .rank-modal-backdrop.open{
+      display:flex;
+    }
+    .rank-modal{
+      width:min(960px,94vw);
+      max-height:80vh;
+      border-radius:22px;
+      background:radial-gradient(circle at 10% -30%,#3c2b80,#050015 70%);
+      box-shadow:0 0 40px rgba(0,0,0,.8),0 0 40px rgba(60,100,255,.7);
+      border:2px solid #3e2b7b;
+      padding:18px 20px 18px;
+      display:flex;
+      flex-direction:column;
+    }
+    .rank-modal-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .rank-modal-title-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .rank-modal-title{
+      font-size:18px;
+      font-weight:900;
+      color:var(--gold1);
+      text-shadow:0 0 12px #ffdc7a;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .rank-modal-sub{
+      font-size:12px;
+      opacity:.8;
+    }
+    .rank-modal-close{
+      border-radius:999px;
+      border:1px solid #3040a8;
+      background:linear-gradient(180deg,#1b2b7f,#0b164f);
+      color:#e9f0ff;
+      font-size:13px;
+      font-weight:800;
+      padding:6px 10px;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 4px 10px rgba(0,0,0,.5);
+    }
+    .rank-modal-close:hover{
+      filter:brightness(1.05);
+    }
+
+    .rank-game-tabs{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .rank-game-tab{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #3240a8;
+      background:linear-gradient(180deg,#0d1638,#060c24);
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      opacity:.78;
+    }
+    .rank-game-tab span.code{
+      font-weight:800;
+      margin-right:4px;
+      color:#ffdf6e;
+    }
+    .rank-game-tab.active{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#321c00;
+      border-color:#7a5600;
+      text-shadow:0 0 6px rgba(255,240,160,.8);
+      opacity:1;
+    }
+
+    .rank-table-wrap{
+      flex:1;
+      min-height:200px;
+      margin-top:4px;
+      border-radius:14px;
+      border:1px solid #263472;
+      background:linear-gradient(180deg,#05081b,#050314);
+      box-shadow:0 0 18px rgba(0,0,0,.7) inset;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .rank-table-head,
+    .rank-table-body{
+      width:100%;
+    }
+    .rank-table-head{
+      border-bottom:1px solid #27336b;
+      background:linear-gradient(180deg,#10193a,#090e22);
+    }
+    .rank-table-row{
+      display:grid;
+      grid-template-columns:40px 1.4fr .7fr 1fr 1fr 1.5fr;
+      align-items:center;
+      font-size:11px;
+      padding:6px 12px;
+      column-gap:6px;
+      white-space:nowrap;
+    }
+    .rank-table-head .rank-table-row{
+      font-weight:800;
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.3px;
+      color:#d6e0ff;
+    }
+    .rank-table-body{
+      flex:1;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .rank-table-body .rank-table-row:nth-child(2n){
+      background:rgba(255,255,255,.02);
+    }
+    .rank-table-cell-rank{
+      font-weight:800;
+      color:#ffdf6e;
+      text-shadow:0 0 6px rgba(255,230,150,.7);
+    }
+    .rank-table-cell-user{
+      font-weight:700;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .rank-table-cell-gender{
+      text-transform:uppercase;
+      opacity:.85;
+    }
+    .rank-table-cell-score,
+    .rank-table-cell-points{
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+    .rank-table-cell-time{
+      font-variant-numeric:tabular-nums;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .rank-table-empty{
+      padding:16px 14px;
+      font-size:12px;
+      text-align:center;
+      opacity:.85;
+    }
+    .rank-table-loading{
+      padding:16px 14px;
+      font-size:12px;
+      text-align:center;
+      opacity:.9;
+      color:#ffd86a;
+    }
+
+    .rank-modal-footer{
+      margin-top:8px;
+      font-size:11px;
+      opacity:.75;
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .rank-modal-footer span.badge{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid #3240a8;
+      background:linear-gradient(180deg,#0b1337,#05091f);
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.2px;
+      opacity:.9;
+    }
+
+    @media (max-width:640px){
+      .rank-modal{
+        padding:14px 12px 14px;
+        max-height:86vh;
+      }
+      .rank-table-row{
+        grid-template-columns:32px 1.4fr .7fr 1fr 1fr 1.7fr;
+        padding:5px 8px;
+        column-gap:4px;
+        font-size:10px;
+      }
+      .rank-table-head .rank-table-row{
+        font-size:10px;
+      }
+    }
+
     /* layout notes:
        - flex 기반 모바일/태블릿 유지
        - 데스크톱에서 grid로 5등분 정렬, 카드 이탈 방지
@@ -538,6 +750,11 @@
         <button class="pill shop" onclick="goShop()" title="상점">
           <div class="icon">🛍️</div>
           <div class="label">SHOP</div>
+        </button>
+        <!-- RANKING 버튼 (SHOP 오른쪽, 동일 규격) -->
+        <button class="pill rank" onclick="openRankingModal()" title="실시간 랭킹">
+          <div class="icon">🏅</div>
+          <div class="label">RANKING</div>
         </button>
       </div>
 
@@ -646,9 +863,53 @@
     <footer>©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI</footer>
   </div>
 
+  <!-- 랭킹 모달 -->
+  <div id="rankModalBackdrop" class="rank-modal-backdrop" aria-hidden="true">
+    <div class="rank-modal" role="dialog" aria-modal="true" aria-labelledby="rankModalTitle">
+      <div class="rank-modal-header">
+        <div class="rank-modal-title-wrap">
+          <div id="rankModalTitle" class="rank-modal-title">
+            <span>🏅 실시간 게임 랭킹</span>
+            <span id="rankModalGameLabel" style="font-size:13px;opacity:.9;"></span>
+          </div>
+          <div class="rank-modal-sub">
+            각 게임별 상위 1위 ~ 100위까지 유저 아이디, 성별, 스코어, 포인트, 달성 시간을 실시간으로 확인할 수 있습니다.
+          </div>
+        </div>
+        <button type="button" class="rank-modal-close" onclick="closeRankingModal()">닫기 ✕</button>
+      </div>
+
+      <div class="rank-game-tabs" id="rankGameTabs" role="tablist" aria-label="게임 선택">
+        <!-- JS에서 탭 자동 생성 -->
+      </div>
+
+      <div class="rank-table-wrap">
+        <div class="rank-table-head">
+          <div class="rank-table-row">
+            <div>#</div>
+            <div>유저 아이디</div>
+            <div>성별</div>
+            <div>스코어</div>
+            <div>포인트</div>
+            <div>달성 시간</div>
+          </div>
+        </div>
+        <div class="rank-table-body" id="rankTableBody">
+          <div class="rank-table-loading" id="rankTableLoading">게임 랭킹을 불러오는 중입니다...</div>
+        </div>
+      </div>
+
+      <div class="rank-modal-footer">
+        <span class="badge">Top 100</span>
+        <span>※ 데이터 제공: RETRO GAMES 리더보드 API · 새로고침 시 최신 정보로 갱신됩니다.</span>
+      </div>
+    </div>
+  </div>
+
   <script>
     const BASE = "/";
     const AUTH_API_BASE = "/api/auth";
+    const LEADERBOARD_API_BASE = "/api/leaderboard";
 
     /* 경로 매핑 */
     const GAME = {
@@ -823,6 +1084,236 @@
         return;
       }
       window.ensureLoggedIn();
+    })();
+
+    /* ===== 랭킹 모달 로직 ===== */
+
+    const RANK_GAMES = [
+      { slug:"2048",          label:"2048" },
+      { slug:"brick-breaker", label:"Brick Breaker" },
+      { slug:"retro-match",   label:"Retro Match" },
+      { slug:"retro-running", label:"Retro Runner" },
+      { slug:"tetris",        label:"Tetris" }
+      // 필요 시 brick-match 등 추가 가능
+    ];
+
+    let currentRankingGame = "2048";
+    let rankModalInitialized = false;
+
+    function mapGenderToLabel(g){
+      if(!g) return "-";
+      const s = String(g).toLowerCase();
+      if(["m","male","남","남자"].includes(s)) return "남";
+      if(["f","female","여","여자"].includes(s)) return "여";
+      return s;
+    }
+
+    function formatRankTime(value){
+      if(!value) return "-";
+      try{
+        const d = new Date(value);
+        if(!Number.isFinite(d.getTime())) return String(value);
+        return d.toLocaleString("ko-KR");
+      }catch(e){
+        return String(value);
+      }
+    }
+
+    function ensureRankTabs(){
+      if(rankModalInitialized) return;
+      const tabsWrap = document.getElementById("rankGameTabs");
+      if(!tabsWrap) return;
+      RANK_GAMES.forEach(game=>{
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "rank-game-tab";
+        btn.setAttribute("data-game", game.slug);
+        btn.setAttribute("role","tab");
+        btn.innerHTML = `<span class="code">${game.label}</span><span>랭킹</span>`;
+        btn.addEventListener("click", ()=>loadRanking(game.slug));
+        tabsWrap.appendChild(btn);
+      });
+      rankModalInitialized = true;
+    }
+
+    function setActiveRankTab(slug){
+      const tabsWrap = document.getElementById("rankGameTabs");
+      if(!tabsWrap) return;
+      [...tabsWrap.querySelectorAll(".rank-game-tab")].forEach(btn=>{
+        const g = btn.getAttribute("data-game");
+        if(g === slug) btn.classList.add("active");
+        else btn.classList.remove("active");
+      });
+    }
+
+    function renderRankingPlaceholder(){
+      const body = document.getElementById("rankTableBody");
+      const loading = document.getElementById("rankTableLoading");
+      if(!body) return;
+      body.innerHTML = "";
+      const div = document.createElement("div");
+      div.className = "rank-table-empty";
+      div.textContent = "랭킹 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      body.appendChild(div);
+      if(loading) loading.style.display = "none";
+    }
+
+    function renderRankingLoading(){
+      const body = document.getElementById("rankTableBody");
+      const loading = document.getElementById("rankTableLoading");
+      if(!body) return;
+      body.innerHTML = "";
+      const div = loading || document.createElement("div");
+      div.id = "rankTableLoading";
+      div.className = "rank-table-loading";
+      div.textContent = "게임 랭킹을 불러오는 중입니다...";
+      body.appendChild(div);
+    }
+
+    function renderRanking(gameSlug, items){
+      const body = document.getElementById("rankTableBody");
+      if(!body) return;
+      body.innerHTML = "";
+
+      if(!items || !items.length){
+        const empty = document.createElement("div");
+        empty.className = "rank-table-empty";
+        empty.textContent = "아직 랭킹 데이터가 없습니다. 게임을 플레이하고 최고 기록에 도전해 보세요!";
+        body.appendChild(empty);
+        return;
+      }
+
+      items.slice(0,100).forEach((item, index)=>{
+        const row = document.createElement("div");
+        row.className = "rank-table-row";
+
+        const rank = item.rank || (index+1);
+        const userId = item.userId || item.user_id || item.username || "-";
+        const gender = item.gender || item.sex || "-";
+        const score = item.score != null ? item.score : (item.bestScore || item.value || 0);
+        const points = item.points != null ? item.points : (item.rewardPoints || item.coins || 0);
+        const time = item.achievedAt || item.achieved_at || item.updatedAt || item.updated_at || null;
+
+        row.innerHTML = `
+          <div class="rank-table-cell-rank">${rank}</div>
+          <div class="rank-table-cell-user" title="${userId}">${userId}</div>
+          <div class="rank-table-cell-gender">${mapGenderToLabel(gender)}</div>
+          <div class="rank-table-cell-score">${fmt(score)}</div>
+          <div class="rank-table-cell-points">${fmt(points)}</div>
+          <div class="rank-table-cell-time" title="${formatRankTime(time)}">${formatRankTime(time)}</div>
+        `;
+        body.appendChild(row);
+      });
+    }
+
+    async function loadRanking(slug){
+      currentRankingGame = slug || currentRankingGame || "2048";
+      ensureRankTabs();
+      setActiveRankTab(currentRankingGame);
+
+      const labelEl = document.getElementById("rankModalGameLabel");
+      const gameMeta = RANK_GAMES.find(g=>g.slug===currentRankingGame);
+      if(labelEl){
+        labelEl.textContent = gameMeta ? `· ${gameMeta.label}` : "";
+      }
+
+      renderRankingLoading();
+
+      const url = LEADERBOARD_API_BASE +
+        "?game=" + encodeURIComponent(currentRankingGame) +
+        "&limit=100";
+
+      try{
+        const res = await fetch(url, {
+          method:"GET",
+          headers:{
+            "Accept":"application/json",
+            "Cache-Control":"no-store"
+          },
+          credentials:"include"
+        });
+
+        if(!res.ok){
+          // 실패 시 샘플 더미 데이터라도 보여줌
+          console.warn("leaderboard api error", res.status);
+          renderRankingPlaceholder();
+          return;
+        }
+
+        let data = null;
+        try{
+          data = await res.json();
+        }catch(e){
+          console.error("leaderboard json parse error", e);
+        }
+
+        let list = [];
+        if(data){
+          if(Array.isArray(data.items)) list = data.items;
+          else if(Array.isArray(data.leaderboard)) list = data.leaderboard;
+          else if(Array.isArray(data.data)) list = data.data;
+        }
+
+        // 백엔드가 아직 없을 경우 대비 더미 처리
+        if(!list || !list.length){
+          renderRankingPlaceholder();
+          return;
+        }
+
+        renderRanking(currentRankingGame, list);
+      }catch(err){
+        console.error("leaderboard fetch error", err);
+        renderRankingPlaceholder();
+      }
+    }
+
+    function openRankingModal(initialGame){
+      const backdrop = document.getElementById("rankModalBackdrop");
+      if(!backdrop) return;
+      ensureRankTabs();
+      backdrop.classList.add("open");
+      backdrop.setAttribute("aria-hidden","false");
+
+      // 초기 게임: 전달값 or 마지막 게임 or 기본 2048
+      if(initialGame) currentRankingGame = initialGame;
+      loadRanking(currentRankingGame);
+
+      // ESC로 닫기
+      document.addEventListener("keydown", handleRankModalKeydown);
+    }
+
+    function closeRankingModal(){
+      const backdrop = document.getElementById("rankModalBackdrop");
+      if(!backdrop) return;
+      backdrop.classList.remove("open");
+      backdrop.setAttribute("aria-hidden","true");
+      document.removeEventListener("keydown", handleRankModalKeydown);
+    }
+
+    function handleRankBackdropClick(e){
+      const backdrop = document.getElementById("rankModalBackdrop");
+      if(!backdrop) return;
+      if(e.target === backdrop){
+        closeRankingModal();
+      }
+    }
+
+    function handleRankModalKeydown(e){
+      if(e.key === "Escape"){
+        closeRankingModal();
+      }
+    }
+
+    // 전역에서 접근 가능하도록 export
+    window.openRankingModal = openRankingModal;
+    window.closeRankingModal = closeRankingModal;
+
+    // 백드롭 클릭으로 닫기
+    (function(){
+      const backdrop = document.getElementById("rankModalBackdrop");
+      if(backdrop){
+        backdrop.addEventListener("click", handleRankBackdropClick);
+      }
     })();
 
     /* 배경 파티클 */

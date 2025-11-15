@@ -161,13 +161,19 @@
       display:grid;
       place-items:center;
       border-radius:50%;
-      background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);
+      background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7ff);
       box-shadow:0 0 10px #6fb0ffaa;
       font-size:14px;
     }
     .pill .label{
       font-weight:900;
       letter-spacing:.3px;
+    }
+    /* SHOP / RANKING 라벨도 COINS / XP와 동일한 골드 색상 적용 */
+    .pill.shop .label,
+    .pill.rank .label{
+      color:#ffe9a3;
+      text-shadow:0 0 8px #ffd86a;
     }
     .amount{
       font-size:18px;

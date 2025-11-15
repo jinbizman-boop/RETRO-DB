@@ -454,6 +454,23 @@
       }
     }
 
+    /* 데스크톱(넓은 화면)에서 카드 5개를 컨테이너 안에 균등 정렬하기 위한 보정 */
+    @media (min-width:1024px){
+      .rowTop{
+        display:grid;
+        grid-template-columns:repeat(5,minmax(0,1fr));
+        gap:28px;
+        justify-content:center;
+        align-items:stretch;
+        overflow:visible; /* 데스크톱에서는 가로 스크롤 불필요 */
+      }
+      .rowTop .card{
+        flex:none;
+        width:100%;
+        max-width:none;
+      }
+    }
+
     .cookie-banner{
       position:fixed;
       left:12px;
@@ -485,6 +502,11 @@
       color:#3a2400;
       border-color:#7a5600;
     }
+
+    /* layout notes:
+       - flex 기반 모바일/태블릿 유지
+       - 데스크톱에서 grid로 5등분 정렬, 카드 이탈 방지
+       - 기존 색상/그라데이션/섀도우 등 시각 스타일은 모두 유지 */
   </style>
 </head>
 

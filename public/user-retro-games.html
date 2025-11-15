@@ -66,6 +66,13 @@
       margin-bottom:6px;
       font-size:clamp(13px,1.6vw,16px);
     }
+    /* 로그인 사용자 환영 문구 (기본 subtitle 스타일에 살짝 보조 느낌) */
+    .subtitle.user-greeting{
+      opacity:.85;
+      font-size:clamp(12px,1.4vw,15px);
+      margin-top:2px;
+      margin-bottom:4px;
+    }
 
     /* 좌측 HUD */
     .hudTop{
@@ -514,10 +521,12 @@
 
       <div class="title">🎮 RETRO GAMES</div>
       <div class="subtitle">오늘의 미니게임을 선택하세요!</div>
+      <!-- 로그인 사용자 이름/닉네임 표시 -->
+      <div id="userGreeting" class="subtitle user-greeting" aria-live="polite"></div>
 
       <!-- 우측: 설정 -->
       <div class="auth">
-        <button class="authbtn" onclick="alert('설정 열기(작업예정)')">⚙️ 설정</button>
+        <button class="authbtn" type="button" onclick="alert('설정 열기(작업예정)')">⚙️ 설정</button>
       </div>
     </header>
 
@@ -617,13 +626,14 @@
 
   <script>
     const BASE = "/";
+    const AUTH_API_BASE = "/api/auth";
 
     /* 경로 매핑 */
     const GAME = {
       "2048":           BASE + "games/2048.html",
       "brick-breaker":  BASE + "games/brick-breaker.html",
       "brick-match":    BASE + "games/brick-match.html",
-      "retro-match":    BASE + "games/brick-match.html", // alias
+      "retro-match":    BASE + "games/retro-match.html", // 별도 HTML
       "retro-running":  BASE + "games/retro-running.html",
       "tetris":         BASE + "games/tetris.html"
     };
@@ -667,29 +677,6 @@
       renderHUD();
     }
 
-    /* URL 파라미터 보상 (?coins=&tickets=&xp=) */
-    (function consumeQueryReward(){
-      const p = new URLSearchParams(location.search);
-      const c = NUM(p.get('coins'));
-      const tk = NUM(p.get('tickets'));
-      const x = NUM(p.get('xp'));
-      if (c || tk || x){
-        addReward({coins:c,tickets:tk,xp:x});
-        history.replaceState({}, "", location.pathname);
-      }
-    })();
-
-    /* localStorage 큐 보상 (rg_reward) */
-    (function consumeQueuedReward(){
-      const raw = localStorage.getItem('rg_reward');
-      if(!raw) return;
-      try{
-        const r = JSON.parse(raw)||{};
-        if (r && (r.coins||r.tickets||r.xp)) addReward(r);
-      }catch(e){}
-      localStorage.removeItem('rg_reward');
-    })();
-
     /* HUD 렌더링 */
     function fmt(n){ return Number(n).toLocaleString('en-US'); }
 
@@ -711,6 +698,107 @@
     window.addEventListener('storage', e=>{
       if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)) renderHUD();
     });
+
+    /* 로그인 상태 / 사용자 정보 확인 */
+    function redirectToLogin(){
+      try{
+        const next = encodeURIComponent(location.pathname + location.search);
+        window.location.href = BASE + "login.html?next=" + next;
+      }catch(e){
+        window.location.href = BASE + "login.html";
+      }
+    }
+
+    function updateUserGreeting(user){
+      try{
+        const el = document.getElementById("userGreeting");
+        if(!el) return;
+        if(!user){
+          el.textContent = "";
+          return;
+        }
+        const name =
+          user.username ||
+          user.name ||
+          (user.email ? String(user.email).split("@")[0] : "") ||
+          "";
+        if(!name){
+          el.textContent = "";
+          return;
+        }
+        el.textContent = name + " 님, 환영합니다!";
+      }catch(e){
+        console.error("user greeting error", e);
+      }
+    }
+
+    window.ensureLoggedIn = async function ensureLoggedIn(){
+      try{
+        const res = await fetch(AUTH_API_BASE + "/me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Accept": "application/json",
+            "Cache-Control": "no-store"
+          }
+        });
+
+        if(!res.ok){
+          // 401/403 등 → 로그인 페이지로
+          return redirectToLogin();
+        }
+
+        let data = null;
+        try{
+          data = await res.json();
+        }catch(_){}
+
+        if(!data || !data.ok || !data.user){
+          return redirectToLogin();
+        }
+
+        // 전역에 보관 (필요시 다른 스크립트에서 활용 가능)
+        window.__RG_CURRENT_USER__ = data.user;
+        updateUserGreeting(data.user);
+      }catch(err){
+        console.error("auth check error", err);
+        redirectToLogin();
+      }
+    };
+
+    // URL 파라미터 보상 (?coins=&tickets=&xp=)
+    (function consumeQueryReward(){
+      const p = new URLSearchParams(location.search);
+      const c = NUM(p.get('coins'));
+      const tk = NUM(p.get('tickets'));
+      const x = NUM(p.get('xp'));
+      if (c || tk || x){
+        addReward({coins:c,tickets:tk,xp:x});
+        history.replaceState({}, "", location.pathname);
+      }
+    })();
+
+    // localStorage 큐 보상 (rg_reward)
+    (function consumeQueuedReward(){
+      const raw = localStorage.getItem('rg_reward');
+      if(!raw) return;
+      try{
+        const r = JSON.parse(raw)||{};
+        if (r && (r.coins||r.tickets||r.xp)) addReward(r);
+      }catch(e){}
+      localStorage.removeItem('rg_reward');
+    })();
+
+    // OAuth 콜백 중이 아닐 때만 접근 가드 실행
+    (function(){
+      const params = new URLSearchParams(location.search);
+      if (params.get("code")) {
+        // OAuth 코드 교환이 끝난 후 ensureLoggedIn이 다시 호출됨
+        return;
+      }
+      // 일반 진입 시 → 로그인 필수
+      window.ensureLoggedIn();
+    })();
 
     /* 배경 파티클 */
     const c=document.getElementById('fx');
@@ -800,13 +888,17 @@
           provider = document.referrer.includes('naver') ? 'naver' : 'kakao';
         }
 
+        // Cloudflare Pages Functions 경로로 통일
         var endpoint = provider === 'naver'
-          ? '/auth/oauth/naver/callback'
-          : '/auth/oauth/kakao/callback';
+          ? AUTH_API_BASE + '/oauth/naver/callback'
+          : AUTH_API_BASE + '/oauth/kakao/callback';
 
         fetch(endpoint, {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
+          headers: {
+            'Content-Type':'application/json',
+            'Cache-Control':'no-store'
+          },
           credentials: 'include',
           body: JSON.stringify({ code: code, state: state })
         }).then(async function(r){
@@ -814,14 +906,21 @@
           try{ data = await r.json(); }catch(e){}
           if(!r.ok || !data || !data.ok){
             console.error('OAuth callback failed', r.status, data);
-            return;
+            // 실패 시 로그인 페이지로 보낼지 여부는 정책에 따라 조정 가능
+            return redirectToLogin();
           }
+          // 쿼리 스트립
           history.replaceState({}, "", location.pathname);
+          // 유저 정보 반영
+          if (typeof window.ensureLoggedIn === "function") {
+            window.ensureLoggedIn();
+          }
           try{
             console.log('로그인 완료:', data.user && (data.user.provider+': '+data.user.name));
           }catch(e){}
         }).catch(function(err){
           console.error('OAuth error', err);
+          redirectToLogin();
         });
       }catch(e){}
     })();

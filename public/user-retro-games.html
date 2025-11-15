@@ -699,8 +699,9 @@
       if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)) renderHUD();
     });
 
-    /* 로그인 상태 / 사용자 정보 확인 */
+    /* 로그인 상태 / 사용자 정보 확인 (자동 리다이렉트 제거 버전) */
     function redirectToLogin(){
+      // 현재는 자동으로 호출하지 않음 (필요 시 다른 버튼/링크에서 수동 호출용)
       try{
         const next = encodeURIComponent(location.pathname + location.search);
         window.location.href = BASE + "login.html?next=" + next;
@@ -732,6 +733,7 @@
       }
     }
 
+    // 로그인 체크는 하지만 실패해도 로그인 페이지로 보내지 않고 조용히 무시
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
         const res = await fetch(AUTH_API_BASE + "/me", {
@@ -744,8 +746,9 @@
         });
 
         if(!res.ok){
-          // 401/403 등 → 로그인 페이지로
-          return redirectToLogin();
+          // 비로그인/오류 → 게임은 그대로, 환영 문구만 비움
+          updateUserGreeting(null);
+          return;
         }
 
         let data = null;
@@ -754,7 +757,8 @@
         }catch(_){}
 
         if(!data || !data.ok || !data.user){
-          return redirectToLogin();
+          updateUserGreeting(null);
+          return;
         }
 
         // 전역에 보관 (필요시 다른 스크립트에서 활용 가능)
@@ -762,7 +766,7 @@
         updateUserGreeting(data.user);
       }catch(err){
         console.error("auth check error", err);
-        redirectToLogin();
+        updateUserGreeting(null);
       }
     };
 
@@ -789,14 +793,13 @@
       localStorage.removeItem('rg_reward');
     })();
 
-    // OAuth 콜백 중이 아닐 때만 접근 가드 실행
+    // 페이지 진입 시: 로그인 정보만 확인해서 환영 문구 업데이트 (리다이렉트 없음)
     (function(){
       const params = new URLSearchParams(location.search);
       if (params.get("code")) {
         // OAuth 코드 교환이 끝난 후 ensureLoggedIn이 다시 호출됨
         return;
       }
-      // 일반 진입 시 → 로그인 필수
       window.ensureLoggedIn();
     })();
 
@@ -906,8 +909,8 @@
           try{ data = await r.json(); }catch(e){}
           if(!r.ok || !data || !data.ok){
             console.error('OAuth callback failed', r.status, data);
-            // 실패 시 로그인 페이지로 보낼지 여부는 정책에 따라 조정 가능
-            return redirectToLogin();
+            // 실패해도 로그인 페이지로 자동 이동하지 않음
+            return;
           }
           // 쿼리 스트립
           history.replaceState({}, "", location.pathname);
@@ -920,7 +923,7 @@
           }catch(e){}
         }).catch(function(err){
           console.error('OAuth error', err);
-          redirectToLogin();
+          // 에러 발생 시에도 자동 리다이렉트 없음
         });
       }catch(e){}
     })();

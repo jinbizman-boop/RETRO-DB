@@ -1,4 +1,4 @@
-﻿# wrangler.toml — Cloudflare Pages + Pages Functions (stable/minimal)
+# wrangler.toml — Cloudflare Pages + Pages Functions (stable/minimal)
 # Project: RETRO DB (static: /public, functions: /functions)
 
 name = "retro-db"
@@ -13,3 +13,5 @@ pages_build_output_dir = "public"
 # - In Cloudflare Pages dashboard, set Output directory = "public"
 # - If Node APIs are absolutely required later, you may add:
 #   # compatibility_flags = ["nodejs_compat"]
+# - Root directory in Cloudflare Pages settings should remain the repo root (empty)
+# - No build command is required for static hosting from `public/`

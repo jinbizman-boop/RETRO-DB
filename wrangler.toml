@@ -4,6 +4,9 @@
 name = "retro-db"
 compatibility_date = "2024-11-01"
 
+# Node.js 내장 모듈(node:stream 등)을 사용하기 위한 호환 모드 설정
+compatibility_flags = ["nodejs_compat"]
+
 # Pages will read static outputs from this directory (repo root based)
 pages_build_output_dir = "public"
 
@@ -11,7 +14,7 @@ pages_build_output_dir = "public"
 # - DO NOT add Workers-only or legacy keys (main, routes, workers_dev, triggers, [pages], [site], [build], etc.)
 # - Functions are auto-detected from /functions at repo root; no extra config needed
 # - In Cloudflare Pages dashboard, set Output directory = "public"
-# - If Node APIs are absolutely required later, you may add:
-#   # compatibility_flags = ["nodejs_compat"]
 # - Root directory in Cloudflare Pages settings should remain the repo root (empty)
 # - No build command is required for static hosting from `public/`
+# - `nodejs_compat` 플래그로 node:stream 등 일부 Node API를 Functions에서 사용할 수 있습니다.
+# - 추가 Node 기능 사용 시에는 Cloudflare Workers 호환성 문서를 함께 참고하세요.

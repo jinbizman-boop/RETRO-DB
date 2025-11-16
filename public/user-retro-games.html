@@ -7,6 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <title>RETRO GAMES – Neon Home (Logged-in)</title>
 
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+     crossorigin="anonymous"></script>
+
   <style>
     :root{
       --gold1:#ffdf6e;
@@ -349,7 +353,7 @@
     }
     .btn:hover{filter:brightness(1.06);}
 
-    /* 광고 배너 */
+    /* 광고 배너 (728x90 리더보드 규격) */
     .adBanner{
       width:100%;
       display:flex;
@@ -357,9 +361,10 @@
       margin-top:8px;
     }
     .adBanner-inner{
-      width:100%;
-      max-width:1200px;
-      padding:14px 18px;
+      width:728px;
+      height:90px;
+      max-width:100%;
+      padding:10px 14px;
       border-radius:18px;
       border:1px solid #3250c2;
       background:linear-gradient(90deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
@@ -370,6 +375,7 @@
       text-decoration:none;
       color:#e9f0ff;
       cursor:pointer;
+      box-sizing:border-box;
     }
     .adBadge{
       padding:4px 10px;
@@ -933,7 +939,7 @@
             </div>
           </div>
 
-          <!-- 가로형 광고 배너 -->
+          <!-- 가로형 광고 배너 (728x90) -->
           <div class="adBanner" aria-label="광고 배너">
             <a href="#" class="adBanner-inner">
               <span class="adBadge">AD</span>

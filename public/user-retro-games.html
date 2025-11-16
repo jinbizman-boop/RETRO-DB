@@ -11,7 +11,7 @@
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-     crossorigin="anonymous"></script>
+    crossorigin="anonymous"></script>
 
   <style>
     :root{
@@ -1011,7 +1011,8 @@
     const GAME = {
       "2048":           BASE + "games/2048.html",
       "brick-breaker":  BASE + "games/brick-breaker.html",
-      "brick-match":    BASE + "games/brick-match.html",
+      // 👇 brick-match 옛 링크도 retro-match.html로 열리도록 alias 처리
+      "brick-match":    BASE + "games/retro-match.html",
       "retro-match":    BASE + "games/retro-match.html", // 별도 HTML
       "retro-running":  BASE + "games/retro-running.html",
       "tetris":         BASE + "games/tetris.html"
@@ -1190,7 +1191,7 @@
       { slug:"retro-match",   label:"Retro Match" },
       { slug:"retro-running", label:"Retro Runner" },
       { slug:"tetris",        label:"Tetris" }
-      // 필요 시 brick-match 등 추가 가능
+      // 필요 시 brick-match 등 추가 가능 (위에서 alias 처리)
     ];
 
     let currentRankingGame = "2048";
@@ -1317,7 +1318,7 @@
 
       const url = LEADERBOARD_API_BASE +
         "?game=" + encodeURIComponent(currentRankingGame) +
-        "&limit=100`;
+        "&limit=100";
 
       try{
         const res = await fetch(url, {

@@ -324,7 +324,8 @@ function addPlay(){
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
-  if(plays % 8 === 0){ showInterstitialAd(); }
+  /* ✅ 3회 플레이마다 광고 노출 */
+  if(plays % 3 === 0){ showInterstitialAd(); }
 }
 function addRecord(score, points){
   const recs=loadJSON(LS_KEYS.records,[]);
@@ -383,7 +384,7 @@ class G2048{
   makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
 
   bind(){
-    /* HOME: 광고 이후 메인(로그인 상태 홈)으로 이동 */
+    /* HOME: 광고 이후 RETRO GAMES 로그인 홈으로 이동 */
     $('#homeBtn').onclick = () => showAdThen(()=> {
       window.location.href = 'user-retro-games.html';
     });
@@ -624,7 +625,6 @@ const game=new G2048(document.getElementById('game'));
     <button class="agree" type="button">동의</button>
   </div>
 
-
   <script>
   (function(){
     try{
@@ -648,7 +648,6 @@ const game=new G2048(document.getElementById('game'));
   })();
   </script>
 
-  
   <div id="site-footer"></div>
 </body>
 </html>

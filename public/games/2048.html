@@ -164,20 +164,26 @@
         <div class="chip">최고 <b id="best">0</b></div>
         <div class="chip">이동 <b id="moves">0</b></div>
 
-        <!-- Points -->
+        <!-- Points (통합 XP 기반) -->
         <div class="pill points" aria-label="사용자 포인트">
           <div class="icon">🏅</div>
           <div>
-            <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
+            <div class="nums">
+              <span class="big" id="pointsAmt">0</span>
+              <span class="cap">/ <span id="pointsCap">20,000</span></span>
+            </div>
             <div class="bar"><span id="pointsBar"></span></div>
           </div>
         </div>
 
-        <!-- Tickets -->
+        <!-- Tickets (통합 티켓 기반) -->
         <div class="pill tickets" aria-label="티켓 진행">
           <div class="icon">🎟️</div>
           <div>
-            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+            <div class="nums">
+              <span class="big" id="ticketsAmt">0</span>
+              <span class="cap">티켓</span>
+            </div>
             <div class="bar"><span id="ticketsBar"></span></div>
           </div>
           <div class="playCount" id="ticketsCap">0 / 10</div>
@@ -250,8 +256,14 @@
 
 <script>
 /* ====== AdSense (연동) ====== */
-const AD_CLIENT = 'ca-pub-6713974263597310';
-const AD_SLOT   = ''; // 필요 시 교체
+/**
+ * NOTE:
+ *  - AD_CLIENT는 메타 태그와 동일한 ID로 교정됨.
+ *  - 실제 광고 노출을 위해서는 AdSense에서 발급받은 data-ad-slot 값을 AD_SLOT에 넣어야 함.
+ */
+const AD_CLIENT = 'ca-pub-6713974265397310';
+const AD_SLOT   = ''; // TODO: 여기 AdSense 광고 단위 ID (예: '1234567890')를 설정해야 실제 광고가 노출됩니다.
+
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
 }
@@ -265,8 +277,12 @@ function showInterstitialAd(){
   ins.setAttribute('data-ad-format','auto');
   ins.setAttribute('data-full-width-responsive','true');
   box.appendChild(ins);
-  try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }
-  catch(e){ console.warn(e); box.innerHTML = fallbackAdHTML(); }
+  try{
+    (window.adsbygoogle=window.adsbygoogle||[]).push({});
+  }catch(e){
+    console.warn(e);
+    box.innerHTML = fallbackAdHTML();
+  }
   document.getElementById('adModal').style.display='flex';
 }
 let _afterAd=null;
@@ -288,16 +304,16 @@ const $=sel=>document.querySelector(sel);
 const DPR=()=> Math.min(2, window.devicePixelRatio||1);
 const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
 const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
-const fmt=n=> n.toLocaleString('ko-KR');
+const fmt=n=> Number(n).toLocaleString('ko-KR');
 
-/* ===== Wallet API (spec & helpers) ===== */
+/* ===== WALLET API (spec & helpers) ===== */
 /**
  * WALLET API 스펙 (Cloudflare Pages Functions 기준 예시)
  *
  * 1) GET /api/wallet/me
  *    - 응답: {
  *        ok: boolean,
- *        wallet?: { coins: number, xp: number, tickets: number }
+ *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number }
  *      }
  *
  * 2) POST /api/wallet/reward
@@ -310,7 +326,7 @@ const fmt=n=> n.toLocaleString('ko-KR');
  *    - 응답:
  *      {
  *        ok: boolean,
- *        wallet?: { coins: number, xp: number, tickets: number },
+ *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number },
  *        error?: string
  *      }
  */
@@ -337,11 +353,136 @@ async function postWalletReward(payload){
       console.warn('wallet/reward logical error', data);
       return null;
     }
-    return data.wallet || null;
+    const w = data.wallet || {};
+    applyServerWalletToLocal(w);
+    return w;
   }catch(err){
     console.warn('wallet/reward failed', err);
     return null;
   }
+}
+
+/* ===== Global Wallet Totals (hub 공유) ===== */
+function getOrInitGlobalTotals(){
+  const NUM = v => Number.isFinite(+v) ? +v : 0;
+  const markKey = 'rg_wallet_init';
+  let coins   = NUM(localStorage.getItem('rg_coins'));
+  let tickets = NUM(localStorage.getItem('rg_tickets'));
+  let xp      = NUM(localStorage.getItem('rg_xp'));
+  let xpCap   = NUM(localStorage.getItem('rg_xp_cap') || 20000);
+
+  const inited = localStorage.getItem(markKey);
+  // 완전 신규/게스트인 경우 기본 티켓 10장 지급 (허브/게임 공통)
+  if(!inited && coins===0 && tickets===0 && xp===0){
+    tickets = 10;
+    localStorage.setItem(markKey,'1');
+  }
+  return { coins, tickets, xp, xpCap };
+}
+function setGlobalTotals(t){
+  const clean = {
+    coins:   Number(t.coins)||0,
+    tickets: Number(t.tickets)||0,
+    xp:      Number(t.xp)||0,
+    xpCap:   Number(t.xpCap)||20000
+  };
+  try{
+    localStorage.setItem('rg_coins',   String(clean.coins));
+    localStorage.setItem('rg_tickets', String(clean.tickets));
+    localStorage.setItem('rg_xp',      String(clean.xp));
+    localStorage.setItem('rg_xp_cap',  String(clean.xpCap));
+  }catch(e){
+    console.warn('setGlobalTotals failed', e);
+  }
+  renderGlobalWalletHUD();
+}
+function applyServerWalletToLocal(w){
+  if(!w) return;
+  setGlobalTotals({
+    coins:   w.coins,
+    tickets: w.tickets,
+    xp:      w.xp ?? w.points ?? 0,
+    xpCap:   w.xpCap ?? w.xp_cap ?? 20000
+  });
+}
+function renderGlobalWalletHUD(){
+  const t = getOrInitGlobalTotals();
+  const pointsAmt = $('#pointsAmt');
+  const pointsCap = $('#pointsCap');
+  const pointsBar = $('#pointsBar');
+  const ticketsAmt = $('#ticketsAmt');
+  const ticketsBar = $('#ticketsBar');
+
+  if(pointsAmt) pointsAmt.textContent = fmt(t.xp);
+  if(pointsCap){
+    const capLabel = t.xpCap >= 1000 ? fmt(t.xpCap/1000) + 'K' : fmt(t.xpCap);
+    pointsCap.textContent = capLabel;
+  }
+  if(pointsBar){
+    const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1, t.xpCap)) * 100));
+    pointsBar.style.width = pct.toFixed(1) + '%';
+  }
+  if(ticketsAmt) ticketsAmt.textContent = fmt(t.tickets);
+  if(ticketsBar){
+    const T_CAP = 50; // 단순 시각화용 상한
+    const pct = Math.max(0, Math.min(100, (t.tickets / Math.max(1, T_CAP)) * 100));
+    ticketsBar.style.width = pct.toFixed(1) + '%';
+  }
+}
+
+/* 다른 탭/게임에서 지갑이 변경될 때 HUD 동기화 */
+window.addEventListener('storage', function(e){
+  if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)){
+    renderGlobalWalletHUD();
+  }
+});
+
+/* 서버 월렛 → 허브/게임 동기화 */
+async function syncWalletFromServerAndRender(){
+  try{
+    const res = await fetch(WALLET_API_BASE + '/me', {
+      method: 'GET',
+      headers: {
+        'Accept':'application/json',
+        'Cache-Control':'no-store'
+      },
+      credentials: 'include'
+    });
+    if(!res.ok){
+      renderGlobalWalletHUD();
+      return;
+    }
+    const data = await res.json().catch(()=>null);
+    if(data && data.ok && data.wallet){
+      applyServerWalletToLocal(data.wallet);
+    }else{
+      renderGlobalWalletHUD();
+    }
+  }catch(e){
+    console.warn('wallet/me failed', e);
+    renderGlobalWalletHUD();
+  }
+}
+
+/* 게임 세션 시작 시 통합 티켓 1장 소모 */
+function consumeTicketForSession(){
+  const totals = getOrInitGlobalTotals();
+  if(totals.tickets <= 0){
+    alert('플레이 티켓이 부족합니다.\n메인 허브에서 티켓을 먼저 획득한 뒤 다시 시도해 주세요.');
+    renderGlobalWalletHUD();
+    return false;
+  }
+  totals.tickets -= 1;
+  setGlobalTotals(totals);
+
+  // 서버 지갑에도 티켓 차감 반영 (에러는 무시)
+  postWalletReward({
+    game: '2048',
+    delta: { coins:0, xp:0, tickets:-1 },
+    meta:  { score:0, points:0, level:0, maxTile:0 }
+  }).catch(()=>{});
+
+  return true;
 }
 
 /* 게임 세션 보상 → 글로벌 HUD(RG_addReward) + 서버 지갑 동시 업데이트 */
@@ -356,6 +497,13 @@ function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
   try{
     if(typeof window.RG_addReward === 'function'){
       window.RG_addReward({ coins, tickets, xp });
+    }else{
+      // RG_addReward가 없더라도 통합 지갑 로컬 값은 유지
+      const t = getOrInitGlobalTotals();
+      t.coins   += coins;
+      t.tickets += tickets;
+      t.xp      += xp;
+      setGlobalTotals(t);
     }
   }catch(e){
     console.warn('RG_addReward error', e);
@@ -366,12 +514,12 @@ function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
     game: gameCode,
     delta: { coins, xp, tickets },
     meta: {
-      score:  meta && meta.score  || 0,
-      points: meta && meta.points || 0,
-      level:  meta && meta.level  || 0,
-      maxTile:meta && meta.maxTile|| 0
+      score:   meta && meta.score   || 0,
+      points:  meta && meta.points  || 0,
+      level:   meta && meta.level   || 0,
+      maxTile: meta && meta.maxTile || 0
     }
-  });
+  }).catch(()=>{});
 }
 
 /* 점수/포인트를 RETRO GAMES 지갑 보상으로 변환하는 규칙 */
@@ -417,15 +565,19 @@ const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',bes
 function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
 function updateTicketUI(){
+  // 통합 지갑 정보 (티켓/XP) 기반 HUD 갱신
+  renderGlobalWalletHUD();
+  // 추가로 이 게임에서의 누적 플레이 횟수를 서브 캡에 노출
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
-  const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  $('#ticketsAmt').textContent=tickets;
-  $('#ticketsCap').textContent=`${plays%10} / 10`;
-  $('#ticketsBar').style.width = ((plays%10)/10*100).toFixed(1)+'%';
+  const capLabel = $('#ticketsCap');
+  if(capLabel){
+    capLabel.textContent = `${plays%10} / 10`;
+  }
 }
 function addPlay(){
   let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
-  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0; if(plays%10===0) tickets++;
+  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
+  if(plays%10===0) tickets++;
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
@@ -465,37 +617,70 @@ document.addEventListener('visibilitychange', () => {
 /* ===== Game ===== */
 class G2048{
   constructor(canvas){
-    this.c=canvas; this.ctx=canvas.getContext('2d');
-    this.size=4; this.reset(1);
-    this.bind(); this._initResizeObserver(); this.resize(); this.draw();
+    this.c=canvas;
+    this.ctx=canvas.getContext('2d');
+    this.size=4;
+
+    // 기본 값 초기화
+    this.best= +(localStorage.getItem(LS_KEYS.best)||0);
+    this.score=0;
+    this.moves=0;
+    this.points=0;
+    this._ended=false;
+
+    this.bind();
+    this._initResizeObserver();
+    this.resize();
+
+    // 통합 티켓 소모 후 세션 시작
+    if(!consumeTicketForSession()){
+      // 티켓이 없으면 보드만 초기화하고 입력은 막음
+      this.grid = this.makeGrid(this.size);
+      this.syncHUD();
+      this.draw();
+      return;
+    }
+
+    this.reset(1);
+    this.draw();
     // 페이지 로드시 세션 시작 알림
     notifyStart();
   }
 
   reset(level){
-    this.level=level||1; this.p=paramsForLevel(this.level);
+    this.level=level||1;
+    this.p=paramsForLevel(this.level);
     this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-    this.score=0; this.moves=0; this.undosLeft=this.p.undos; this.history=[];
-    this.points=0; this._ended=false;
+    this.score=0;
+    this.moves=0;
+    this.undosLeft=this.p.undos;
+    this.history=[];
+    this.points=0;
+    this._ended=false;
     this._scoreMilestone = 0;
     this._tileBonusGiven = {512:false,1024:false,2048:false,4096:false};
 
     this.grid=this.makeGrid(this.size);
     this.spawn(); this.spawn();
-    this.syncHUD(); this.draw();
+    this.syncHUD();
+    this.draw();
   }
 
   setSize(n){ this.size=n; this.reset(this.level); }
   makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
 
   bind(){
-    /* HOME: 광고 이후 로그인 홈(user-retro-games.html)으로 이동 */
+    /* HOME: 광고 이후 허브(user-retro-games.html, 로그인 후 메인)로 이동 */
     $('#homeBtn').onclick = () => showAdThen(()=> {
       window.location.href = '/user-retro-games.html';
     });
 
     $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
-    $('#newBtn').onclick=()=>{ if(this.moves>0){ addRecord(this.score,this.points||0);} this.reset(this.level); };
+    $('#newBtn').onclick=()=>{
+      if(this.moves>0){ addRecord(this.score,this.points||0);}
+      if(!consumeTicketForSession()) return;
+      this.reset(this.level);
+    };
     $('#undoBtn').onclick=()=> this.undo();
     const tier=$('#tier'); const lvl=$('#lvlRange'); const sizeSel=$('#sizeSel');
     const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
@@ -505,7 +690,11 @@ class G2048{
 
     const keyMap={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',KeyA:'L',KeyD:'R',KeyW:'U',KeyS:'D'};
     document.addEventListener('keydown',(e)=>{
-      if(e.code==='KeyN'){ if(this.moves>0){ addRecord(this.score,this.points||0);} this.reset(this.level); }
+      if(e.code==='KeyN'){
+        if(this.moves>0){ addRecord(this.score,this.points||0);}
+        if(!consumeTicketForSession()) return;
+        this.reset(this.level);
+      }
       if(e.code==='KeyU'){ this.undo(); }
       const d=keyMap[e.code]; if(d){ this.move(d); e.preventDefault(); }
     });
@@ -541,9 +730,12 @@ class G2048{
   }
 
   syncHUD(){
-    $('#score').textContent=this.score|0; $('#best').textContent=this.best|0; $('#moves').textContent=this.moves|0;
-    $('#pointsAmt').textContent=fmt(this.points|0);
-    const cap=5000; $('#pointsBar').style.width = Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
+    $('#score').textContent=this.score|0;
+    $('#best').textContent=this.best|0;
+    $('#moves').textContent=this.moves|0;
+
+    // 포인트/티켓은 통합 지갑 기준으로 렌더링
+    renderGlobalWalletHUD();
     updateTicketUI();
   }
 
@@ -735,6 +927,8 @@ const game=new G2048(document.getElementById('game'));
   applyTier(tier.value);
   lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
   updateTicketUI();
+  // 서버 지갑 기준으로 통합 HUD 최신 상태 맞추기
+  syncWalletFromServerAndRender();
 })();
 </script>
 

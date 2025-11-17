@@ -328,6 +328,8 @@ function updateTicketUI(){
   $('#ticketsCap').textContent=(plays%10)+' / 10';
   $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
 }
+
+/***** 플레이/티켓 카운트 & 광고 주기 (3회당 1회) *****/
 function addPlay(){
   let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
   let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
@@ -335,8 +337,10 @@ function addPlay(){
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
-  if(plays % 8 === 0){ showInterstitialAd(); }
+  /* 🔁 3회 플레이마다 인터스티셜 광고 노출 */
+  if(plays % 3 === 0){ showInterstitialAd(); }
 }
+
 function addRecord(score, points){
   const recs=loadJSON(LS_KEYS.records,[]); const now=new Date();
   recs.unshift({ts:now.toISOString(), score, points});
@@ -362,6 +366,85 @@ function showRecords(){
 function difficultyMult(){
   const v=$('#tier')?.value||'beginner';
   return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
+}
+
+/***** 💰 RG_addReward + /api/wallet 연동 브릿지 *****/
+/**
+ * /api/wallet POST 요청 스펙 (게임 보상용)
+ *
+ * 1) Request (JSON Body)
+ *  {
+ *    "game": "tetris",
+ *    "action": "reward",
+ *    "score": number,           // 이번 플레이 최종 점수
+ *    "pointsEarned": number,    // 이번 플레이에서 획득한 게임 포인트(내부 계산값)
+ *    "ticketsEarned": number,   // 이번 플레이로 증가한 티켓 수 (보통 0 또는 1)
+ *    "playsIncrement": number,  // 이번 호출로 증가한 플레이 수 (보통 1)
+ *    "meta": {
+ *      "tier": "beginner" | "intermediate" | "advanced" | "hell" | "doom" | "insane",
+ *      "level": number          // 레벨 슬라이더 값
+ *    }
+ *  }
+ *
+ * 2) Response (예시)
+ *  {
+ *    "ok": true,
+ *    "wallet": {
+ *      "points": number,        // 서버 기준 최신 누적 포인트
+ *      "tickets": number,       // 서버 기준 최신 누적 티켓
+ *      "updatedAt": "ISO-8601"
+ *    },
+ *    "reward": {
+ *      "addedPoints": number,   // 이번 호출로 실제 반영된 포인트
+ *      "addedTickets": number   // 이번 호출로 실제 반영된 티켓
+ *    }
+ *  }
+ *
+ * 3) RG_addReward 연동 규약 (프론트 공통 훅)
+ *   - window.RG_addReward(gameId, payload) 형태로 존재할 경우 호출
+ *   - gameId: "tetris"
+ *   - payload: 위 Request body에서 "game" 필드만 제거한 객체
+ */
+async function sendGameReward(gameId, payload){
+  // 1단계: 전역 RG_addReward 훅 연동 (있을 때만)
+  try{
+    if (typeof window.RG_addReward === 'function') {
+      // RG_addReward는 백오피스/분석/지갑 통합 훅으로 사용 가능
+      window.RG_addReward(gameId, payload);
+    }
+  }catch(e){
+    console.warn('[RG][reward] RG_addReward hook error:', e);
+  }
+
+  // 2단계: /api/wallet 엔드포인트로 직접 POST (지갑/보상 서버 연동)
+  try{
+    const body = {
+      game: gameId,
+      action: 'reward',
+      score: payload.score|0,
+      pointsEarned: payload.pointsEarned|0,
+      ticketsEarned: payload.ticketsEarned|0,
+      playsIncrement: payload.playsIncrement|0,
+      meta: payload.meta || {}
+    };
+
+    const res = await fetch('/api/wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // 세션/쿠키 기반 인증을 사용하는 경우
+      body: JSON.stringify(body)
+    });
+
+    if(!res.ok){
+      throw new Error('HTTP '+res.status);
+    }
+    const data = await res.json().catch(()=>null);
+    console.log('[RG][wallet] reward synced:', data);
+    return data;
+  }catch(err){
+    console.warn('[RG][wallet] reward sync failed:', err);
+    return null;
+  }
 }
 
 /***** Canvas Tetris *****/
@@ -631,8 +714,33 @@ function difficultyMult(){
 
     gameOver(){
       this.running=false; this.paused=false;
-      addRecord(this.score, this.points); addPlay();
-      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='flex';
+
+      // 🔢 보상 계산용 사전 스냅샷 (플레이/티켓)
+      const prevTickets = +localStorage.getItem(LS_KEYS.tickets)||0;
+      const prevPlays   = +localStorage.getItem(LS_KEYS.plays)||0;
+
+      addRecord(this.score, this.points);
+      addPlay();
+
+      const nextTickets = +localStorage.getItem(LS_KEYS.tickets)||0;
+      const nextPlays   = +localStorage.getItem(LS_KEYS.plays)||0;
+
+      const rewardPayload = {
+        score: this.score|0,
+        pointsEarned: this.points|0,
+        ticketsEarned: Math.max(0, nextTickets - prevTickets),
+        playsIncrement: Math.max(0, nextPlays - prevPlays),
+        meta: {
+          tier: $('#tier')?.value || 'beginner',
+          level: this.level|0
+        }
+      };
+
+      // 💰 RG_addReward + /api/wallet 브릿지 호출
+      sendGameReward('tetris', rewardPayload);
+
+      const ov=document.getElementById('gameOver'); 
+      if(ov) ov.style.display='flex';
 
       /* ✅ 세션 종료 */
       notifyFinish(this.score|0);

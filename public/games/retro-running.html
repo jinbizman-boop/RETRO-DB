@@ -202,9 +202,9 @@
 </style>
 </head>
 
-<!-- 프로젝트 스크립트 -->
-<script defer src="assets/js/app.js"></script>
-<script defer src="assets/js/analytics.js"></script>
+<!-- 경로를 절대경로로 고정해서 /public/games/에서도 공통 JS가 안전하게 로드되도록 수정 -->
+<script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
 
 <body>
   <div id="site-header"></div>
@@ -516,7 +516,7 @@ function showToast(msg, ms=2000){
  *
  * - 실패하더라도 게임 진행/로컬 포인트는 유지하고 조용히 무시
  * - 성공 시 wallet 스냅샷으로 HUD를 갱신
- */
+ * */
 
 const RG_WALLET_ENDPOINT = '/api/wallet';
 const RG_GAME_ID = 'dino-runner';

@@ -294,15 +294,119 @@ function updateTicketUI(){
   $('#ticketsCap').textContent=(plays%10)+' / 10';
   $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
 }
+
+/* ================= Wallet API & RG_addReward =================
+   /api/wallet 엔드포인트 스펙 (게임 리워드 적립용)
+
+   [REQUEST] POST /api/wallet
+   Content-Type: application/json
+
+   {
+     "action": "addGameReward",
+     "game": "match-3",           // 게임 슬러그 (예: 'match-3', 'brick-breaker' 등)
+     "score": 12340,              // 해당 판 최종 점수
+     "points": 120,               // 프런트에서 계산한 적립 포인트(권장: 클라 추정값)
+     "meta": {
+       "level": 12,               // 도달 레벨
+       "timeLeft": 5,             // 남은 시간(초) 등 부가정보
+       "manualEnd": false,        // 사용자가 '게임 종료' 버튼으로 끝냈는지 여부
+       "clientTs": "2025-11-17T12:34:56.789Z",
+       "page": "brick-match.html" // 호출 페이지/소스 정보
+     }
+   }
+
+   [RESPONSE] 200 OK
+   {
+     "ok": true,
+     "wallet": {
+       "points": 3120,            // 서버 기준 최신 포인트 잔액
+       "tickets": 4               // 서버 기준 최신 티켓 수
+     },
+     "reward": {
+       "pointsDelta": 120,        // 이번 판으로 적립된 포인트
+       "ticketsDelta": 1          // 이번 판으로 적립된 티켓 (없으면 0)
+     },
+     "error": null                // 실패 시 에러 메시지 (ok:false)
+   }
+
+   - 프런트에서는 실패하더라도 게임 진행/로컬 포인트는 그대로 유지 (조용히 무시)
+   - 성공 시 wallet 스냅샷으로 HUD를 갱신 (pointsAmt, ticketsAmt 등)
+************************************************************* */
+
+function applyWalletSnapshot(wallet){
+  if(!wallet) return;
+  try{
+    // 포인트 잔액 동기화
+    if(typeof wallet.points === 'number'){
+      const cap = 5000;
+      $('#pointsAmt').textContent = fmt(wallet.points);
+      $('#pointsBar').style.width = Math.min(100, (wallet.points/cap*100)).toFixed(1)+'%';
+    }
+    // 티켓 잔액 동기화 (로컬에도 반영)
+    if(typeof wallet.tickets === 'number'){
+      localStorage.setItem(LS_KEYS.tickets, String(wallet.tickets));
+      $('#ticketsAmt').textContent = wallet.tickets;
+      updateTicketUI();
+    }
+  }catch(e){
+    console.warn('applyWalletSnapshot error', e);
+  }
+}
+
+/**
+ * RG_addReward(payload)
+ * - payload: { game, score, points, level, timeLeft, manualEnd }
+ * - 게임 종료 시 서버에 리워드 적립 요청
+ */
+window.RG_addReward = async function RG_addReward(payload){
+  try{
+    const body = {
+      action: 'addGameReward',
+      game: payload.game || 'match-3',
+      score: (payload.score|0),
+      points: (payload.points|0),
+      meta: {
+        level: payload.level|0,
+        timeLeft: payload.timeLeft ?? null,
+        manualEnd: !!payload.manualEnd,
+        clientTs: new Date().toISOString(),
+        page: 'brick-match.html'
+      }
+    };
+
+    const res = await fetch('/api/wallet', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify(body)
+    });
+
+    if(!res.ok) return;
+    const data = await res.json().catch(()=>null);
+    if(!data || data.ok === false) return;
+
+    if(data.wallet) applyWalletSnapshot(data.wallet);
+    // 필요하면 data.reward 를 사용해 토스트/연출 추가 가능
+  }catch(e){
+    console.warn('RG_addReward error', e);
+  }
+};
+
 function addPlay(){
-  let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
+  let plays= +localStorage.getItem(LS_KEYS.plays)||0; 
+  plays++;
   let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
   if(plays%10===0) tickets++;
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
-  if(plays % 8 === 0){ showInterstitialAd(); }
+
+  // 🔁 광고 노출 주기: 8회 → 3회 플레이마다 1회 팝업
+  if(plays % 3 === 0){
+    showInterstitialAd();
+  }
 }
+
 function addRecord(score, points){
   const recs=loadJSON(LS_KEYS.records,[]); const now=new Date();
   recs.unshift({ts:now.toISOString(), score, points});
@@ -353,7 +457,7 @@ function difficultyMult(){
       this.N=8; this.level=1; this.params=paramsForLevel(1);
       this.state='idle'; this.score=0; this.best= +(localStorage.getItem(LS_KEYS.best)||0);
       this.timeLeft=60; this.grid=[]; this.sel=null; this.paused=false;
-      this.combo=1; this.points=0; this.chainLv=0; this.goalAwarded=false;
+      this.combo=1; this.points=0; this.chainLv=0; this.maxChain=0; this.goalAwarded=false;
       this.swapAnim=null; this.fx=[]; this.last=0; this.ox=0; this.oy=0; this.step=0;
 
       this.resize(); this.bind(); this.newGame(1);
@@ -374,7 +478,7 @@ function difficultyMult(){
         const side=Math.min(r.width, r.height);
         const left=r.left+(r.width - side)/2;
         const top =r.top +(r.height- side)/2;
-        const x=ev.clientX-left, y=ev.clientY-top; // 현재 화면좌표(스케일 반영됨)
+        const x=ev.clientX-left, y=ev.clientY-top;
         return {x,y,side};
       };
       let down=false,sx=0,sy=0;
@@ -383,7 +487,6 @@ function difficultyMult(){
         if(this.paused||this.state==='over'||this.swapAnim) return;
         down=true; const p=map(e);
         if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-        // ✅ 비율 기반 인덱싱 (DPR/스케일 무관)
         this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
         sx=p.x; sy=p.y;
       });
@@ -400,7 +503,6 @@ function difficultyMult(){
         if(this.paused||this.state==='over'||this.swapAnim) return;
         const t=e.touches[0]; const p=map(t);
         if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-        // ✅ 비율 기반 인덱싱
         this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
         sx=p.x; sy=p.y;
       },{passive:true});
@@ -416,7 +518,11 @@ function difficultyMult(){
       document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
       document.getElementById('undoBtn').addEventListener('click',()=>{ if(this.state!=='over') this.paused=!this.paused; });
       document.getElementById('endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver(true)));
-      document.getElementById('homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = 'user-retro-games.html'; }));
+
+      // ✅ HOME: 광고 후 user-retro-games.html로 이동
+      document.getElementById('homeBtn').addEventListener('click',()=> 
+        showAdThen(()=>{ window.location.href = 'user-retro-games.html'; })
+      );
 
       const tier=$('#tier'), lvl=$('#lvlRange');
       const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
@@ -460,7 +566,7 @@ function difficultyMult(){
     newGame(lv){
       this.level=lv; this.params=paramsForLevel(lv);
       this.score=0; this.combo=1; this.timeLeft=this.params.timeLimit;
-      this.points=0; this.chainLv=0; this.goalAwarded=false;
+      this.points=0; this.chainLv=0; this.maxChain=0; this.goalAwarded=false;
       this.state='playing'; this.paused=false; this.sel=null;
       this.fx.length=0; this.swapAnim=null;
       const ov=document.getElementById('gameOver'); if(ov) ov.style.display='none';
@@ -582,7 +688,10 @@ function difficultyMult(){
       }
       for(const s of specials){ this.grid[s.x][s.y]=s.val; }
 
-      this.score += cleared*10*this.combo; this.combo++;
+      this.score += cleared*10*this.combo; 
+      this.combo++;
+      if(chainLv>this.maxChain) this.maxChain = chainLv;
+
       const chainBonus = Math.min(0.6, Math.max(0, (chainLv-1)*0.2));
       const mult = difficultyMult();
       const earned = Math.floor(basePoint * (1+chainBonus) * mult);
@@ -688,7 +797,7 @@ function difficultyMult(){
 
       const g=ctx.createLinearGradient(0,0,0,this.c.height);
       g.addColorStop(0,'#0b1440'); g.addColorStop(1,'#070c22');
-      ctx.fillStyle=g; ctx.fillRect(0,0,this.c.width,this.c.height);
+      ctx.fillStyle=g; ctx.fillRect(0,0	this.c.width,this.c.height);
 
       const s=Math.min(this.c.width,this.c.height); const x0=this.ox, y0=this.oy; this.step=s/this.N;
 
@@ -734,11 +843,29 @@ function difficultyMult(){
     run(ts){ const dt=(ts-(this.last||ts))/1000; this.last=ts; this.update(Math.min(dt,0.033)); this.draw(); requestAnimationFrame((t)=>this.run(t)); }
 
     gameOver(manual=false){
+      if(this.state==='over') return;
       this.state='over';
       if(this.score>this.best){ this.best=this.score; localStorage.setItem(LS_KEYS.best, String(this.best)); }
-      addRecord(this.score, this.points); addPlay();
+      addRecord(this.score, this.points); 
+      addPlay();
       const ov=document.getElementById('gameOver'); if(ov) ov.style.display='flex';
       notifyFinish(this.score|0);
+
+      // ✅ 서버 지갑 리워드 적립 요청 (실패해도 게임 흐름 유지)
+      try{
+        if(typeof window.RG_addReward === 'function'){
+          window.RG_addReward({
+            game: 'match-3',
+            score: this.score|0,
+            points: this.points|0,
+            level: this.level|0,
+            timeLeft: Math.round(this.timeLeft||0),
+            manualEnd: !!manual
+          });
+        }
+      }catch(e){
+        console.warn('RG_addReward call failed', e);
+      }
     }
   }
 

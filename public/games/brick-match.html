@@ -34,7 +34,7 @@
 </script>
 <!-- === /Common SEO/A11y === -->
 
-<!-- AdSense 스니펫: 요청값 그대로 -->
+<!-- AdSense 스니펫: 요청값 그대로 (클라이언트 ID 일치) -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
 
@@ -122,8 +122,9 @@
 </style>
 </head>
 
-<script defer src="assets/js/app.js"></script>
-<script defer src="assets/js/analytics.js"></script>
+<!-- 경로를 절대경로로 고정해서 /public/games/에서도 공통 JS가 안전하게 로드되도록 수정 -->
+<script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
 
 <body>
   <div id="site-header"></div>
@@ -230,16 +231,20 @@
   </div>
 
 <script>
-/***** Ad 연동 *****/
-const AD_CLIENT = 'ca-pub-6713974263597310';
-const AD_SLOT   = '';
+/***** Ad 연동 (클라이언트 ID 정확히 일치) *****/
+const AD_CLIENT = 'ca-pub-6713974265397310';  // ✔ meta와 동일 ID
+const AD_SLOT   = ''; // 실제 슬롯 ID 보유 시 채워 넣으면 됨
+
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
 }
 function showInterstitialAd(){
-  const box=document.getElementById('adContainer'); box.innerHTML='';
+  const box=document.getElementById('adContainer'); 
+  if(!box) return;
+  box.innerHTML='';
   const ins=document.createElement('ins');
-  ins.className='adsbygoogle'; ins.style.display='block';
+  ins.className='adsbygoogle'; 
+  ins.style.display='block';
   ins.setAttribute('data-ad-client', AD_CLIENT);
   if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
   ins.setAttribute('data-ad-format','auto');
@@ -250,10 +255,14 @@ function showInterstitialAd(){
   document.getElementById('adModal').style.display='flex';
 }
 let _afterAd=null;
-function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
+function showAdThen(fn){ 
+  _afterAd = (typeof fn==='function') ? fn : null; 
+  showInterstitialAd(); 
+}
 document.getElementById('adClose').addEventListener('click',()=>{
   document.getElementById('adModal').style.display='none';
-  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e);} 
+  const f=_afterAd; _afterAd=null; 
+  if(f) try{ f(); }catch(e){ console.error(e);} 
 });
 
 /***** Neon FX (background stars) *****/
@@ -282,162 +291,125 @@ const DPR=()=>Math.min(2, window.devicePixelRatio||1);
 const clamp=(n,a,b)=>Math.max(a, Math.min(b,n));
 const fmt=n=>n.toLocaleString('ko-KR');
 
-/* Match-3 전용 키 */
-const LS_KEYS={plays:'plays_match',tickets:'tickets_match',records:'records_match',best:'best_match'};
+/* Match-3 전용 키 (로컬 플레이/티켓 기록: 게임별 통계용) */
+const LS_KEYS={
+  plays   :'plays_match',
+  tickets :'tickets_match',
+  records :'records_match',
+  best    :'best_match'
+};
 
 function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch(e){ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
 function updateTicketUI(){
-  const plays= +localStorage.getItem(LS_KEYS.plays)||0;
-  const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  $('#ticketsAmt').textContent=tickets;
-  $('#ticketsCap').textContent=(plays%10)+' / 10';
+  const plays   = +localStorage.getItem(LS_KEYS.plays)||0;
+  const tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
+  $('#ticketsAmt').textContent = tickets;
+  $('#ticketsCap').textContent = (plays%10)+' / 10';
   $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
 }
 
-/* ================= Wallet API & RG_addReward =================
-   /api/wallet 엔드포인트 스펙 (게임 리워드 적립용)
-
-   [REQUEST] POST /api/wallet
-   Content-Type: application/json
-
-   {
-     "action": "addGameReward",
-     "game": "match-3",           // 게임 슬러그 (예: 'match-3', 'brick-breaker' 등)
-     "score": 12340,              // 해당 판 최종 점수
-     "points": 120,               // 프런트에서 계산한 적립 포인트(권장: 클라 추정값)
-     "meta": {
-       "level": 12,               // 도달 레벨
-       "timeLeft": 5,             // 남은 시간(초) 등 부가정보
-       "manualEnd": false,        // 사용자가 '게임 종료' 버튼으로 끝냈는지 여부
-       "clientTs": "2025-11-17T12:34:56.789Z",
-       "page": "brick-match.html" // 호출 페이지/소스 정보
-     }
-   }
-
-   [RESPONSE] 200 OK
-   {
-     "ok": true,
-     "wallet": {
-       "points": 3120,            // 서버 기준 최신 포인트 잔액
-       "tickets": 4               // 서버 기준 최신 티켓 수
-     },
-     "reward": {
-       "pointsDelta": 120,        // 이번 판으로 적립된 포인트
-       "ticketsDelta": 1          // 이번 판으로 적립된 티켓 (없으면 0)
-     },
-     "error": null                // 실패 시 에러 메시지 (ok:false)
-   }
-
-   - 프런트에서는 실패하더라도 게임 진행/로컬 포인트는 그대로 유지 (조용히 무시)
-   - 성공 시 wallet 스냅샷으로 HUD를 갱신 (pointsAmt, ticketsAmt 등)
+/* ================= Wallet API & 글로벌 HUD 연동 =================
+   - user-retro-games.html 쪽에서 RG_addReward({ coins, tickets, xp })를
+     전역으로 제공한다고 가정하고, 여기서는 그 함수를 안전하게 사용.
+   - 서버 측 지갑 API (/api/wallet/reward)도 동시에 호출해서
+     로그인 계정 기준 통합 티켓/포인트/경험치를 유지.
 ************************************************************* */
+const WALLET_API_BASE = '/api/wallet';
 
-function applyWalletSnapshot(wallet){
-  if(!wallet) return;
+async function postWalletReward(payload){
   try{
-    // 포인트 잔액 동기화
-    if(typeof wallet.points === 'number'){
-      const cap = 5000;
-      $('#pointsAmt').textContent = fmt(wallet.points);
-      $('#pointsBar').style.width = Math.min(100, (wallet.points/cap*100)).toFixed(1)+'%';
+    const res = await fetch(WALLET_API_BASE + '/reward', {
+      method: 'POST',
+      headers: {
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+        'Cache-Control':'no-store'
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok){
+      console.warn('wallet/reward http error', res.status);
+      return null;
     }
-    // 티켓 잔액 동기화 (로컬에도 반영)
-    if(typeof wallet.tickets === 'number'){
-      localStorage.setItem(LS_KEYS.tickets, String(wallet.tickets));
-      $('#ticketsAmt').textContent = wallet.tickets;
-      updateTicketUI();
+    const data = await res.json().catch(()=>null);
+    if(!data || !data.ok){
+      console.warn('wallet/reward logical error', data);
+      return null;
     }
-  }catch(e){
-    console.warn('applyWalletSnapshot error', e);
+    return data.wallet || null;
+  }catch(err){
+    console.warn('wallet/reward failed', err);
+    return null;
   }
 }
 
-/**
- * RG_addReward(payload)
- * - payload: { game, score, points, level, timeLeft, manualEnd }
- * - 게임 종료 시 서버에 리워드 적립 요청
- */
-window.RG_addReward = async function RG_addReward(payload){
+/* 점수/포인트 → 코인/XP/티켓 변환 규칙 (브릭브레이커와 동일 계열 규칙) */
+function calcReward(score, points, level){
+  const s  = Math.max(0, score|0);
+  const p  = Math.max(0, points|0);
+  const lv = Math.max(1, level|0);
+
+  // 200점당 1코인, 난이도 계수 소폭 적용
+  const diffMult  = 1 + ((lv-1) * 0.002);
+  const coinsBase = s / 200 * diffMult;
+  const coins     = Math.floor(coinsBase);
+
+  // 포인트는 XP로 1:4 비율, 상한 2,000
+  const xp = Math.min(2000, p * 4);
+
+  // 티켓은 계정 기준으로 별도 정책 있을 수 있으므로 여기서는 0
+  const tickets = 0;
+
+  return { coins, xp, tickets };
+}
+
+/* 게임에서 계산된 보상을:
+   1) 메인 허브(RG_addReward)를 통해 통합 HUD/로컬 스토리지에 반영
+   2) 서버 지갑(/api/wallet/reward)에 동기화 */
+function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+  if(!delta) return;
+  const coins   = Number(delta.coins)   || 0;
+  const xp      = Number(delta.xp)      || 0;
+  const tickets = Number(delta.tickets) || 0;
+  if(!(coins || xp || tickets)) return;
+
+  // 1) 홈(user-retro-games.html)의 글로벌 HUD 갱신
   try{
-    const body = {
-      action: 'addGameReward',
-      game: payload.game || 'match-3',
-      score: (payload.score|0),
-      points: (payload.points|0),
-      meta: {
-        level: payload.level|0,
-        timeLeft: payload.timeLeft ?? null,
-        manualEnd: !!payload.manualEnd,
-        clientTs: new Date().toISOString(),
-        page: 'brick-match.html'
-      }
-    };
-
-    const res = await fetch('/api/wallet', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      credentials: 'include',
-      body: JSON.stringify(body)
-    });
-
-    if(!res.ok) return;
-    const data = await res.json().catch(()=>null);
-    if(!data || data.ok === false) return;
-
-    if(data.wallet) applyWalletSnapshot(data.wallet);
-    // 필요하면 data.reward 를 사용해 토스트/연출 추가 가능
+    if(typeof window.RG_addReward === 'function'){
+      window.RG_addReward({ coins, tickets, xp });
+    }
   }catch(e){
     console.warn('RG_addReward error', e);
   }
-};
 
-function addPlay(){
-  let plays= +localStorage.getItem(LS_KEYS.plays)||0; 
-  plays++;
-  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  if(plays%10===0) tickets++;
-  localStorage.setItem(LS_KEYS.plays, String(plays));
-  localStorage.setItem(LS_KEYS.tickets, String(tickets));
-  updateTicketUI();
-
-  // 🔁 광고 노출 주기: 8회 → 3회 플레이마다 1회 팝업
-  if(plays % 3 === 0){
-    showInterstitialAd();
-  }
+  // 2) 서버 지갑 API 호출
+  postWalletReward({
+    game: gameCode,
+    delta: { coins, xp, tickets },
+    meta: {
+      score : meta && meta.score  || 0,
+      points: meta && meta.points || 0,
+      level : meta && meta.level  || 0
+    }
+  });
 }
-
-function addRecord(score, points){
-  const recs=loadJSON(LS_KEYS.records,[]); const now=new Date();
-  recs.unshift({ts:now.toISOString(), score, points});
-  saveJSON(LS_KEYS.records,recs.slice(0,200));
-}
-function showRecords(){
-  const recs=loadJSON(LS_KEYS.records,[]);
-  const rows = recs.map(r=>{
-    const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
-    return `<tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
-      <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
-      <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
-    </tr>`;
-  }).join('');
-  $('#recBody').innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
-  $('#recModal').style.display='flex';
-}
-document.getElementById('recordsBtn').addEventListener('click',showRecords);
-document.getElementById('recClose').addEventListener('click',()=>$('#recModal').style.display='none');
-document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
 
 /***** 난이도 배율 *****/
 function difficultyMult(){
   const v=$('#tier')?.value||'beginner';
-  return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
+  return {
+    beginner    : 1.00,
+    intermediate: 1.15,
+    advanced    : 1.30,
+    hell        : 1.50,
+    doom        : 1.65,
+    insane      : 1.85
+  }[v] || 1.0;
 }
 
-/***** Match-3 Game (원본 유지 + 좌표 매핑 픽스) *****/
+/***** Match-3 Game (원본 유지 + 좌표 매핑 픽스 + 허브/지갑 연동) *****/
 (function(){
   const EMPTY=0, NORMAL=1, ROCK=2, ICE=3, STRIPE_H=4, STRIPE_V=5, BOMB=6, RAINBOW=7;
 
@@ -462,6 +434,8 @@ function difficultyMult(){
 
       this.resize(); this.bind(); this.newGame(1);
       requestAnimationFrame((t)=>this.run(t));
+
+      /* ✅ 서버 세션 시작 알림 (slug: 'match-3') */
       notifyStart();
     }
 
@@ -472,7 +446,7 @@ function difficultyMult(){
     inBounds(x,y){ return x>=0&&x<this.N&&y>=0&&y<this.N; }
 
     bind(){
-      // ✅ transform(scale)과 DPR을 모두 무시하고, 화면에 보이는 실제 크기만 사용
+      // ✅ transform(scale)과 DPR 무시, 실제 DOM 크기 기준으로만 좌표 매핑
       const map = (ev)=>{
         const r=this.c.getBoundingClientRect();
         const side=Math.min(r.width, r.height);
@@ -517,21 +491,32 @@ function difficultyMult(){
       // Deck / Keys
       document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
       document.getElementById('undoBtn').addEventListener('click',()=>{ if(this.state!=='over') this.paused=!this.paused; });
-      document.getElementById('endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver(true)));
+      document.getElementById('endBtn').addEventListener('click',()=> 
+        showAdThen(()=> this.gameOver(true))
+      );
 
-      // ✅ HOME: 광고 후 user-retro-games.html로 이동
+      // ✅ HOME: 광고 후 로그인된 메인 허브(user-retro-games.html)로 이동
       document.getElementById('homeBtn').addEventListener('click',()=> 
-        showAdThen(()=>{ window.location.href = 'user-retro-games.html'; })
+        showAdThen(()=>{ window.location.href = '/user-retro-games.html'; })
       );
 
       const tier=$('#tier'), lvl=$('#lvlRange');
-      const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
+      const applyTier=(t)=>{ 
+        let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; 
+        lvl.value=lv; 
+        this.setLevel(lv); 
+      };
       tier.addEventListener('change',()=> applyTier(tier.value));
       lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
 
       document.addEventListener('keydown',(e)=>{
         if(e.code==='Enter' || e.code==='KeyN'){ this.newGame(this.level); }
-        if(e.code==='Space' || e.code==='KeyU'){ if(this.state!=='over'){ this.paused=!this.paused; e.preventDefault(); } }
+        if(e.code==='Space' || e.code==='KeyU'){ 
+          if(this.state!=='over'){ 
+            this.paused=!this.paused; 
+            e.preventDefault(); 
+          } 
+        }
       });
 
       window.addEventListener('resize',()=> this.resize(),{passive:true});
@@ -543,23 +528,31 @@ function difficultyMult(){
       const d=this.DPR();
       const r=wrap.getBoundingClientRect();
       const side=Math.floor(Math.min(r.width, r.height));
-      this.c.style.width = side+'px';
-      this.c.style.height= side+'px';
-      this.c.width = Math.floor(side*d);
-      this.c.height= Math.floor(side*d);
+      this.c.style.width  = side+'px';
+      this.c.style.height = side+'px';
+      this.c.width  = Math.floor(side*d);
+      this.c.height = Math.floor(side*d);
       const s=Math.min(this.c.width,this.c.height);
       this.step=s/this.N; this.ox=(this.c.width - s)/2; this.oy=(this.c.height- s)/2;
     }
 
-    setLevel(lv){ this.level=lv; this.params=paramsForLevel(lv); this.updateHUD(); }
+    setLevel(lv){ 
+      this.level=lv; 
+      this.params=paramsForLevel(lv); 
+      this.updateHUD(); 
+    }
 
     updateHUD(){
       $('#score').textContent=this.score|0;
-      if(this.score>this.best){ this.best=this.score|0; localStorage.setItem(LS_KEYS.best, String(this.best)); }
+      if(this.score>this.best){ 
+        this.best=this.score|0; 
+        localStorage.setItem(LS_KEYS.best, String(this.best)); 
+      }
       $('#best').textContent=this.best|0;
       $('#moves').textContent=(Math.max(0,this.level-1))|0;
       $('#pointsAmt').textContent=fmt(this.points|0);
-      const cap=5000; $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
+      const cap=5000; 
+      $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
       updateTicketUI();
     }
 
@@ -569,12 +562,23 @@ function difficultyMult(){
       this.points=0; this.chainLv=0; this.maxChain=0; this.goalAwarded=false;
       this.state='playing'; this.paused=false; this.sel=null;
       this.fx.length=0; this.swapAnim=null;
-      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='none';
+      const ov=document.getElementById('gameOver'); 
+      if(ov) ov.style.display='none';
 
-      this.grid=[]; for(let i=0;i<this.N;i++){ this.grid[i]=[]; for(let j=0;j<this.N;j++){ this.grid[i][j]=this.randomTile(i,j); } }
+      this.grid=[]; 
+      for(let i=0;i<this.N;i++){ 
+        this.grid[i]=[]; 
+        for(let j=0;j<this.N;j++){ 
+          this.grid[i][j]=this.randomTile(i,j); 
+        } 
+      }
       this.addBlockers();
 
-      let guard=0; while(!this.hasAnyMatchMove() && guard<50){ this.shuffle(); guard++; }
+      let guard=0; 
+      while(!this.hasAnyMatchMove() && guard<50){ 
+        this.shuffle(); 
+        guard++; 
+      }
       this.updateHUD();
     }
 
@@ -592,20 +596,27 @@ function difficultyMult(){
       }
       return col;
     }
+
     addBlockers(){
-      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
-        if(Math.random()<this.params.rockRate) this.grid[i][j]=ROCK;
-        else if(Math.random()<this.params.iceRate) this.grid[i][j]=ICE*10 + this.grid[i][j];
-        else if(Math.random()<this.params.bombRate) this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
-      }
+      for(let i=0;i<this.N;i++) 
+        for(let j=0;j<this.N;j++){
+          if(Math.random()<this.params.rockRate) this.grid[i][j]=ROCK;
+          else if(Math.random()<this.params.iceRate) this.grid[i][j]=ICE*10 + this.grid[i][j];
+          else if(Math.random()<this.params.bombRate) this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
+        }
     }
 
     select(x,y){ if(this.inBounds(x,y)) this.sel={x,y}; }
 
     trySwap(dir){
       if(!this.sel || this.swapAnim) return;
-      let dx=0,dy=0; if(dir==='l')dx=-1; if(dir==='r')dx=1; if(dir==='u')dy=-1; if(dir==='d')dy=1;
-      const x=this.sel.x, y=this.sel.y, nx=x+dx, ny=y+dy; if(!this.inBounds(nx,ny)) return;
+      let dx=0,dy=0; 
+      if(dir==='l')dx=-1; 
+      if(dir==='r')dx=1; 
+      if(dir==='u')dy=-1; 
+      if(dir==='d')dy=1;
+      const x=this.sel.x, y=this.sel.y, nx=x+dx, ny=y+dy; 
+      if(!this.inBounds(nx,ny)) return;
 
       const animateSwap=(x1,y1,x2,y2,reverse=false)=> new Promise(res=>{
         const dur=140; const t0=performance.now();
@@ -616,13 +627,22 @@ function difficultyMult(){
         this.swap(x,y,nx,ny);
         const found=this.findMatches().length>0;
         if(!found){
-          animateSwap(x,y,nx,ny,true).then(()=>{ this.swap(x,y,nx,ny); if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5); });
+          animateSwap(x,y,nx,ny,true).then(()=>{ 
+            this.swap(x,y,nx,ny); 
+            if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5); 
+          });
         }else{
-          this.sel=null; this.processCascade();
+          this.sel=null; 
+          this.processCascade();
         }
       });
     }
-    swap(x1,y1,x2,y2){ const t=this.grid[x1][y1]; this.grid[x1][y1]=this.grid[x2][y2]; this.grid[x2][y2]=t; }
+
+    swap(x1,y1,x2,y2){ 
+      const t=this.grid[x1][y1]; 
+      this.grid[x1][y1]=this.grid[x2][y2]; 
+      this.grid[x2][y2]=t; 
+    }
 
     findMatches(){
       const res=[]; let i,j,cnt,val,prev,vType,pType,vCol,pCol,lastCol;
@@ -635,9 +655,17 @@ function difficultyMult(){
           vCol=this.bval(val); pCol=this.bval(prev);
           const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
           if(eq) cnt++;
-          else { if (cnt >= 3) { res.push({ dir: 'h', y: j, x: i - cnt, len: cnt, col: pCol }); } cnt = 1; }
+          else { 
+            if (cnt >= 3) { 
+              res.push({ dir: 'h', y: j, x: i - cnt, len: cnt, col: pCol }); 
+            } 
+            cnt = 1; 
+          }
         }
-        if (cnt>=3){ lastCol=this.bval(this.grid[this.N-1][j]); res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol}); }
+        if (cnt>=3){ 
+          lastCol=this.bval(this.grid[this.N-1][j]); 
+          res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol}); 
+        }
       }
       for(i=0;i<this.N;i++){
         cnt=1;
@@ -648,15 +676,24 @@ function difficultyMult(){
           vCol=this.bval(val); pCol=this.bval(prev);
           const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
           if(eq) cnt++;
-          else { if (cnt >= 3) { res.push({ dir: 'v', x: i, y: j - cnt, len: cnt, col: pCol }); }cnt = 1; }
+          else { 
+            if (cnt >= 3) { 
+              res.push({ dir: 'v', x: i, y: j - cnt, len: cnt, col: pCol }); 
+            }
+            cnt = 1; 
+          }
         }
-        if(cnt>=3){ lastCol=this.bval(this.grid[i][this.N-1]); res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol}); }
+        if(cnt>=3){ 
+          lastCol=this.bval(this.grid[i][this.N-1]); 
+          res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol}); 
+        }
       }
       return res;
     }
 
     resolveMatches(chainLv){
-      const matches=this.findMatches(); if(matches.length===0) return {found:false};
+      const matches=this.findMatches(); 
+      if(matches.length===0) return {found:false};
       let cleared=0; const specials=[]; let basePoint=0;
 
       for(const m of matches){
@@ -732,7 +769,13 @@ function difficultyMult(){
       for(let i=0;i<this.N;i++){
         for(let j=this.N-1;j>=0;j--){
           if(this.grid[i][j]===EMPTY){
-            for(let k=j-1;k>=0;k--){ if(this.grid[i][k]!==EMPTY){ this.grid[i][j]=this.grid[i][k]; this.grid[i][k]=EMPTY; break; } }
+            for(let k=j-1;k>=0;k--){
+              if(this.grid[i][k]!==EMPTY){ 
+                this.grid[i][j]=this.grid[i][k]; 
+                this.grid[i][k]=EMPTY; 
+                break; 
+              } 
+            }
             if(this.grid[i][j]===EMPTY){ this.grid[i][j]=this.randomTile(i,j); }
           }
         }
@@ -741,29 +784,66 @@ function difficultyMult(){
         const v=this.grid[i][j];
         if(Math.floor(v/10)===BOMB){
           let n=v%10; n--;
-          if(n<=0){ this.explodeAt(i,j); this.grid[i][j]=EMPTY; }
-          else { this.grid[i][j]=BOMB*10+n; }
+          if(n<=0){ 
+            this.explodeAt(i,j); 
+            this.grid[i][j]=EMPTY; 
+          }
+          else { 
+            this.grid[i][j]=BOMB*10+n; 
+          }
         }
       }
       if(!this.hasAnyMatchMove()) this.shuffle();
     }
 
     explodeAt(cx,cy){
-      for(let i=cx-1;i<=cx+1;i++) for(let j=cy-1;j<=cy+1;j++)
-        if(this.inBounds(i,j)){ if(this.btype(this.grid[i][j])!==ROCK){ this.spawnPop(i,j,this.bval(this.grid[i][j])); this.grid[i][j]=EMPTY; this.score+=5; } }
+      for(let i=cx-1;i<=cx+1;i++) 
+        for(let j=cy-1;j<=cy+1;j++)
+          if(this.inBounds(i,j)){ 
+            if(this.btype(this.grid[i][j])!==ROCK){ 
+              this.spawnPop(i,j,this.bval(this.grid[i][j])); 
+              this.grid[i][j]=EMPTY; 
+              this.score+=5; 
+            } 
+          }
     }
 
     hasAnyMatchMove(){
-      for(let x=0;x<this.N;x++) for(let y=0;y<this.N;y++){
-        if(x+1<this.N){ this.swap(x,y,x+1,y); if(this.findMatches().length>0){ this.swap(x,y,x+1,y); return true; } this.swap(x,y,x+1,y); }
-        if(y+1<this.N){ this.swap(x,y,x,y+1); if(this.findMatches().length>0){ this.swap(x,y,x,y+1); return true; } this.swap(x,y,x,y+1); }
-      }
+      for(let x=0;x<this.N;x++) 
+        for(let y=0;y<this.N;y++){
+          if(x+1<this.N){ 
+            this.swap(x,y,x+1,y); 
+            if(this.findMatches().length>0){ 
+              this.swap(x,y,x+1,y); 
+              return true; 
+            } 
+            this.swap(x,y,x+1,y); 
+          }
+          if(y+1<this.N){ 
+            this.swap(x,y,x,y+1); 
+            if(this.findMatches().length>0){ 
+              this.swap(x,y,x,y+1); 
+              return true; 
+            } 
+            this.swap(x,y,x,y+1); 
+          }
+        }
       return false;
     }
+
     shuffle(){
-      const flat=[]; for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++) if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
-      for(let i=flat.length-1;i>0;i--){ const r=this.rnd(i+1); [flat[i],flat[r]]=[flat[r],flat[i]]; }
-      let idx=0; for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++) if(this.grid[i][j]!==ROCK) this.grid[i][j]=flat[idx++];
+      const flat=[]; 
+      for(let i=0;i<this.N;i++) 
+        for(let j=0;j<this.N;j++) 
+          if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
+      for(let i=flat.length-1;i>0;i--){ 
+        const r=this.rnd(i+1); 
+        [flat[i],flat[r]]=[flat[r],flat[i]]; 
+      }
+      let idx=0; 
+      for(let i=0;i<this.N;i++) 
+        for(let j=0;j<this.N;j++) 
+          if(this.grid[i][j]!==ROCK) this.grid[i][j]=flat[idx++];
     }
 
     spawnPop(gx,gy,colIdx){
@@ -771,9 +851,11 @@ function difficultyMult(){
       const col=pal[(Math.max(1,colIdx)-1)%pal.length];
       this.fx.push({gx,gy,tStart:this.last||performance.now(), col});
     }
+
     drawPops(ctx){
       const now=this.last||performance.now(); const DURATION=220;
-      const keep=[]; for(const fx of this.fx){
+      const keep=[]; 
+      for(const fx of this.fx){
         const k=(now-fx.tStart)/DURATION; if(k>=1) continue;
         const x=this.ox+(fx.gx+0.5)*this.step, y=this.oy+(fx.gy+0.5)*this.step;
         const r=this.step*0.45*(0.25+0.75*k);
@@ -787,7 +869,11 @@ function difficultyMult(){
 
     update(dt){
       if(this.paused||this.state==='over') return;
-      this.timeLeft -= dt; if(this.timeLeft<=0){ this.timeLeft=0; this.gameOver(); }
+      this.timeLeft -= dt; 
+      if(this.timeLeft<=0){ 
+        this.timeLeft=0; 
+        this.gameOver(false); 
+      }
       this.updateHUD();
     }
 
@@ -796,83 +882,173 @@ function difficultyMult(){
       ctx.clearRect(0,0,this.c.width,this.c.height);
 
       const g=ctx.createLinearGradient(0,0,0,this.c.height);
-      g.addColorStop(0,'#0b1440'); g.addColorStop(1,'#070c22');
-      ctx.fillStyle=g; ctx.fillRect(0,0	this.c.width,this.c.height);
+      g.addColorStop(0,'#0b1440'); 
+      g.addColorStop(1,'#070c22');
+      ctx.fillStyle=g; 
+      ctx.fillRect(0,0,this.c.width,this.c.height);
 
-      const s=Math.min(this.c.width,this.c.height); const x0=this.ox, y0=this.oy; this.step=s/this.N;
+      const s=Math.min(this.c.width,this.c.height); 
+      const x0=this.ox, y0=this.oy; 
+      this.step=s/this.N;
 
-      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
-        const v=this.grid[i][j]; const bt=this.btype(v); const val=this.bval(v);
-        let x=x0+i*this.step, y=y0+j*this.step;
+      for(let i=0;i<this.N;i++) 
+        for(let j=0;j<this.N;j++){
+          const v=this.grid[i][j]; 
+          const bt=this.btype(v); 
+          const val=this.bval(v);
+          let x=x0+i*this.step, y=y0+j*this.step;
 
-        if(this.swapAnim){
-          const a=this.swapAnim, now=performance.now();
-          let t=(now-a.t0)/a.dur; t=Math.max(0,Math.min(1,t));
-          const dirX=a.x2-a.x1, dirY=a.y2-a.y1;
-          const off = (i===a.x1&&j===a.y1)? (a.reverse?1-t:t) : (i===a.x2&&j===a.y2? (a.reverse?1-t:t)*-1 : 0);
-          if(off!==0){ x += off*dirX*this.step; y += off*dirY*this.step; }
-          if(t>=1){ const done=a.done; this.swapAnim=null; if(done) done(); }
+          if(this.swapAnim){
+            const a=this.swapAnim, now=performance.now();
+            let t=(now-a.t0)/a.dur; 
+            t=Math.max(0,Math.min(1,t));
+            const dirX=a.x2-a.x1, dirY=a.y2-a.y1;
+            const off = (i===a.x1&&j===a.y1)? (a.reverse?1-t:t) : (i===a.x2&&j===a.y2? (a.reverse?1-t:t)*-1 : 0);
+            if(off!==0){ 
+              x += off*dirX*this.step; 
+              y += off*dirY*this.step; 
+            }
+            if(t>=1){ 
+              const done=a.done; 
+              this.swapAnim=null; 
+              if(done) done(); 
+            }
+          }
+
+          ctx.strokeStyle='#283273'; 
+          ctx.strokeRect(x,y,this.step,this.step);
+          if(v===EMPTY) continue;
+
+          const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
+          const col=pal[(val-1)%pal.length];
+          ctx.fillStyle= bt===ROCK? '#444a66' 
+               : bt===ICE? '#a7d8ff' 
+               : bt===STRIPE_H||bt===STRIPE_V? '#fff2' 
+               : bt===BOMB? '#ff9aa6' 
+               : bt===RAINBOW? '#ffffff' 
+               : col;
+          ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
+          ctx.strokeStyle='#0006'; 
+          ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
+
+          ctx.fillStyle='#001'; 
+          ctx.font=(12*d)+'px ui-sans-serif'; 
+          ctx.textAlign='center'; 
+          ctx.textBaseline='middle';
+          if(bt===STRIPE_H)      ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
+          else if(bt===STRIPE_V) ctx.fillText('|',      x+this.step/2, y+this.step/2);
+          else if(bt===BOMB)     ctx.fillText(String(v%10),x+this.step/2, y+this.step/2);
+          else if(bt===RAINBOW)  ctx.fillText('*',      x+this.step/2, y+this.step/2);
+          else if(bt===ICE)      ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
+          else if(bt===ROCK)     ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
+
+          if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
+            ctx.strokeStyle='#8ea3ff'; 
+            ctx.lineWidth=3; 
+            ctx.strokeRect(x+3,y+3,this.step-6,this.step-6); 
+            ctx.lineWidth=1;
+          }
         }
-
-        ctx.strokeStyle='#283273'; ctx.strokeRect(x,y,this.step,this.step);
-        if(v===EMPTY) continue;
-        const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-        const col=pal[(val-1)%pal.length];
-        ctx.fillStyle= bt===ROCK? '#444a66' : bt===ICE? '#a7d8ff' : bt===STRIPE_H||bt===STRIPE_V? '#fff2' : bt===BOMB? '#ff9aa6' : bt===RAINBOW? '#ffffff' : col;
-        ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
-        ctx.strokeStyle='#0006'; ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
-        ctx.fillStyle='#001'; ctx.font=(12*d)+'px ui-sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        if(bt===STRIPE_H) ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
-        else if(bt===STRIPE_V) ctx.fillText('|', x+this.step/2, y+this.step/2);
-        else if(bt===BOMB) ctx.fillText(String(v%10), x+this.step/2, y+this.step/2);
-        else if(bt===RAINBOW) ctx.fillText('*', x+this.step/2, y+this.step/2);
-        else if(bt===ICE) ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
-        else if(bt===ROCK) ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
-        if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
-          ctx.strokeStyle='#8ea3ff'; ctx.lineWidth=3; ctx.strokeRect(x+3,y+3,this.step-6,this.step-6); ctx.lineWidth=1;
-        }
-      }
 
       this.drawPops(ctx);
 
-      ctx.globalAlpha=0.12; ctx.fillStyle='#000';
-      for(let yy=0; yy<this.c.height; yy+=2*d){ ctx.fillRect(0,yy,this.c.width,1*d); }
+      ctx.globalAlpha=0.12; 
+      ctx.fillStyle='#000';
+      for(let yy=0; yy<this.c.height; yy+=2*d){ 
+        ctx.fillRect(0,yy,this.c.width,1*d); 
+      }
       ctx.globalAlpha=1;
     }
 
-    run(ts){ const dt=(ts-(this.last||ts))/1000; this.last=ts; this.update(Math.min(dt,0.033)); this.draw(); requestAnimationFrame((t)=>this.run(t)); }
+    run(ts){ 
+      const dt=(ts-(this.last||ts))/1000; 
+      this.last=ts; 
+      this.update(Math.min(dt,0.033)); 
+      this.draw(); 
+      requestAnimationFrame((t)=>this.run(t)); 
+    }
 
     gameOver(manual=false){
       if(this.state==='over') return;
       this.state='over';
-      if(this.score>this.best){ this.best=this.score; localStorage.setItem(LS_KEYS.best, String(this.best)); }
+      if(this.score>this.best){ 
+        this.best=this.score; 
+        localStorage.setItem(LS_KEYS.best, String(this.best)); 
+      }
       addRecord(this.score, this.points); 
       addPlay();
-      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='flex';
+
+      const ov=document.getElementById('gameOver'); 
+      if(ov) ov.style.display='flex';
+
+      /* ✅ 서버 세션 종료 (최종 점수 보고) */
       notifyFinish(this.score|0);
 
-      // ✅ 서버 지갑 리워드 적립 요청 (실패해도 게임 흐름 유지)
+      /* ✅ 계정 지갑/글로벌 HUD 보상 연동 */
       try{
-        if(typeof window.RG_addReward === 'function'){
-          window.RG_addReward({
-            game: 'match-3',
-            score: this.score|0,
-            points: this.points|0,
-            level: this.level|0,
-            timeLeft: Math.round(this.timeLeft||0),
-            manualEnd: !!manual
-          });
-        }
+        const delta = calcReward(this.score||0, this.points||0, this.level||1);
+        applyGlobalRewardAndSyncWallet('match-3', delta, {
+          score : this.score||0,
+          points: this.points||0,
+          level : this.level||1
+        });
       }catch(e){
-        console.warn('RG_addReward call failed', e);
+        console.error('reward sync error', e);
       }
     }
   }
 
+  function addPlay(){
+    let plays   = +localStorage.getItem(LS_KEYS.plays)||0; 
+    plays++;
+    let tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
+    if(plays%10===0) tickets++;
+    localStorage.setItem(LS_KEYS.plays,   String(plays));
+    localStorage.setItem(LS_KEYS.tickets, String(tickets));
+    updateTicketUI();
+
+    // 🔁 광고 노출 주기: 3회 플레이마다 1회 팝업
+    if(plays % 3 === 0){
+      showInterstitialAd();
+    }
+  }
+
+  function addRecord(score, points){
+    const recs=loadJSON(LS_KEYS.records,[]); 
+    const now=new Date();
+    recs.unshift({ts:now.toISOString(), score, points});
+    saveJSON(LS_KEYS.records,recs.slice(0,200));
+  }
+
+  function showRecords(){
+    const recs=loadJSON(LS_KEYS.records,[]);
+    const rows = recs.map(r=>{
+      const d=new Date(r.ts); 
+      const date=d.toLocaleString('ko-KR');
+      return `<tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
+        <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
+        <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
+      </tr>`;
+    }).join('');
+    $('#recBody').innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+    $('#recModal').style.display='flex';
+  }
+
+  document.getElementById('recordsBtn').addEventListener('click',showRecords);
+  document.getElementById('recClose').addEventListener('click',()=>$('#recModal').style.display='none');
+  document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
+
   const m3=new Match3(document.getElementById('game'));
   (function initUI(){
     const tier=$('#tier'), lvl=$('#lvlRange');
-    const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; m3.setLevel(lv); };
+    const applyTier=(t)=>{ 
+      let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; 
+      lvl.value=lv; 
+      m3.setLevel(lv); 
+    };
     applyTier(tier.value);
     lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
     updateTicketUI();
@@ -881,7 +1057,8 @@ function difficultyMult(){
 
 /***** Cabinet fit *****/
 function fitCabinet(){
-  const cab = document.querySelector('.cabinet'); if(!cab) return;
+  const cab = document.querySelector('.cabinet'); 
+  if(!cab) return;
   const margin = 16;
   cab.style.transform='none';
   const w=cab.offsetWidth, h=cab.offsetHeight;
@@ -911,21 +1088,26 @@ document.addEventListener('visibilitychange', () => {
     <button class="agree" type="button">동의</button>
   </div>
 
-
   <script>
   (function(){
     try{
       var KEY='rg_analytics_consent';
       function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
-      var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
+      var v=null; 
+      try{ v=localStorage.getItem(KEY); }catch(e){}
       var el=document.getElementById('cookieBanner');
-      if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
+      if(v==='yes'){ 
+        init(); 
+        if(el) el.style.display='none'; 
+        return; 
+      }
       if(!el){ return; } // no banner -> do not init
       el.style.display='flex';
       var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
       if(agree) agree.addEventListener('click', function(){
         try{ localStorage.setItem(KEY,'yes'); }catch(e){}
-        el.style.display='none'; init();
+        el.style.display='none'; 
+        init();
       });
       if(deny) deny.addEventListener('click', function(){
         try{ localStorage.setItem(KEY,'no'); }catch(e){}
@@ -935,7 +1117,6 @@ document.addEventListener('visibilitychange', () => {
   })();
   </script>
 
-  
   <div id="site-footer"></div>
 </body>
 </html>

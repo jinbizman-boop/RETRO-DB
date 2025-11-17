@@ -10,6 +10,11 @@
  * - Profile/Wallet/Games 바인딩 헬퍼
  * - Analytics와 느슨한 연동
  * - 게임 세션 훅(gameStart / gameFinish)
+ *
+ * 확장
+ * - 계정별 경험치/포인트/티켓 정보를 백엔드와 동기화
+ * - /auth/me 응답(user.stats) + _middleware 의 X-User-* 헤더를 모두 사용
+ * - UI 구조/디자인은 그대로 두고, data-user-* 속성이 존재하면 해당 값만 채움
  */
 
 (() => {
@@ -60,7 +65,76 @@
     setTimeout(()=>{ el.remove(); }, ms + 240);
   };
 
-  // 공통 JSON fetch (빈 응답, 오류, CSRF 자동 처리)
+  // 계정별 진행도(경험치/포인트/티켓) 캐시
+  let _me = null; // 세션 캐시(정규화된 user 객체)
+  let _stats = { points: 0, exp: 0, level: 1, tickets: 0 };
+
+  const _toInt = (v) => {
+    if (v === null || v === undefined) return 0;
+    const n = parseInt(String(v), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const syncStatsUI = () => {
+    const s = (_me && _me.stats) || _stats;
+    if (!s) return;
+    // data-user-points, data-user-exp, data-user-level, data-user-tickets
+    qsa('[data-user-points]').forEach(el => {
+      el.textContent = String(s.points ?? 0);
+    });
+    qsa('[data-user-exp]').forEach(el => {
+      el.textContent = String(s.exp ?? 0);
+    });
+    qsa('[data-user-level]').forEach(el => {
+      el.textContent = String(s.level ?? 1);
+    });
+    qsa('[data-user-tickets]').forEach(el => {
+      el.textContent = String(s.tickets ?? 0);
+    });
+  };
+
+  const updateStatsFromHeaders = (headers) => {
+    if (!headers || typeof headers.get !== 'function') return;
+    const hp = headers.get('X-User-Points');
+    const he = headers.get('X-User-Exp');
+    const hl = headers.get('X-User-Level');
+    const ht = headers.get('X-User-Tickets');
+
+    if (!hp && !he && !hl && !ht) return;
+
+    if (hp !== null) _stats.points = _toInt(hp);
+    if (he !== null) _stats.exp = _toInt(he);
+    if (hl !== null) _stats.level = _toInt(hl) || 1;
+    if (ht !== null) _stats.tickets = _toInt(ht);
+
+    if (_me) {
+      _me.stats = Object.assign({}, _me.stats || {}, _stats);
+    }
+    syncStatsUI();
+  };
+
+  const normalizeMePayload = (raw) => {
+    if (!raw) return null;
+    // /auth/me가 { ok, user:{...} } 형태인 경우
+    if (raw.user) {
+      const u = raw.user;
+      const stats =
+        u.stats ||
+        raw.stats ||
+        null;
+      const mergedStats = stats || _stats;
+      return Object.assign({}, u, { stats: mergedStats });
+    }
+    // 이미 user 객체만 온 경우
+    if (raw.ok === undefined && raw.user === undefined) {
+      const stats = raw.stats || _stats;
+      return Object.assign({}, raw, { stats });
+    }
+    // 그 외는 최대한 보수적으로
+    return raw;
+  };
+
+  // 공통 JSON fetch (빈 응답, 오류, CSRF 자동 처리 + X-User-* 헤더로 진행도 갱신)
   const jsonFetch = async (url, { method='GET', body, headers } = {}) => {
     const csrf = getCookie(CFG.csrfCookie);
     const mergedHeaders = {
@@ -74,6 +148,14 @@
       headers: mergedHeaders,
       body: body ? JSON.stringify(body) : undefined,
     });
+
+    // 계정별 진행도 헤더(X-User-*)가 있으면 전역 캐시/바인딩만 업데이트
+    try {
+      updateStatsFromHeaders(res.headers);
+    } catch (e) {
+      if (CFG.debug) console.warn('[app] updateStatsFromHeaders failed', e);
+    }
+
     let data = null;
     try { data = await res.json(); } catch { data = null; }
     if (!res.ok) {
@@ -114,7 +196,6 @@
   };
 
   /* ───────────────────────────── 인증 & 세션 ───────────────────────────── */
-  let _me = null; // 세션 캐시
 
   const syncHeaderAuthUI = () => {
     const loginBtn  = qs('[data-action="goLogin"]');
@@ -135,12 +216,21 @@
   };
 
   const getSession = async (opts={}) => {
-    if (_me && !opts.refresh) return _me;
+    if (_me && !opts.refresh) {
+      // 캐시된 세션이 있지만, 진행도 캐시를 다시 바인딩
+      syncHeaderAuthUI();
+      syncStatsUI();
+      return _me;
+    }
     try {
-      const me = await jsonFetch(CFG.endpoints.me);
+      const raw = await jsonFetch(CFG.endpoints.me);
+      const me = normalizeMePayload(raw);
       _me = me || null;
-    } catch { _me = null; }
+    } catch {
+      _me = null;
+    }
     syncHeaderAuthUI();
+    syncStatsUI();
     return _me;
   };
 
@@ -148,8 +238,10 @@
     try {
       await jsonFetch(CFG.endpoints.signout, { method:'POST' });
       _me = null;
+      _stats = { points: 0, exp: 0, level: 1, tickets: 0 };
       toast('로그아웃 되었습니다.');
       syncHeaderAuthUI();
+      syncStatsUI();
       goHome();
     } catch (e) {
       toast('로그아웃 실패. 잠시 후 다시 시도하세요.');
@@ -202,6 +294,8 @@
       const ok = await requireAuth();
       if (!ok) return;
       const res = await jsonFetch(CFG.endpoints.shopBuy, { method:'POST', body:{ sku } });
+      // 구매 이후 계정별 포인트/티켓/경험치를 최신 상태로 반영
+      await getSession({ refresh: true });
       toast('구매가 완료되었습니다.');
       window.Analytics?.event?.('purchase', { sku, res });
       return res;
@@ -216,12 +310,14 @@
     try {
       const ok = await requireAuth();
       if (!ok) return;
+      let res;
       if (window.Analytics?.trackLuckySpin) {
-        const res = await Analytics.trackLuckySpin();
-        toast('행운 결과: ' + JSON.stringify(res?.result ?? res));
-        return res;
+        res = await Analytics.trackLuckySpin();
+      } else {
+        res = await jsonFetch(CFG.endpoints.luckySpin, { method:'POST' });
       }
-      const res = await jsonFetch(CFG.endpoints.luckySpin, { method:'POST' });
+      // 일일 스핀 결과에 따라 포인트/티켓/경험치 변화가 있을 수 있으므로 갱신
+      await getSession({ refresh: true });
       toast('행운 결과: ' + JSON.stringify(res?.result ?? res));
       return res;
     } catch (e) {
@@ -239,6 +335,8 @@
       const val = key.split('.').reduce((acc,k)=>acc?.[k], profile);
       if (val !== undefined) el.textContent = String(val);
     });
+    // 프로필 업데이트 시, 계정별 진행도도 다시 그려줌
+    syncStatsUI();
   };
 
   const refreshProfile = async () => {
@@ -284,6 +382,8 @@
       });
       const data = await res.json().catch(()=>null);
       if (!res.ok) throw new Error((data && (data.error||data.message)) || `HTTP_${res.status}`);
+      // 게임 종료(점수 반영) 후 계정별 경험치/포인트 반영
+      await getSession({ refresh: true });
       window.Analytics?.event?.('game_finish', { slug, score, runId: window.__RUN_ID__ });
       return data;
     } catch (e) {
@@ -341,6 +441,11 @@
     listGames, purchase, luckySpin,
     refreshProfile, gameStart, gameFinish,
     cfg: CFG,
+    // 계정별 진행도 조회 편의 헬퍼
+    getStats: () => {
+      const s = (_me && _me.stats) || _stats;
+      return Object.assign({}, s);
+    }
   };
   // 게임 훅을 전역으로도 노출(기존 호출 호환)
   window.gameStart  = gameStart;
@@ -350,7 +455,7 @@
   const init = async () => {
     await loadPartials();
     bindGlobalClicks();
-    await getSession(); // 헤더 버튼 표시용
+    await getSession(); // 헤더 버튼 및 계정별 진행도 표시용
 
     const path = location.pathname.toLowerCase();
 

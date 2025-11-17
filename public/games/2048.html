@@ -1,150 +1,150 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<!-- Google AdSense 소유권 확인 메타 태그 -->
-<meta name="google-adsense-account" content="ca-pub-6713974265397310" />
-<title>RETRO 2048 – Arcade Cabinet</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- Google AdSense 소유권 확인 메타 태그 -->
+  <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
+  <title>RETRO 2048 – Arcade Cabinet</title>
 
-<!-- === Common SEO/A11y (auto-inserted) === -->
-<link rel="icon" href="/assets/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1b34">
-<meta name="description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="robots" content="index,follow">
-<meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="RETRO 2048 – Arcade Cabinet">
-<meta property="og:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta property="og:type" content="website">
-<meta property="og:image" content="/assets/og/retro-games-card.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RETRO 2048 – Arcade Cabinet">
-<meta name="twitter:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="twitter:image" content="/assets/og/retro-games-card.png">
-<script>
-  // fixed environment flags for analytics/runtime
-  (function(d){
-    d.documentElement.dataset.env = 'production';
-    d.documentElement.dataset.analytics = 'on';
-    window.__ENV__ = 'production';
-    window.__ANALYTICS_ON__ = true;
-  })(document);
-</script>
-<!-- === /Common SEO/A11y === -->
+  <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0e1b34">
+  <meta name="description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="robots" content="index,follow">
+  <meta property="og:site_name" content="RETRO GAMES">
+  <meta property="og:title" content="RETRO 2048 – Arcade Cabinet">
+  <meta property="og:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og/retro-games-card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RETRO 2048 – Arcade Cabinet">
+  <meta name="twitter:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 
-<!-- AdSense 글로벌 스크립트 (요청 스니펫 그대로) -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-     crossorigin="anonymous"></script>
+  <script>
+    // fixed environment flags for analytics/runtime
+    (function(d){
+      d.documentElement.dataset.env = 'production';
+      d.documentElement.dataset.analytics = 'on';
+      window.__ENV__ = 'production';
+      window.__ANALYTICS_ON__ = true;
+    })(document);
+  </script>
+  <!-- === /Common SEO/A11y === -->
 
-<style>
-  :root{
-    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
-    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
-    --board:#121a2f; --tile0:#e9eef6; --ink:#111;
-    --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
-    --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
-  }
-  *{box-sizing:border-box}
-  html,body{
-    height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
-    color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
-    overflow:hidden
-  }
-  #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
-  .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
+  <!-- AdSense 글로벌 스크립트 (요청 스니펫 그대로, 모든 페이지 공통 사용) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+          crossorigin="anonymous"></script>
 
-  /* Cabinet */
-  .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
-  .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);filter:drop-shadow(0 0 12px rgba(255,190,0,.55));}
-  .cabinet:before{left:12px;border-radius:9px}
-  .cabinet:after{right:12px;border-radius:9px}
+  <!-- 전역 유틸 (모듈 아님, defer 로딩) -->
+  <script defer src="assets/js/app.js"></script>
+  <script defer src="assets/js/analytics.js"></script>
 
-  .marquee{padding:18px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,#173763,#0b2548);border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)}
-  .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-  .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
-  .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
+  <style>
+    :root{
+      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+      --board:#121a2f; --tile0:#e9eef6; --ink:#111;
+      --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
+      --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+      overflow:hidden
+    }
+    #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
+    .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
 
-  /* HUD unified (button-like) */
-  .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
-  .chip,.pill,.hud .btnMini{
-    position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
-    background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
-    box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
-    touch-action:manipulation;
-  }
-  .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
-  .pill{min-width:260px;gap:12px}
-  .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)}
-  .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
-  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#b86cff,#6af0ff);box-shadow:0 0 10px #8ad7ff}
-  .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
-  .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
-  .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
-  .playCount{font-size:12px;opacity:.85;margin-left:6px}
+    /* Cabinet */
+    .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
+    .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);filter:drop-shadow(0 0 12px rgba(255,190,0,.55));}
+    .cabinet:before{left:12px;border-radius:9px}
+    .cabinet:after{right:12px;border-radius:9px}
 
-  /* Screen */
-  .play{position:relative;margin:10px 18px;border-radius:16px;background:linear-gradient(180deg,#0a1530,#031125);box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)}
-  .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
-  .bezel{width:100%;height:100%;border-radius:14px;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;overflow:hidden}
-  .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
-  canvas#game{width:100%;height:auto;aspect-ratio:1/1;background:var(--tile0);border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
+    .marquee{padding:18px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,#173763,#0b2548);border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)}
+    .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+    .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
+    .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
 
-  /* Deck */
-  .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
-  .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;background:linear-gradient(180deg,#1b3a7a,#102a66);border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;touch-action:manipulation}
-  .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
-  .deck label{display:flex;align-items:center;gap:8px}
-  .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
+    /* HUD unified (button-like) */
+    .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
+    .chip,.pill,.hud .btnMini{
+      position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
+      background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+      box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
+      touch-action:manipulation;
+    }
+    .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+    .pill{min-width:260px;gap:12px}
+    .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)}
+    .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
+    .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#b86cff,#6af0ff);box-shadow:0 0 10px #8ad7ff}
+    .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
+    .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
+    .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
+    .playCount{font-size:12px;opacity:.85;margin-left:6px}
 
-  /* Records Modal */
-  #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
-  /* Ad Modal */
-  #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
-  #adBox{width:min(680px,92vw);min-height:280px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px}
-  #adHead{display:flex;justify-content:space-between;align-items:center}
-  #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;background:linear-gradient(135deg,#18224a,#0e1636);border:1px dashed #3952c3}
+    /* Screen */
+    .play{position:relative;margin:10px 18px;border-radius:16px;background:linear-gradient(180deg,#0a1530,#031125);box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)}
+    .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
+    .bezel{width:100%;height:100%;border-radius:14px;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;overflow:hidden}
+    .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
+    canvas#game{width:100%;height:auto;aspect-ratio:1/1;background:var(--tile0);border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
 
-  /* ===== Mobile Responsive ===== */
-  @media (max-width: 980px){
-    .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
-    .cabinet{width:100vw;border-radius:0}
-    .marquee{padding:12px;border-radius:0}
-    .play{margin:8px 12px}
-    .screen{padding:10px}
-    .hud{gap:8px;padding:10px}
-    .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
-    .pill{min-width:220px}
-    .deck{gap:8px;padding:10px 12px 16px}
-    .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
-  }
-  @media (max-width: 640px){
-    .hud{padding:8px}
-    .chip,.pill,.hud .btnMini{height:40px}
-    .points .nums .big,.tickets .nums .big{font-size:16px}
-    .points .bar,.tickets .bar{width:96px}
-    .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
-    .deck > *{flex:0 0 auto}
-  }
+    /* Deck */
+    .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
+    .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;background:linear-gradient(180deg,#1b3a7a,#102a66);border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;touch-action:manipulation}
+    .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
+    .deck label{display:flex;align-items:center;gap:8px}
+    .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
 
-  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
-    display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-    border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
-    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-    z-index:10000;font-size:12px}
-  .cookie-banner .spacer{flex:1}
-  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+    /* Records Modal */
+    #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
+    /* Ad Modal */
+    #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
+    #adBox{width:min(680px,92vw);min-height:280px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px}
+    #adHead{display:flex;justify-content:space-between;align-items:center}
+    #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
+    .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;background:linear-gradient(135deg,#18224a,#0e1636);border:1px dashed #3952c3}
 
-</style>
+    /* ===== Mobile Responsive ===== */
+    @media (max-width: 980px){
+      .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
+      .cabinet{width:100vw;border-radius:0}
+      .marquee{padding:12px;border-radius:0}
+      .play{margin:8px 12px}
+      .screen{padding:10px}
+      .hud{gap:8px;padding:10px}
+      .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
+      .pill{min-width:220px}
+      .deck{gap:8px;padding:10px 12px 16px}
+      .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
+    }
+    @media (max-width: 640px){
+      .hud{padding:8px}
+      .chip,.pill,.hud .btnMini{height:40px}
+      .points .nums .big,.tickets .nums .big{font-size:16px}
+      .points .bar,.tickets .bar{width:96px}
+      .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
+      .deck > *{flex:0 0 auto}
+    }
+
+    .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
+      display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+      border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      z-index:10000;font-size:12px}
+    .cookie-banner .spacer{flex:1}
+    .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
+    .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+  </style>
 </head>
-
-<!-- 전역 유틸 (모듈 아님) -->
-<script defer src="assets/js/app.js"></script>
-<script defer src="assets/js/analytics.js"></script>
 
 <body>
   <div id="site-header"></div>
@@ -233,7 +233,10 @@
   <!-- Records Modal -->
   <div id="recModal">
     <div style="width:min(640px,94vw);background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3><button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3>
+        <button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button>
+      </div>
       <div id="recBody" style="max-height:60vh;overflow:auto;border:1px solid #2a3a89;border-radius:12px;padding:8px"></div>
     </div>
   </div>
@@ -254,683 +257,683 @@
     </div>
   </div>
 
-<script>
-/* ====== AdSense (연동) ====== */
-/**
- * NOTE:
- *  - AD_CLIENT는 메타 태그와 동일한 ID로 교정됨.
- *  - 실제 광고 노출을 위해서는 AdSense에서 발급받은 data-ad-slot 값을 AD_SLOT에 넣어야 함.
- */
-const AD_CLIENT = 'ca-pub-6713974265397310';
-const AD_SLOT   = ''; // TODO: 여기 AdSense 광고 단위 ID (예: '1234567890')를 설정해야 실제 광고가 노출됩니다.
+  <script>
+  /* ====== AdSense (연동) ====== */
+  /**
+   * NOTE:
+   *  - AD_CLIENT는 메타 태그와 동일한 ID로 교정됨.
+   *  - 실제 광고 노출을 위해서는 AdSense에서 발급받은 data-ad-slot 값을 AD_SLOT에 넣어야 함.
+   */
+  const AD_CLIENT = 'ca-pub-6713974265397310';
+  const AD_SLOT   = ''; // TODO: 여기 AdSense 광고 단위 ID (예: '1234567890')를 설정해야 실제 광고가 노출됩니다.
 
-function fallbackAdHTML(){
-  return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
-}
-function showInterstitialAd(){
-  const box=document.getElementById('adContainer'); box.innerHTML='';
-  const ins=document.createElement('ins');
-  ins.className='adsbygoogle';
-  ins.style.display='block';
-  ins.setAttribute('data-ad-client', AD_CLIENT);
-  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-  ins.setAttribute('data-ad-format','auto');
-  ins.setAttribute('data-full-width-responsive','true');
-  box.appendChild(ins);
-  try{
-    (window.adsbygoogle=window.adsbygoogle||[]).push({});
-  }catch(e){
-    console.warn(e);
-    box.innerHTML = fallbackAdHTML();
+  function fallbackAdHTML(){
+    return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
   }
-  document.getElementById('adModal').style.display='flex';
-}
-let _afterAd=null;
-function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
-document.getElementById('adClose').addEventListener('click',()=>{
-  document.getElementById('adModal').style.display='none';
-  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
-});
-
-/* ===== Neon background (stars) ===== */
-(function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
-  function fit(){const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0);} fit(); addEventListener('resize',fit,{passive:true});
-  const N=80; const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
-  function loop(t){ g.clearRect(0,0,c.width,c.height); for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2); const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle=`rgba(43,123,255,${a})`; g.fill(); p.y+=p.s; if(p.y>innerHeight){p.y=-10; p.x=Math.random()*innerWidth;} } requestAnimationFrame(loop);} requestAnimationFrame(loop);
-})();
-
-/* ===== Helpers ===== */
-const $=sel=>document.querySelector(sel);
-const DPR=()=> Math.min(2, window.devicePixelRatio||1);
-const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
-const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
-const fmt=n=> Number(n).toLocaleString('ko-KR');
-
-/* ===== WALLET API (spec & helpers) ===== */
-/**
- * WALLET API 스펙 (Cloudflare Pages Functions 기준 예시)
- *
- * 1) GET /api/wallet/me
- *    - 응답: {
- *        ok: boolean,
- *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number }
- *      }
- *
- * 2) POST /api/wallet/reward
- *    - 요청 JSON:
- *      {
- *        game: "2048",
- *        delta: { coins: number, xp: number, tickets: number },
- *        meta:  { score: number, points: number, level: number, maxTile: number }
- *      }
- *    - 응답:
- *      {
- *        ok: boolean,
- *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number },
- *        error?: string
- *      }
- */
-const WALLET_API_BASE = '/api/wallet';
-
-async function postWalletReward(payload){
-  try{
-    const res = await fetch(WALLET_API_BASE + '/reward', {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        'Cache-Control':'no-store'
-      },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok){
-      console.warn('wallet/reward http error', res.status);
-      return null;
-    }
-    const data = await res.json().catch(()=>null);
-    if(!data || !data.ok){
-      console.warn('wallet/reward logical error', data);
-      return null;
-    }
-    const w = data.wallet || {};
-    applyServerWalletToLocal(w);
-    return w;
-  }catch(err){
-    console.warn('wallet/reward failed', err);
-    return null;
-  }
-}
-
-/* ===== Global Wallet Totals (hub 공유) ===== */
-function getOrInitGlobalTotals(){
-  const NUM = v => Number.isFinite(+v) ? +v : 0;
-  const markKey = 'rg_wallet_init';
-  let coins   = NUM(localStorage.getItem('rg_coins'));
-  let tickets = NUM(localStorage.getItem('rg_tickets'));
-  let xp      = NUM(localStorage.getItem('rg_xp'));
-  let xpCap   = NUM(localStorage.getItem('rg_xp_cap') || 20000);
-
-  const inited = localStorage.getItem(markKey);
-  // 완전 신규/게스트인 경우 기본 티켓 10장 지급 (허브/게임 공통)
-  if(!inited && coins===0 && tickets===0 && xp===0){
-    tickets = 10;
-    localStorage.setItem(markKey,'1');
-  }
-  return { coins, tickets, xp, xpCap };
-}
-function setGlobalTotals(t){
-  const clean = {
-    coins:   Number(t.coins)||0,
-    tickets: Number(t.tickets)||0,
-    xp:      Number(t.xp)||0,
-    xpCap:   Number(t.xpCap)||20000
-  };
-  try{
-    localStorage.setItem('rg_coins',   String(clean.coins));
-    localStorage.setItem('rg_tickets', String(clean.tickets));
-    localStorage.setItem('rg_xp',      String(clean.xp));
-    localStorage.setItem('rg_xp_cap',  String(clean.xpCap));
-  }catch(e){
-    console.warn('setGlobalTotals failed', e);
-  }
-  renderGlobalWalletHUD();
-}
-function applyServerWalletToLocal(w){
-  if(!w) return;
-  setGlobalTotals({
-    coins:   w.coins,
-    tickets: w.tickets,
-    xp:      w.xp ?? w.points ?? 0,
-    xpCap:   w.xpCap ?? w.xp_cap ?? 20000
-  });
-}
-function renderGlobalWalletHUD(){
-  const t = getOrInitGlobalTotals();
-  const pointsAmt = $('#pointsAmt');
-  const pointsCap = $('#pointsCap');
-  const pointsBar = $('#pointsBar');
-  const ticketsAmt = $('#ticketsAmt');
-  const ticketsBar = $('#ticketsBar');
-
-  if(pointsAmt) pointsAmt.textContent = fmt(t.xp);
-  if(pointsCap){
-    const capLabel = t.xpCap >= 1000 ? fmt(t.xpCap/1000) + 'K' : fmt(t.xpCap);
-    pointsCap.textContent = capLabel;
-  }
-  if(pointsBar){
-    const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1, t.xpCap)) * 100));
-    pointsBar.style.width = pct.toFixed(1) + '%';
-  }
-  if(ticketsAmt) ticketsAmt.textContent = fmt(t.tickets);
-  if(ticketsBar){
-    const T_CAP = 50; // 단순 시각화용 상한
-    const pct = Math.max(0, Math.min(100, (t.tickets / Math.max(1, T_CAP)) * 100));
-    ticketsBar.style.width = pct.toFixed(1) + '%';
-  }
-}
-
-/* 다른 탭/게임에서 지갑이 변경될 때 HUD 동기화 */
-window.addEventListener('storage', function(e){
-  if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)){
-    renderGlobalWalletHUD();
-  }
-});
-
-/* 서버 월렛 → 허브/게임 동기화 */
-async function syncWalletFromServerAndRender(){
-  try{
-    const res = await fetch(WALLET_API_BASE + '/me', {
-      method: 'GET',
-      headers: {
-        'Accept':'application/json',
-        'Cache-Control':'no-store'
-      },
-      credentials: 'include'
-    });
-    if(!res.ok){
-      renderGlobalWalletHUD();
-      return;
-    }
-    const data = await res.json().catch(()=>null);
-    if(data && data.ok && data.wallet){
-      applyServerWalletToLocal(data.wallet);
-    }else{
-      renderGlobalWalletHUD();
-    }
-  }catch(e){
-    console.warn('wallet/me failed', e);
-    renderGlobalWalletHUD();
-  }
-}
-
-/* 게임 세션 시작 시 통합 티켓 1장 소모 */
-function consumeTicketForSession(){
-  const totals = getOrInitGlobalTotals();
-  if(totals.tickets <= 0){
-    alert('플레이 티켓이 부족합니다.\n메인 허브에서 티켓을 먼저 획득한 뒤 다시 시도해 주세요.');
-    renderGlobalWalletHUD();
-    return false;
-  }
-  totals.tickets -= 1;
-  setGlobalTotals(totals);
-
-  // 서버 지갑에도 티켓 차감 반영 (에러는 무시)
-  postWalletReward({
-    game: '2048',
-    delta: { coins:0, xp:0, tickets:-1 },
-    meta:  { score:0, points:0, level:0, maxTile:0 }
-  }).catch(()=>{});
-
-  return true;
-}
-
-/* 게임 세션 보상 → 글로벌 HUD(RG_addReward) + 서버 지갑 동시 업데이트 */
-function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
-  if(!delta) return;
-  const coins   = Number(delta.coins)   || 0;
-  const xp      = Number(delta.xp)      || 0;
-  const tickets = Number(delta.tickets) || 0;
-  if(!(coins || xp || tickets)) return;
-
-  // 1) 홈(user-retro-games.html)의 HUD와 localStorage 갱신
-  try{
-    if(typeof window.RG_addReward === 'function'){
-      window.RG_addReward({ coins, tickets, xp });
-    }else{
-      // RG_addReward가 없더라도 통합 지갑 로컬 값은 유지
-      const t = getOrInitGlobalTotals();
-      t.coins   += coins;
-      t.tickets += tickets;
-      t.xp      += xp;
-      setGlobalTotals(t);
-    }
-  }catch(e){
-    console.warn('RG_addReward error', e);
-  }
-
-  // 2) 서버 지갑 API 호출
-  postWalletReward({
-    game: gameCode,
-    delta: { coins, xp, tickets },
-    meta: {
-      score:   meta && meta.score   || 0,
-      points:  meta && meta.points  || 0,
-      level:   meta && meta.level   || 0,
-      maxTile: meta && meta.maxTile || 0
-    }
-  }).catch(()=>{});
-}
-
-/* 점수/포인트를 RETRO GAMES 지갑 보상으로 변환하는 규칙 */
-function calcReward(score, points, maxTile, level){
-  const s  = Math.max(0, score|0);
-  const p  = Math.max(0, points|0);
-  const lv = Math.max(1, level|0);
-
-  // 150점당 1코인, 난이도 계수 약간 반영
-  const diffMult = 1 + ((lv-1) * 0.002);
-  const coinsBase = s / 150 * diffMult;
-  const coins = Math.floor(coinsBase);
-
-  // 포인트는 XP로 1:5 비율, 상한 2,000
-  const xp = Math.min(2000, p * 5);
-
-  // 세션 안에서 별도 티켓 보너스: 2048 이상 달성 시 +1
-  let bonusTickets = 0;
-  if(maxTile >= 2048) bonusTickets = 1;
-
-  return { coins, xp, tickets: bonusTickets };
-}
-
-/* ===== Difficulty Multiplier ===== */
-function difficultyMult(){
-  const val=$('#tier')?.value||'beginner';
-  return {beginner:1.00, intermediate:1.12, advanced:1.28, hell:1.45, doom:1.60, insane:1.80}[val]||1.0;
-}
-
-/* ===== Params per level ===== */
-function paramsForLevel(lv){
-  const p4 = clamp(0.10 + lv*0.01, 0.10, 0.45);
-  const p8 = lv<12? 0 : clamp((lv-10)*0.006, 0, 0.25);
-  const p16= lv<25? 0 : clamp((lv-24)*0.004, 0, 0.10);
-  const evil= clamp(lv*0.012, 0, 1.0);
-  const dbl = clamp((lv-8)*0.008, 0, 0.40);
-  const undos = Math.max(0, 20 - Math.floor(lv/5));
-  return {p4,p8,p16,evil,doubleSpawn:dbl,undos};
-}
-
-/* ===== Storage (tickets & records) ===== */
-const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',best:'best2048'};
-function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
-function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
-function updateTicketUI(){
-  // 통합 지갑 정보 (티켓/XP) 기반 HUD 갱신
-  renderGlobalWalletHUD();
-  // 추가로 이 게임에서의 누적 플레이 횟수를 서브 캡에 노출
-  const plays= +localStorage.getItem(LS_KEYS.plays)||0;
-  const capLabel = $('#ticketsCap');
-  if(capLabel){
-    capLabel.textContent = `${plays%10} / 10`;
-  }
-}
-function addPlay(){
-  let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
-  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  if(plays%10===0) tickets++;
-  localStorage.setItem(LS_KEYS.plays, String(plays));
-  localStorage.setItem(LS_KEYS.tickets, String(tickets));
-  updateTicketUI();
-  /* ✅ 3회 플레이마다 광고 노출 */
-  if(plays % 3 === 0){ showInterstitialAd(); }
-}
-function addRecord(score, points){
-  const recs=loadJSON(LS_KEYS.records,[]);
-  const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
-  saveJSON(LS_KEYS.records,recs.slice(0,200));
-}
-function showRecords(){
-  const recs=loadJSON(LS_KEYS.records,[]);
-  const wrap=$('#recBody');
-  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
-    <tbody>
-      ${recs.map(r=>{ const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
-        return `<tr><td style='padding:6px 8px;border-bottom:1px solid #233077'>${date}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.score||0)}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.points||0)}</td></tr>`}).join('')}
-    </tbody>
-  </table>`;
-  $('#recModal').style.display='flex';
-}
-$('#recordsBtn').addEventListener('click',showRecords);
-$('#recClose').addEventListener('click',()=> $('#recModal').style.display='none');
-$('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
-
-/* ===== 서버 세션 연동 (gameStart/gameFinish) — 안전 래퍼 ===== */
-function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
-function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    // 필요시: 일시정지/로깅 등
-  }
-});
-
-/* ===== Game ===== */
-class G2048{
-  constructor(canvas){
-    this.c=canvas;
-    this.ctx=canvas.getContext('2d');
-    this.size=4;
-
-    // 기본 값 초기화
-    this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-    this.score=0;
-    this.moves=0;
-    this.points=0;
-    this._ended=false;
-
-    this.bind();
-    this._initResizeObserver();
-    this.resize();
-
-    // 통합 티켓 소모 후 세션 시작
-    if(!consumeTicketForSession()){
-      // 티켓이 없으면 보드만 초기화하고 입력은 막음
-      this.grid = this.makeGrid(this.size);
-      this.syncHUD();
-      this.draw();
-      return;
-    }
-
-    this.reset(1);
-    this.draw();
-    // 페이지 로드시 세션 시작 알림
-    notifyStart();
-  }
-
-  reset(level){
-    this.level=level||1;
-    this.p=paramsForLevel(this.level);
-    this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-    this.score=0;
-    this.moves=0;
-    this.undosLeft=this.p.undos;
-    this.history=[];
-    this.points=0;
-    this._ended=false;
-    this._scoreMilestone = 0;
-    this._tileBonusGiven = {512:false,1024:false,2048:false,4096:false};
-
-    this.grid=this.makeGrid(this.size);
-    this.spawn(); this.spawn();
-    this.syncHUD();
-    this.draw();
-  }
-
-  setSize(n){ this.size=n; this.reset(this.level); }
-  makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
-
-  bind(){
-    /* HOME: 광고 이후 허브(user-retro-games.html, 로그인 후 메인)로 이동 */
-    $('#homeBtn').onclick = () => showAdThen(()=> {
-      window.location.href = '/user-retro-games.html';
-    });
-
-    $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
-    $('#newBtn').onclick=()=>{
-      if(this.moves>0){ addRecord(this.score,this.points||0);}
-      if(!consumeTicketForSession()) return;
-      this.reset(this.level);
-    };
-    $('#undoBtn').onclick=()=> this.undo();
-    const tier=$('#tier'); const lvl=$('#lvlRange'); const sizeSel=$('#sizeSel');
-    const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
-    tier.addEventListener('change',()=>applyTier(tier.value));
-    lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
-    sizeSel.addEventListener('change',()=> this.setSize(+sizeSel.value));
-
-    const keyMap={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',KeyA:'L',KeyD:'R',KeyW:'U',KeyS:'D'};
-    document.addEventListener('keydown',(e)=>{
-      if(e.code==='KeyN'){
-        if(this.moves>0){ addRecord(this.score,this.points||0);}
-        if(!consumeTicketForSession()) return;
-        this.reset(this.level);
-      }
-      if(e.code==='KeyU'){ this.undo(); }
-      const d=keyMap[e.code]; if(d){ this.move(d); e.preventDefault(); }
-    });
-    // Touch
-    let sx=0, sy=0; this.c.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
-    this.c.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy; const ax=Math.abs(dx), ay=Math.abs(dy); if(Math.max(ax,ay)<20) return; this.move( ax>ay? (dx<0?'L':'R') : (dy<0?'U':'D') ); });
-  }
-
-  setLevel(lv){ this.level=lv; this.p=paramsForLevel(lv); this.syncHUD(); }
-
-  _initResizeObserver(){
-    const wrap = this.c.parentElement || this.c; let lastW = 0;
-    const ro = new ResizeObserver((entries)=>{ const cr = entries[0].contentRect; const w = Math.floor(cr.width);
-      if(w !== lastW){ lastW = w; cancelAnimationFrame(this._rafId); this._rafId = requestAnimationFrame(()=> this.resize()); } });
-    ro.observe(wrap); this._ro = ro;
-    window.addEventListener('orientationchange', ()=> this.resize(), {passive:true});
-    window.addEventListener('resize', ()=> this.resize(), {passive:true});
-  }
-
-  resize(){
-    const bezel = this.c.closest('.bezel') || this.c.parentElement || this.c;
-    const rect = bezel.getBoundingClientRect();
-    const availW = Math.max(0, rect.width - 2);
-    const availH = Math.max(0, rect.height - 2);
-    const SCALE = 0.99; const Y_OFFSET=-12;
-    const sideCSS = Math.floor(Math.min(availW, availH) * SCALE);
-    const d = DPR();
-    this.c.style.width = sideCSS + 'px'; this.c.style.height = sideCSS + 'px';
-    this.c.width = Math.floor(sideCSS * d); this.c.height = Math.floor(sideCSS * d);
-    const wrap = this.c.parentElement; if(wrap){ wrap.style.transform = `translateY(${Y_OFFSET}px)`; }
-    this.draw();
-    fitCabinet();
-  }
-
-  syncHUD(){
-    $('#score').textContent=this.score|0;
-    $('#best').textContent=this.best|0;
-    $('#moves').textContent=this.moves|0;
-
-    // 포인트/티켓은 통합 지갑 기준으로 렌더링
-    renderGlobalWalletHUD();
-    updateTicketUI();
-  }
-
-  randEmpty(){ const empty=[]; for(let r=0;r<this.size;r++)for(let c=0;c<this.size;c++) if(!this.grid[r][c]) empty.push([r,c]); return empty; }
-
-  spawn(){
-    let count = Math.random()<this.p.doubleSpawn? 2: 1;
-    for(let k=0;k<count;k++){
-      const empty=this.randEmpty(); if(empty.length===0) return;
-      const r=Math.random(); let v=2; if(r<this.p.p16) v=16; else if(r<this.p.p16+this.p.p8) v=8; else if(r<this.p.p16+this.p.p8+this.p.p4) v=4;
-      const pos = this.pickSpawnCell(empty, v, this.p.evil);
-      const [rr,cc]=pos; this.grid[rr][cc]=v;
-    }
-  }
-
-  pickSpawnCell(cells, value, evil){
-    if(evil<=0 || cells.length===1) return pick(cells);
-    const l = evil; let best=null, bestScore=-Infinity;
-    for(const [r,c] of cells){
-      const sRand = Math.random()*0.01;
-      const sMob = - this.mobilityIfPlace(r,c,value);
-      const sMerge = - this.mergePotentialAround(r,c,value);
-      const score = l*(sMob + sMerge) + (1-l)*sRand;
-      if(score>bestScore){ bestScore=score; best=[r,c]; }
-    }
-    return best||pick(cells);
-  }
-  neighbors(r,c){ return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([y,x])=> y>=0&&y<this.size&&x>=0&&x<this.size); }
-  mergePotentialAround(r,c,v){ let s=0; for(const [y,x] of this.neighbors(r,c)){ if(this.grid[y][x]===v) s++; } return s; }
-  mobilityIfPlace(r,c,v){ let emptyAdj=0, equalAdj=0; for(const [y,x] of this.neighbors(r,c)){ const t=this.grid[y][x]; if(!t) emptyAdj++; else if(t===v) equalAdj++; } return emptyAdj + 0.5*equalAdj; }
-
-  storeHistory(){ if(this.undosLeft<=0) return; const snapshot={grid:this.grid.map(r=>r.slice()), score:this.score, moves:this.moves, points:this.points, scoreMilestone:this._scoreMilestone, tileBonusGiven:this._tileBonusGiven}; this.history.push(snapshot); if(this.history.length>50) this.history.shift(); }
-  undo(){ if(this.history.length===0||this.undosLeft<=0) return; const s=this.history.pop(); this.grid=s.grid; this.score=s.score; this.moves=s.moves; this.points=s.points||0; this._scoreMilestone=s.scoreMilestone||0; this._tileBonusGiven=s.tileBonusGiven||this._tileBonusGiven; this.undosLeft--; this.syncHUD(); this.draw(); }
-
-  /* ===== 포인트 모델 ===== */
-  awardPoints(base){
-    const mult = difficultyMult();
-    const add = Math.max(0, Math.floor(base * mult));
-    this.points = Math.min(5000, (this.points||0) + add);
-  }
-  _awardScoreMilestones(){
-    const blocks = Math.floor((this.score|0)/100);
-    if(blocks>this._scoreMilestone){
-      const diff = blocks - this._scoreMilestone;
-      this._scoreMilestone = blocks;
-      this.awardPoints(6 * diff);
-    }
-  }
-  _awardTileMilestone(maxTile){
-    const map = [{t:512,p:30},{t:1024,p:60},{t:2048,p:120},{t:4096,p:240}];
-    for(const {t,p} of map){
-      if(maxTile>=t && !this._tileBonusGiven[t]){
-        this._tileBonusGiven[t]=true;
-        this.awardPoints(p);
-      }
-    }
-  }
-  _snapshotBonusAtEnd(maxTile){
-    if(maxTile>=2048) this.awardPoints(200);
-    else if(maxTile>=1024) this.awardPoints(80);
-  }
-
-  move(dir){
-    if(this._ended) return;
-    this.storeHistory();
-    const before=JSON.stringify(this.grid);
-    let gained=0; const N=this.size; const idxs=[...Array(N).keys()];
-    const get=(r,c)=>this.grid[r][c];
-    const set=(r,c,v)=>{ this.grid[r][c]=v; };
-
-    const compress=line=>{
-      const arr=line.filter(v=>v!==0);
-      for(let i=0;i<arr.length-1;i++){
-        if(arr[i]!==0 && arr[i]===arr[i+1]){ arr[i]*=2; gained+=arr[i]; arr[i+1]=0; i++; }
-      }
-      const out=arr.filter(v=>v!==0); while(out.length<N) out.push(0); return out;
-    };
-
-    if(dir==='L' || dir==='R'){
-      idxs.forEach(r=>{ let line = idxs.map(c=> get(r,c)); if(dir==='R') line.reverse(); line = compress(line); if(dir==='R') line.reverse(); idxs.forEach(c=> set(r,c,line[c])); });
-    } else {
-      idxs.forEach(c=>{ let line = idxs.map(r=> get(r,c)); if(dir==='D') line.reverse(); line = compress(line); if(dir==='D') line.reverse(); idxs.forEach(r=> set(r,c,line[r])); });
-    }
-
-    const after=JSON.stringify(this.grid);
-    const moved = (before!==after);
-    if(moved){
-      this.score += gained; this.best=Math.max(this.best,this.score); localStorage.setItem(LS_KEYS.best, String(this.best));
-      this.moves++;
-      this._awardScoreMilestones();
-      this._awardTileMilestone(this.maxTile());
-
-      this.spawn(); this.syncHUD(); this.draw();
-      if(this.isGameOver()){ this.manualEnd(); }
-    }
-  }
-
-  manualEnd(){
-    if(this._ended) return;
-    this._ended=true;
-    const maxT = this.maxTile();
-    this._snapshotBonusAtEnd(maxT);
-    this.syncHUD();
-    addRecord(this.score, this.points||0);
-    addPlay();
-    notifyFinish(this.score|0);   /* ✅ 서버로 최종 점수 알림 */
-
-    /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
+  function showInterstitialAd(){
+    const box=document.getElementById('adContainer'); box.innerHTML='';
+    const ins=document.createElement('ins');
+    ins.className='adsbygoogle';
+    ins.style.display='block';
+    ins.setAttribute('data-ad-client', AD_CLIENT);
+    if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
+    ins.setAttribute('data-ad-format','auto');
+    ins.setAttribute('data-full-width-responsive','true');
+    box.appendChild(ins);
     try{
-      const delta = calcReward(this.score||0, this.points||0, maxT, this.level||1);
-      applyGlobalRewardAndSyncWallet('2048', delta, {
-        score:  this.score||0,
-        points: this.points||0,
-        level:  this.level||1,
-        maxTile:maxT
-      });
+      (window.adsbygoogle=window.adsbygoogle||[]).push({});
     }catch(e){
-      console.error('reward sync error', e);
+      console.warn(e);
+      box.innerHTML = fallbackAdHTML();
     }
+    document.getElementById('adModal').style.display='flex';
+  }
+  let _afterAd=null;
+  function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
+  document.getElementById('adClose').addEventListener('click',()=>{
+    document.getElementById('adModal').style.display='none';
+    const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
+  });
 
-    this.flash('Game Over');
+  /* ===== Neon background (stars) ===== */
+  (function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
+    function fit(){const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0);} fit(); addEventListener('resize',fit,{passive:true});
+    const N=80; const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
+    function loop(t){ g.clearRect(0,0,c.width,c.height); for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2); const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle=`rgba(43,123,255,${a})`; g.fill(); p.y+=p.s; if(p.y>innerHeight){p.y=-10; p.x=Math.random()*innerWidth;} } requestAnimationFrame(loop);} requestAnimationFrame(loop);
+  })();
+
+  /* ===== Helpers ===== */
+  const $=sel=>document.querySelector(sel);
+  const DPR=()=> Math.min(2, window.devicePixelRatio||1);
+  const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
+  const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
+  const fmt=n=> Number(n).toLocaleString('ko-KR');
+
+  /* ===== WALLET API (spec & helpers) ===== */
+  /**
+   * WALLET API 스펙 (Cloudflare Pages Functions 기준 예시)
+   *
+   * 1) GET /api/wallet/me
+   *    - 응답: {
+   *        ok: boolean,
+   *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number }
+   *      }
+   *
+   * 2) POST /api/wallet/reward
+   *    - 요청 JSON:
+   *      {
+   *        game: "2048",
+   *        delta: { coins: number, xp: number, tickets: number },
+   *        meta:  { score: number, points: number, level: number, maxTile: number }
+   *      }
+   *    - 응답:
+   *      {
+   *        ok: boolean,
+   *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number },
+   *        error?: string
+   *      }
+   */
+  const WALLET_API_BASE = '/api/wallet';
+
+  async function postWalletReward(payload){
+    try{
+      const res = await fetch(WALLET_API_BASE + '/reward', {
+        method: 'POST',
+        headers: {
+          'Content-Type':'application/json',
+          'Accept':'application/json',
+          'Cache-Control':'no-store'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        console.warn('wallet/reward http error', res.status);
+        return null;
+      }
+      const data = await res.json().catch(()=>null);
+      if(!data || !data.ok){
+        console.warn('wallet/reward logical error', data);
+        return null;
+      }
+      const w = data.wallet || {};
+      applyServerWalletToLocal(w);
+      return w;
+    }catch(err){
+      console.warn('wallet/reward failed', err);
+      return null;
+    }
   }
 
-  maxTile(){
-    let m=0; for(const row of this.grid) for(const v of row) if(v>m) m=v; return m;
+  /* ===== Global Wallet Totals (hub 공유) ===== */
+  function getOrInitGlobalTotals(){
+    const NUM = v => Number.isFinite(+v) ? +v : 0;
+    const markKey = 'rg_wallet_init';
+    let coins   = NUM(localStorage.getItem('rg_coins'));
+    let tickets = NUM(localStorage.getItem('rg_tickets'));
+    let xp      = NUM(localStorage.getItem('rg_xp'));
+    let xpCap   = NUM(localStorage.getItem('rg_xp_cap') || 20000);
+
+    const inited = localStorage.getItem(markKey);
+    // 완전 신규/게스트인 경우 기본 티켓 10장 지급 (허브/게임 공통)
+    if(!inited && coins===0 && tickets===0 && xp===0){
+      tickets = 10;
+      localStorage.setItem(markKey,'1');
+    }
+    return { coins, tickets, xp, xpCap };
+  }
+  function setGlobalTotals(t){
+    const clean = {
+      coins:   Number(t.coins)||0,
+      tickets: Number(t.tickets)||0,
+      xp:      Number(t.xp)||0,
+      xpCap:   Number(t.xpCap)||20000
+    };
+    try{
+      localStorage.setItem('rg_coins',   String(clean.coins));
+      localStorage.setItem('rg_tickets', String(clean.tickets));
+      localStorage.setItem('rg_xp',      String(clean.xp));
+      localStorage.setItem('rg_xp_cap',  String(clean.xpCap));
+    }catch(e){
+      console.warn('setGlobalTotals failed', e);
+    }
+    renderGlobalWalletHUD();
+  }
+  function applyServerWalletToLocal(w){
+    if(!w) return;
+    setGlobalTotals({
+      coins:   w.coins,
+      tickets: w.tickets,
+      xp:      w.xp ?? w.points ?? 0,
+      xpCap:   w.xpCap ?? w.xp_cap ?? 20000
+    });
+  }
+  function renderGlobalWalletHUD(){
+    const t = getOrInitGlobalTotals();
+    const pointsAmt = $('#pointsAmt');
+    const pointsCap = $('#pointsCap');
+    const pointsBar = $('#pointsBar');
+    const ticketsAmt = $('#ticketsAmt');
+    const ticketsBar = $('#ticketsBar');
+
+    if(pointsAmt) pointsAmt.textContent = fmt(t.xp);
+    if(pointsCap){
+      const capLabel = t.xpCap >= 1000 ? fmt(t.xpCap/1000) + 'K' : fmt(t.xpCap);
+      pointsCap.textContent = capLabel;
+    }
+    if(pointsBar){
+      const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1, t.xpCap)) * 100));
+      pointsBar.style.width = pct.toFixed(1) + '%';
+    }
+    if(ticketsAmt) ticketsAmt.textContent = fmt(t.tickets);
+    if(ticketsBar){
+      const T_CAP = 50; // 단순 시각화용 상한
+      const pct = Math.max(0, Math.min(100, (t.tickets / Math.max(1, T_CAP)) * 100));
+      ticketsBar.style.width = pct.toFixed(1) + '%';
+    }
   }
 
-  isGameOver(){
-    if(this.randEmpty().length>0) return false;
-    const N=this.size;
-    for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-      const v=this.grid[r][c]; if((r+1<N && this.grid[r+1][c]===v) || (c+1<N && this.grid[r][c+1]===v)) return false;
+  /* 다른 탭/게임에서 지갑이 변경될 때 HUD 동기화 */
+  window.addEventListener('storage', function(e){
+    if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)){
+      renderGlobalWalletHUD();
     }
+  });
+
+  /* 서버 월렛 → 허브/게임 동기화 */
+  async function syncWalletFromServerAndRender(){
+    try{
+      const res = await fetch(WALLET_API_BASE + '/me', {
+        method: 'GET',
+        headers: {
+          'Accept':'application/json',
+          'Cache-Control':'no-store'
+        },
+        credentials: 'include'
+      });
+      if(!res.ok){
+        renderGlobalWalletHUD();
+        return;
+      }
+      const data = await res.json().catch(()=>null);
+      if(data && data.ok && data.wallet){
+        applyServerWalletToLocal(data.wallet);
+      }else{
+        renderGlobalWalletHUD();
+      }
+    }catch(e){
+      console.warn('wallet/me failed', e);
+      renderGlobalWalletHUD();
+    }
+  }
+
+  /* 게임 세션 시작 시 통합 티켓 1장 소모 */
+  function consumeTicketForSession(){
+    const totals = getOrInitGlobalTotals();
+    if(totals.tickets <= 0){
+      alert('플레이 티켓이 부족합니다.\n메인 허브에서 티켓을 먼저 획득한 뒤 다시 시도해 주세요.');
+      renderGlobalWalletHUD();
+      return false;
+    }
+    totals.tickets -= 1;
+    setGlobalTotals(totals);
+
+    // 서버 지갑에도 티켓 차감 반영 (에러는 무시)
+    postWalletReward({
+      game: '2048',
+      delta: { coins:0, xp:0, tickets:-1 },
+      meta:  { score:0, points:0, level:0, maxTile:0 }
+    }).catch(()=>{});
+
     return true;
   }
 
-  draw(){
-    const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.clearRect(0,0,W,H);
-    const pad=16*DPR(); const n=this.size; const gap=10*DPR(); const cell=(W - pad*2 - gap*(n-1))/n; const radius=12*DPR();
-    ctx.fillStyle=getCSS('--tile0'); roundRect(ctx,pad,pad,W-pad*2,H-pad*2,18*DPR()); ctx.fill();
-    for(let r=0;r<n;r++){
-      for(let c=0;c<n;c++){
-        const x=pad + c*(cell+gap), y=pad + r*(cell+gap); const v=this.grid[r][c];
-        ctx.fillStyle=tileColor(v); roundRect(ctx,x,y,cell,cell,radius); ctx.fill();
-        if(v){ ctx.fillStyle='#111'; ctx.font=`bold ${Math.floor(cell*0.38)}px ui-sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v, x+cell/2, y+cell/2+1); }
+  /* 게임 세션 보상 → 글로벌 HUD(RG_addReward) + 서버 지갑 동시 업데이트 */
+  function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+    if(!delta) return;
+    const coins   = Number(delta.coins)   || 0;
+    const xp      = Number(delta.xp)      || 0;
+    const tickets = Number(delta.tickets) || 0;
+    if(!(coins || xp || tickets)) return;
+
+    // 1) 홈(user-retro-games.html)의 HUD와 localStorage 갱신
+    try{
+      if(typeof window.RG_addReward === 'function'){
+        window.RG_addReward({ coins, tickets, xp });
+      }else{
+        // RG_addReward가 없더라도 통합 지갑 로컬 값은 유지
+        const t = getOrInitGlobalTotals();
+        t.coins   += coins;
+        t.tickets += tickets;
+        t.xp      += xp;
+        setGlobalTotals(t);
       }
+    }catch(e){
+      console.warn('RG_addReward error', e);
+    }
+
+    // 2) 서버 지갑 API 호출
+    postWalletReward({
+      game: gameCode,
+      delta: { coins, xp, tickets },
+      meta: {
+        score:   meta && meta.score   || 0,
+        points:  meta && meta.points  || 0,
+        level:   meta && meta.level   || 0,
+        maxTile: meta && meta.maxTile || 0
+      }
+    }).catch(()=>{});
+  }
+
+  /* 점수/포인트를 RETRO GAMES 지갑 보상으로 변환하는 규칙 */
+  function calcReward(score, points, maxTile, level){
+    const s  = Math.max(0, score|0);
+    const p  = Math.max(0, points|0);
+    const lv = Math.max(1, level|0);
+
+    // 150점당 1코인, 난이도 계수 약간 반영
+    const diffMult = 1 + ((lv-1) * 0.002);
+    const coinsBase = s / 150 * diffMult;
+    const coins = Math.floor(coinsBase);
+
+    // 포인트는 XP로 1:5 비율, 상한 2,000
+    const xp = Math.min(2000, p * 5);
+
+    // 세션 안에서 별도 티켓 보너스: 2048 이상 달성 시 +1
+    let bonusTickets = 0;
+    if(maxTile >= 2048) bonusTickets = 1;
+
+    return { coins, xp, tickets: bonusTickets };
+  }
+
+  /* ===== Difficulty Multiplier ===== */
+  function difficultyMult(){
+    const val=$('#tier')?.value||'beginner';
+    return {beginner:1.00, intermediate:1.12, advanced:1.28, hell:1.45, doom:1.60, insane:1.80}[val]||1.0;
+  }
+
+  /* ===== Params per level ===== */
+  function paramsForLevel(lv){
+    const p4 = clamp(0.10 + lv*0.01, 0.10, 0.45);
+    const p8 = lv<12? 0 : clamp((lv-10)*0.006, 0, 0.25);
+    const p16= lv<25? 0 : clamp((lv-24)*0.004, 0, 0.10);
+    const evil= clamp(lv*0.012, 0, 1.0);
+    const dbl = clamp((lv-8)*0.008, 0, 0.40);
+    const undos = Math.max(0, 20 - Math.floor(lv/5));
+    return {p4,p8,p16,evil,doubleSpawn:dbl,undos};
+  }
+
+  /* ===== Storage (tickets & records) ===== */
+  const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',best:'best2048'};
+  function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
+  function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
+  function updateTicketUI(){
+    // 통합 지갑 정보 (티켓/XP) 기반 HUD 갱신
+    renderGlobalWalletHUD();
+    // 추가로 이 게임에서의 누적 플레이 횟수를 서브 캡에 노출
+    const plays= +localStorage.getItem(LS_KEYS.plays)||0;
+    const capLabel = $('#ticketsCap');
+    if(capLabel){
+      capLabel.textContent = `${plays%10} / 10`;
     }
   }
-  flash(text){ const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.save(); ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(W*0.08)}px ui-sans-serif`; ctx.textAlign='center'; ctx.fillText(text, W/2, H/2); ctx.restore(); }
-}
-function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-function getCSS(n){ return getComputedStyle(document.documentElement).getPropertyValue(n)||'#fff'; }
-function tileColor(v){
-  switch(v){
-    case 0: return getCSS('--tile0');
-    case 2: return getCSS('--t2'); case 4: return getCSS('--t4'); case 8: return getCSS('--t8'); case 16: return getCSS('--t16'); case 32: return getCSS('--t32'); case 64: return getCSS('--t64');
-    case 128: return getCSS('--t128'); case 256: return getCSS('--t256'); case 512: return getCSS('--t512'); case 1024: return getCSS('--t1024'); case 2048: return getCSS('--t2048'); case 4096: return getCSS('--t4096');
-    default: return getCSS('--t8192');
+  function addPlay(){
+    let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
+    let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
+    if(plays%10===0) tickets++;
+    localStorage.setItem(LS_KEYS.plays, String(plays));
+    localStorage.setItem(LS_KEYS.tickets, String(tickets));
+    updateTicketUI();
+    /* ✅ 3회 플레이마다 광고 노출 */
+    if(plays % 3 === 0){ showInterstitialAd(); }
   }
-}
+  function addRecord(score, points){
+    const recs=loadJSON(LS_KEYS.records,[]);
+    const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
+    saveJSON(LS_KEYS.records,recs.slice(0,200));
+  }
+  function showRecords(){
+    const recs=loadJSON(LS_KEYS.records,[]);
+    const wrap=$('#recBody');
+    wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
+      <tbody>
+        ${recs.map(r=>{ const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
+          return `<tr><td style='padding:6px 8px;border-bottom:1px solid #233077'>${date}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.score||0)}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.points||0)}</td></tr>`}).join('')}
+      </tbody>
+    </table>`;
+    $('#recModal').style.display='flex';
+  }
+  $('#recordsBtn').addEventListener('click',showRecords);
+  $('#recClose').addEventListener('click',()=> $('#recModal').style.display='none');
+  $('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
 
-/* Keep cabinet fully visible on screen */
-function fitCabinet(){
-  const cab = document.querySelector('.cabinet'); if(!cab) return;
-  const margin = 16; cab.style.transform='none'; const w=cab.offsetWidth, h=cab.offsetHeight;
-  const vw=window.innerWidth, vh=window.innerHeight;
-  const needScale = (w > vw - margin*2) || (h > vh - margin*2);
-  const scale = needScale ? Math.min(1, (vw - margin*2)/w, (vh - margin*2)/h) : 1;
-  cab.style.transform = `scale(${scale})`;
-}
-window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-setTimeout(fitCabinet, 0);
+  /* ===== 서버 세션 연동 (gameStart/gameFinish) — 안전 래퍼 ===== */
+  function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
+  function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // 필요시: 일시정지/로깅 등
+    }
+  });
 
-/* ===== Tests ===== */
-(function runTests(){
-  const c=document.createElement('canvas'); const g=new G2048(c);
-  g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
-  g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
-  g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
-  console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
-})();
+  /* ===== Game ===== */
+  class G2048{
+    constructor(canvas){
+      this.c=canvas;
+      this.ctx=canvas.getContext('2d');
+      this.size=4;
 
-/* ===== Bootstrap ===== */
-const game=new G2048(document.getElementById('game'));
-(function(){
-  const tier=$('#tier'), lvl=$('#lvlRange');
-  const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; game.setLevel(lv); };
-  applyTier(tier.value);
-  lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
-  updateTicketUI();
-  // 서버 지갑 기준으로 통합 HUD 최신 상태 맞추기
-  syncWalletFromServerAndRender();
-})();
-</script>
+      // 기본 값 초기화
+      this.best= +(localStorage.getItem(LS_KEYS.best)||0);
+      this.score=0;
+      this.moves=0;
+      this.points=0;
+      this._ended=false;
+
+      this.bind();
+      this._initResizeObserver();
+      this.resize();
+
+      // 통합 티켓 소모 후 세션 시작
+      if(!consumeTicketForSession()){
+        // 티켓이 없으면 보드만 초기화하고 입력은 막음
+        this.grid = this.makeGrid(this.size);
+        this.syncHUD();
+        this.draw();
+        return;
+      }
+
+      this.reset(1);
+      this.draw();
+      // 페이지 로드시 세션 시작 알림
+      notifyStart();
+    }
+
+    reset(level){
+      this.level=level||1;
+      this.p=paramsForLevel(this.level);
+      this.best= +(localStorage.getItem(LS_KEYS.best)||0);
+      this.score=0;
+      this.moves=0;
+      this.undosLeft=this.p.undos;
+      this.history=[];
+      this.points=0;
+      this._ended=false;
+      this._scoreMilestone = 0;
+      this._tileBonusGiven = {512:false,1024:false,2048:false,4096:false};
+
+      this.grid=this.makeGrid(this.size);
+      this.spawn(); this.spawn();
+      this.syncHUD();
+      this.draw();
+    }
+
+    setSize(n){ this.size=n; this.reset(this.level); }
+    makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
+
+    bind(){
+      /* HOME: 광고 이후 허브(user-retro-games.html, 로그인 후 메인)로 이동 */
+      $('#homeBtn').onclick = () => showAdThen(()=> {
+        window.location.href = '/user-retro-games.html';
+      });
+
+      $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
+      $('#newBtn').onclick=()=>{
+        if(this.moves>0){ addRecord(this.score,this.points||0);}
+        if(!consumeTicketForSession()) return;
+        this.reset(this.level);
+      };
+      $('#undoBtn').onclick=()=> this.undo();
+      const tier=$('#tier'); const lvl=$('#lvlRange'); const sizeSel=$('#sizeSel');
+      const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
+      tier.addEventListener('change',()=>applyTier(tier.value));
+      lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
+      sizeSel.addEventListener('change',()=> this.setSize(+sizeSel.value));
+
+      const keyMap={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',KeyA:'L',KeyD:'R',KeyW:'U',KeyS:'D'};
+      document.addEventListener('keydown',(e)=>{
+        if(e.code==='KeyN'){
+          if(this.moves>0){ addRecord(this.score,this.points||0);}
+          if(!consumeTicketForSession()) return;
+          this.reset(this.level);
+        }
+        if(e.code==='KeyU'){ this.undo(); }
+        const d=keyMap[e.code]; if(d){ this.move(d); e.preventDefault(); }
+      });
+      // Touch
+      let sx=0, sy=0; this.c.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
+      this.c.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy; const ax=Math.abs(dx), ay=Math.abs(dy); if(Math.max(ax,ay)<20) return; this.move( ax>ay? (dx<0?'L':'R') : (dy<0?'U':'D') ); });
+    }
+
+    setLevel(lv){ this.level=lv; this.p=paramsForLevel(lv); this.syncHUD(); }
+
+    _initResizeObserver(){
+      const wrap = this.c.parentElement || this.c; let lastW = 0;
+      const ro = new ResizeObserver((entries)=>{ const cr = entries[0].contentRect; const w = Math.floor(cr.width);
+        if(w !== lastW){ lastW = w; cancelAnimationFrame(this._rafId); this._rafId = requestAnimationFrame(()=> this.resize()); } });
+      ro.observe(wrap); this._ro = ro;
+      window.addEventListener('orientationchange', ()=> this.resize(), {passive:true});
+      window.addEventListener('resize', ()=> this.resize(), {passive:true});
+    }
+
+    resize(){
+      const bezel = this.c.closest('.bezel') || this.c.parentElement || this.c;
+      const rect = bezel.getBoundingClientRect();
+      const availW = Math.max(0, rect.width - 2);
+      const availH = Math.max(0, rect.height - 2);
+      const SCALE = 0.99; const Y_OFFSET=-12;
+      const sideCSS = Math.floor(Math.min(availW, availH) * SCALE);
+      const d = DPR();
+      this.c.style.width = sideCSS + 'px'; this.c.style.height = sideCSS + 'px';
+      this.c.width = Math.floor(sideCSS * d); this.c.height = Math.floor(sideCSS * d);
+      const wrap = this.c.parentElement; if(wrap){ wrap.style.transform = `translateY(${Y_OFFSET}px)`; }
+      this.draw();
+      fitCabinet();
+    }
+
+    syncHUD(){
+      $('#score').textContent=this.score|0;
+      $('#best').textContent=this.best|0;
+      $('#moves').textContent=this.moves|0;
+
+      // 포인트/티켓은 통합 지갑 기준으로 렌더링
+      renderGlobalWalletHUD();
+      updateTicketUI();
+    }
+
+    randEmpty(){ const empty=[]; for(let r=0;r<this.size;r++)for(let c=0;c<this.size;c++) if(!this.grid[r][c]) empty.push([r,c]); return empty; }
+
+    spawn(){
+      let count = Math.random()<this.p.doubleSpawn? 2: 1;
+      for(let k=0;k<count;k++){
+        const empty=this.randEmpty(); if(empty.length===0) return;
+        const r=Math.random(); let v=2; if(r<this.p.p16) v=16; else if(r<this.p.p16+this.p.p8) v=8; else if(r<this.p.p16+this.p.p8+this.p.p4) v=4;
+        const pos = this.pickSpawnCell(empty, v, this.p.evil);
+        const [rr,cc]=pos; this.grid[rr][cc]=v;
+      }
+    }
+
+    pickSpawnCell(cells, value, evil){
+      if(evil<=0 || cells.length===1) return pick(cells);
+      const l = evil; let best=null, bestScore=-Infinity;
+      for(const [r,c] of cells){
+        const sRand = Math.random()*0.01;
+        const sMob = - this.mobilityIfPlace(r,c,value);
+        const sMerge = - this.mergePotentialAround(r,c,value);
+        const score = l*(sMob + sMerge) + (1-l)*sRand;
+        if(score>bestScore){ bestScore=score; best=[r,c]; }
+      }
+      return best||pick(cells);
+    }
+    neighbors(r,c){ return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([y,x])=> y>=0&&y<this.size&&x>=0&&x<this.size); }
+    mergePotentialAround(r,c,v){ let s=0; for(const [y,x] of this.neighbors(r,c)){ if(this.grid[y][x]===v) s++; } return s; }
+    mobilityIfPlace(r,c,v){ let emptyAdj=0, equalAdj=0; for(const [y,x] of this.neighbors(r,c)){ const t=this.grid[y][x]; if(!t) emptyAdj++; else if(t===v) equalAdj++; } return emptyAdj + 0.5*equalAdj; }
+
+    storeHistory(){ if(this.undosLeft<=0) return; const snapshot={grid:this.grid.map(r=>r.slice()), score:this.score, moves:this.moves, points:this.points, scoreMilestone:this._scoreMilestone, tileBonusGiven:this._tileBonusGiven}; this.history.push(snapshot); if(this.history.length>50) this.history.shift(); }
+    undo(){ if(this.history.length===0||this.undosLeft<=0) return; const s=this.history.pop(); this.grid=s.grid; this.score=s.score; this.moves=s.moves; this.points=s.points||0; this._scoreMilestone=s.scoreMilestone||0; this._tileBonusGiven=s.tileBonusGiven||this._tileBonusGiven; this.undosLeft--; this.syncHUD(); this.draw(); }
+
+    /* ===== 포인트 모델 ===== */
+    awardPoints(base){
+      const mult = difficultyMult();
+      const add = Math.max(0, Math.floor(base * mult));
+      this.points = Math.min(5000, (this.points||0) + add);
+    }
+    _awardScoreMilestones(){
+      const blocks = Math.floor((this.score|0)/100);
+      if(blocks>this._scoreMilestone){
+        const diff = blocks - this._scoreMilestone;
+        this._scoreMilestone = blocks;
+        this.awardPoints(6 * diff);
+      }
+    }
+    _awardTileMilestone(maxTile){
+      const map = [{t:512,p:30},{t:1024,p:60},{t:2048,p:120},{t:4096,p:240}];
+      for(const {t,p} of map){
+        if(maxTile>=t && !this._tileBonusGiven[t]){
+          this._tileBonusGiven[t]=true;
+          this.awardPoints(p);
+        }
+      }
+    }
+    _snapshotBonusAtEnd(maxTile){
+      if(maxTile>=2048) this.awardPoints(200);
+      else if(maxTile>=1024) this.awardPoints(80);
+    }
+
+    move(dir){
+      if(this._ended) return;
+      this.storeHistory();
+      const before=JSON.stringify(this.grid);
+      let gained=0; const N=this.size; const idxs=[...Array(N).keys()];
+      const get=(r,c)=>this.grid[r][c];
+      const set=(r,c,v)=>{ this.grid[r][c]=v; };
+
+      const compress=line=>{
+        const arr=line.filter(v=>v!==0);
+        for(let i=0;i<arr.length-1;i++){
+          if(arr[i]!==0 && arr[i]===arr[i+1]){ arr[i]*=2; gained+=arr[i]; arr[i+1]=0; i++; }
+        }
+        const out=arr.filter(v=>v!==0); while(out.length<N) out.push(0); return out;
+      };
+
+      if(dir==='L' || dir==='R'){
+        idxs.forEach(r=>{ let line = idxs.map(c=> get(r,c)); if(dir==='R') line.reverse(); line = compress(line); if(dir==='R') line.reverse(); idxs.forEach(c=> set(r,c,line[c])); });
+      } else {
+        idxs.forEach(c=>{ let line = idxs.map(r=> get(r,c)); if(dir==='D') line.reverse(); line = compress(line); if(dir==='D') line.reverse(); idxs.forEach(r=> set(r,c,line[r])); });
+      }
+
+      const after=JSON.stringify(this.grid);
+      const moved = (before!==after);
+      if(moved){
+        this.score += gained; this.best=Math.max(this.best,this.score); localStorage.setItem(LS_KEYS.best, String(this.best));
+        this.moves++;
+        this._awardScoreMilestones();
+        this._awardTileMilestone(this.maxTile());
+
+        this.spawn(); this.syncHUD(); this.draw();
+        if(this.isGameOver()){ this.manualEnd(); }
+      }
+    }
+
+    manualEnd(){
+      if(this._ended) return;
+      this._ended=true;
+      const maxT = this.maxTile();
+      this._snapshotBonusAtEnd(maxT);
+      this.syncHUD();
+      addRecord(this.score, this.points||0);
+      addPlay();
+      notifyFinish(this.score|0);   /* ✅ 서버로 최종 점수 알림 */
+
+      /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
+      try{
+        const delta = calcReward(this.score||0, this.points||0, maxT, this.level||1);
+        applyGlobalRewardAndSyncWallet('2048', delta, {
+          score:  this.score||0,
+          points: this.points||0,
+          level:  this.level||1,
+          maxTile:maxT
+        });
+      }catch(e){
+        console.error('reward sync error', e);
+      }
+
+      this.flash('Game Over');
+    }
+
+    maxTile(){
+      let m=0; for(const row of this.grid) for(const v of row) if(v>m) m=v; return m;
+    }
+
+    isGameOver(){
+      if(this.randEmpty().length>0) return false;
+      const N=this.size;
+      for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+        const v=this.grid[r][c]; if((r+1<N && this.grid[r+1][c]===v) || (c+1<N && this.grid[r][c+1]===v)) return false;
+      }
+      return true;
+    }
+
+    draw(){
+      const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.clearRect(0,0,W,H);
+      const pad=16*DPR(); const n=this.size; const gap=10*DPR(); const cell=(W - pad*2 - gap*(n-1))/n; const radius=12*DPR();
+      ctx.fillStyle=getCSS('--tile0'); roundRect(ctx,pad,pad,W-pad*2,H-pad*2,18*DPR()); ctx.fill();
+      for(let r=0;r<n;r++){
+        for(let c=0;c<n;c++){
+          const x=pad + c*(cell+gap), y=pad + r*(cell+gap); const v=this.grid[r][c];
+          ctx.fillStyle=tileColor(v); roundRect(ctx,x,y,cell,cell,radius); ctx.fill();
+          if(v){ ctx.fillStyle='#111'; ctx.font=`bold ${Math.floor(cell*0.38)}px ui-sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v, x+cell/2, y+cell/2+1); }
+        }
+      }
+    }
+    flash(text){ const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.save(); ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(W*0.08)}px ui-sans-serif`; ctx.textAlign='center'; ctx.fillText(text, W/2, H/2); ctx.restore(); }
+  }
+  function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function getCSS(n){ return getComputedStyle(document.documentElement).getPropertyValue(n)||'#fff'; }
+  function tileColor(v){
+    switch(v){
+      case 0: return getCSS('--tile0');
+      case 2: return getCSS('--t2'); case 4: return getCSS('--t4'); case 8: return getCSS('--t8'); case 16: return getCSS('--t16'); case 32: return getCSS('--t32'); case 64: return getCSS('--t64');
+      case 128: return getCSS('--t128'); case 256: return getCSS('--t256'); case 512: return getCSS('--t512'); case 1024: return getCSS('--t1024'); case 2048: return getCSS('--t2048'); case 4096: return getCSS('--t4096');
+      default: return getCSS('--t8192');
+    }
+  }
+
+  /* Keep cabinet fully visible on screen */
+  function fitCabinet(){
+    const cab = document.querySelector('.cabinet'); if(!cab) return;
+    const margin = 16; cab.style.transform='none'; const w=cab.offsetWidth, h=cab.offsetHeight;
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const needScale = (w > vw - margin*2) || (h > vh - margin*2);
+    const scale = needScale ? Math.min(1, (vw - margin*2)/w, (vh - margin*2)/h) : 1;
+    cab.style.transform = `scale(${scale})`;
+  }
+  window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+  window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+  setTimeout(fitCabinet, 0);
+
+  /* ===== Tests ===== */
+  (function runTests(){
+    const c=document.createElement('canvas'); const g=new G2048(c);
+    g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
+    g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
+    g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
+    console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
+  })();
+
+  /* ===== Bootstrap ===== */
+  const game=new G2048(document.getElementById('game'));
+  (function(){
+    const tier=$('#tier'), lvl=$('#lvlRange');
+    const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; game.setLevel(lv); };
+    applyTier(tier.value);
+    lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
+    updateTicketUI();
+    // 서버 지갑 기준으로 통합 HUD 최신 상태 맞추기
+    syncWalletFromServerAndRender();
+  })();
+  </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>

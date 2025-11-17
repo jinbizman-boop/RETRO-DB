@@ -1,128 +1,449 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<!-- Google AdSense 소유권 확인 메타 태그 -->
-<meta name="google-adsense-account" content="ca-pub-6713974265397310" />
-<title>RETRO MATCH-3 – Arcade Cabinet (Fixed)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- Google AdSense 소유권 확인 메타 태그 -->
+  <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
+  <title>RETRO MATCH-3 – Arcade Cabinet (Fixed)</title>
 
-<!-- === Common SEO/A11y (auto-inserted) === -->
-<link rel="icon" href="/assets/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1b34">
-<meta name="description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="robots" content="index,follow">
-<meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
-<meta property="og:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta property="og:type" content="website">
-<meta property="og:image" content="/assets/og/retro-games-card.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
-<meta name="twitter:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="twitter:image" content="/assets/og/retro-games-card.png">
-<script>
-  // fixed environment flags for analytics/runtime
-  (function(d){
-    d.documentElement.dataset.env = 'production';
-    d.documentElement.dataset.analytics = 'on';
-    window.__ENV__ = 'production';
-    window.__ANALYTICS_ON__ = true;
-  })(document);
-</script>
-<!-- === /Common SEO/A11y === -->
+  <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0e1b34">
+  <meta name="description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="robots" content="index,follow">
+  <meta property="og:site_name" content="RETRO GAMES">
+  <meta property="og:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
+  <meta property="og:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og/retro-games-card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
+  <meta name="twitter:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 
-<!-- AdSense 스니펫: 요청값 그대로 (클라이언트 ID 일치) -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-     crossorigin="anonymous"></script>
+  <script>
+    // fixed environment flags for analytics/runtime
+    (function (d) {
+      d.documentElement.dataset.env = 'production';
+      d.documentElement.dataset.analytics = 'on';
+      window.__ENV__ = 'production';
+      window.__ANALYTICS_ON__ = true;
+    })(document);
+  </script>
+  <!-- === /Common SEO/A11y === -->
 
-<style>
-  :root{
-    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
-    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
-    --board:#121a2f; --tile0:#e9eef6; --ink:#111;
-    --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
-    --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
-  }
-  *{box-sizing:border-box}
-  html,body{
-    height:100%;margin:0;color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";overflow:hidden;
-    background:#0b001e radial-gradient(circle at 40% -10%, #320076, #0b001e 70%) no-repeat;background-size:cover;
-  }
-  #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
-  .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
-  .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
-  .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;filter:drop-shadow(0 0 12px rgba(255,190,0,.55));background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00)}
-  .cabinet:before{left:12px;border-radius:9px}
-  .cabinet:after{right:12px;border-radius:9px}
-  .marquee{padding:18px;border-radius:18px 18px 0 0;border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);background:linear-gradient(180deg,#173763,#0b2548)}
-  .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-  .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
-  .subtitle{opacity:.75;letter-spacing:.2em;text-align:center;font-size:clamp(10px,2.7vw,12px)}
-  .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
-  .chip,.pill,.hud .btnMini{position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%)}
-  .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
-  .pill{min-width:260px;gap:12px}
-  .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)}
-  .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
-  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;box-shadow:0 0 10px #8ad7ff;background:linear-gradient(90deg,#b86cff,#6af0ff)}
-  .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
-  .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
-  .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
-  .play{position:relative;margin:10px 18px;border-radius:16px;box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);background:linear-gradient(180deg,#0a1530,#031125)}
-  .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
-  .bezel{width:100%;height:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;position:relative;overflow:hidden;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)}
-  .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
-  canvas#game{display:block;max-width:100%;max-height:100%;width:100%;height:100%;background:#000;border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
-  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,0,20,.55);backdrop-filter:blur(2px);z-index:5}
-  .overlay .msg{font-weight:900;letter-spacing:.2em;text-align:center;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));font-size:clamp(28px,5vw,68px);color:#ffe166;text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)}
-  .overlay .sub{margin-top:10px;font-size:clamp(12px,2.2vw,16px);opacity:.9;color:#dfe9ff;text-align:center}
-  .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
-  .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;background:linear-gradient(180deg,#1b3a7a,#102a66)}
-  .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
-  .deck label{display:flex;align-items:center;gap:8px}
-  .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
-  #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
-  #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
-  #adBox{width:min(680px,92vw);min-height:280px;border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)}
-  #adHead{display:flex;justify-content:space-between;align-items:center}
-  #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;border:1px dashed #3952c3;background:linear-gradient(135deg,#18224a,#0e1636)}
-  @media (max-width: 980px){
-    .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
-    .cabinet{width:100vw;border-radius:0}
-    .marquee{padding:12px;border-radius:0}
-    .play{margin:8px 12px}
-    .screen{padding:10px}
-    .hud{gap:8px;padding:10px}
-    .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
-    .pill{min-width:220px}
-    .deck{gap:8px;padding:10px 12px 16px}
-    .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
-  }
-  @media (max-width: 640px){
-    .chip,.pill,.hud .btnMini{height:40px}
-    .points .bar,.tickets .bar{width:96px}
-    .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
-    .deck>*{flex:0 0 auto}
-  }
+  <!-- AdSense 스니펫: 요청값 그대로 (클라이언트 ID 일치, head 안에 위치) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+          crossorigin="anonymous"></script>
 
-  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
-    display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-    border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
-    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-    z-index:10000;font-size:12px}
-  .cookie-banner .spacer{flex:1}
-  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+  <style>
+    :root{
+      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+      --board:#121a2f; --tile0:#e9eef6; --ink:#111;
+      --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
+      --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;
+      margin:0;
+      color:#fff;
+      font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+      overflow:hidden;
+      background:#0b001e radial-gradient(circle at 40% -10%, #320076, #0b001e 70%) no-repeat;
+      background-size:cover;
+    }
+    #fx{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:0;
+      opacity:.75
+    }
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom,0))
+    }
+    .cabinet{
+      position:relative;
+      width:min(1200px,96vw);
+      background:#0e1b34;
+      border-radius:18px;
+      box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
+      transform-origin:top center
+    }
+    .cabinet:before,.cabinet:after{
+      content:"";
+      position:absolute;
+      top:12px;
+      bottom:12px;
+      width:18px;
+      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
+      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00)
+    }
+    .cabinet:before{
+      left:12px;
+      border-radius:9px
+    }
+    .cabinet:after{
+      right:12px;
+      border-radius:9px
+    }
+    .marquee{
+      padding:18px;
+      border-radius:18px 18px 0 0;
+      border-bottom:1px solid #0c2b59;
+      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
+      background:linear-gradient(180deg,#173763,#0b2548)
+    }
+    .title{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap
+    }
+    .title h1{
+      margin:0;
+      font-weight:900;
+      letter-spacing:2px;
+      color:#eaf3ff;
+      text-shadow:0 0 12px rgba(62,142,255,.55);
+      font-size:clamp(18px,4.4vw,28px)
+    }
+    .subtitle{
+      opacity:.75;
+      letter-spacing:.2em;
+      text-align:center;
+      font-size:clamp(10px,2.7vw,12px)
+    }
+    .hud{
+      display:flex;
+      gap:12px;
+      padding:12px;
+      justify-content:center;
+      flex-wrap:wrap
+    }
+    .chip,.pill,.hud .btnMini{
+      position:relative;
+      min-width:128px;
+      height:46px;
+      padding:0 16px;
+      border-radius:14px;
+      border:1px solid #1e63ff;
+      color:#fff;
+      font-weight:900;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      letter-spacing:.3px;
+      box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
+      background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%)
+    }
+    .chip b{
+      color:#fff;
+      font-weight:900;
+      padding-left:6px;
+      text-shadow:0 1px 0 rgba(0,0,0,.25)
+    }
+    .pill{
+      min-width:260px;
+      gap:12px
+    }
+    .pill .icon{
+      width:28px;
+      height:28px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      color:#0b2a57;
+      box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);
+      background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)
+    }
+    .points .bar,.tickets .bar{
+      height:8px;
+      border-radius:999px;
+      background:#1a2548;
+      overflow:hidden;
+      border:1px solid #2b3f8f;
+      width:120px
+    }
+    .points .bar>span,.tickets .bar>span{
+      display:block;
+      height:100%;
+      width:0%;
+      box-shadow:0 0 10px #8ad7ff;
+      background:linear-gradient(90deg,#b86cff,#6af0ff)
+    }
+    .points .nums,.tickets .nums{
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+      font-weight:900
+    }
+    .points .nums .big,.tickets .nums .big{
+      font-size:18px;
+      color:#ffe9a3;
+      text-shadow:0 0 8px #ffd86a
+    }
+    .points .nums .cap,.tickets .nums .cap{
+      opacity:.8;
+      font-size:12px
+    }
+    .play{
+      position:relative;
+      margin:10px 18px;
+      border-radius:16px;
+      box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);
+      background:linear-gradient(180deg,#0a1530,#031125)
+    }
+    .screen{
+      aspect-ratio:16/9;
+      display:grid;
+      place-items:center;
+      padding:18px
+    }
+    .bezel{
+      width:100%;
+      height:100%;
+      border-radius:14px;
+      box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
+      display:grid;
+      place-items:center;
+      position:relative;
+      overflow:hidden;
+      background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)
+    }
+    .canvasWrap{
+      width:min(92%,980px);
+      max-height:85%;
+      display:grid;
+      place-items:center
+    }
+    canvas#game{
+      display:block;
+      max-width:100%;
+      max-height:100%;
+      width:100%;
+      height:100%;
+      background:#000;
+      border-radius:18px;
+      border:1px solid #1b2b45;
+      box-shadow:inset 0 0 40px rgba(0,0,0,.25)
+    }
+    .overlay{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(5,0,20,.55);
+      backdrop-filter:blur(2px);
+      z-index:5
+    }
+    .overlay .msg{
+      font-weight:900;
+      letter-spacing:.2em;
+      text-align:center;
+      filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));
+      font-size:clamp(28px,5vw,68px);
+      color:#ffe166;
+      text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)
+    }
+    .overlay .sub{
+      margin-top:10px;
+      font-size:clamp(12px,2.2vw,16px);
+      opacity:.9;
+      color:#dfe9ff;
+      text-align:center
+    }
+    .deck{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:center;
+      padding:14px 18px 22px;
+      border-top:1px solid #0a2b57;
+      background:linear-gradient(180deg,#0b1f40,#0a1730)
+    }
+    .deck .btn,.deck select,.deck input[type=range]{
+      font-weight:900;
+      color:#dff1ff;
+      border:1px solid #224aa8;
+      border-radius:12px;
+      padding:10px 14px;
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      cursor:pointer;
+      background:linear-gradient(180deg,#1b3a7a,#102a66)
+    }
+    .deck .btn:hover,.deck select:hover{
+      filter:brightness(1.06)
+    }
+    .deck label{
+      display:flex;
+      align-items:center;
+      gap:8px
+    }
+    .deck input[type=range]{
+      width:140px;
+      height:12px;
+      accent-color:#5fb0ff
+    }
+    #recModal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(5,0,20,.55);
+      backdrop-filter:blur(4px);
+      align-items:center;
+      justify-content:center;
+      z-index:999
+    }
+    #adModal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.65);
+      backdrop-filter:blur(2px);
+      align-items:center;
+      justify-content:center;
+      z-index:1000
+    }
+    #adBox{
+      width:min(680px,92vw);
+      min-height:280px;
+      border:2px solid #3e2b7b;
+      border-radius:20px;
+      box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)
+    }
+    #adHead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center
+    }
+    #adClose{
+      border:0;
+      background:#1b2b7a;
+      color:#fff;
+      border-radius:10px;
+      padding:6px 10px;
+      cursor:pointer
+    }
+    .adPlaceholder{
+      display:grid;
+      place-items:center;
+      height:220px;
+      border-radius:14px;
+      border:1px dashed #3952c3;
+      background:linear-gradient(135deg,#18224a,#0e1636)
+    }
+    @media (max-width: 980px){
+      .shell{
+        padding:12px;
+        padding-bottom:calc(12px + env(safe-area-inset-bottom,0))
+      }
+      .cabinet{
+        width:100vw;
+        border-radius:0
+      }
+      .marquee{
+        padding:12px;
+        border-radius:0
+      }
+      .play{
+        margin:8px 12px
+      }
+      .screen{
+        padding:10px
+      }
+      .hud{
+        gap:8px;
+        padding:10px
+      }
+      .chip,.pill,.hud .btnMini{
+        min-width:112px;
+        height:42px;
+        padding:0 12px
+      }
+      .pill{
+        min-width:220px
+      }
+      .deck{
+        gap:8px;
+        padding:10px 12px 16px
+      }
+      .deck .btn,.deck select,.deck input[type=range]{
+        padding:10px 12px
+      }
+    }
+    @media (max-width: 640px){
+      .chip,.pill,.hud .btnMini{
+        height:40px
+      }
+      .points .bar,.tickets .bar{
+        width:96px
+      }
+      .deck{
+        justify-content:flex-start;
+        overflow:auto;
+        -webkit-overflow-scrolling:touch
+      }
+      .deck>*{
+        flex:0 0 auto
+      }
+    }
 
-</style>
+    .cookie-banner{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:12px;
+      display:none;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #2b3f8f;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      z-index:10000;
+      font-size:12px
+    }
+    .cookie-banner .spacer{
+      flex:1
+    }
+    .cookie-banner button{
+      padding:8px 12px;
+      border-radius:10px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:800;
+      color:#e9f0ff;
+      cursor:pointer
+    }
+    .cookie-banner .agree{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#3a2400;
+      border-color:#7a5600
+    }
+  </style>
 </head>
 
-<!-- 경로를 절대경로로 고정해서 /public/games/에서도 공통 JS가 안전하게 로드되도록 수정 -->
+<!-- 공통 JS: /public/games/ 이하에서도 항상 동작하도록 절대경로 사용 -->
 <script defer src="/assets/js/app.js"></script>
 <script defer src="/assets/js/analytics.js"></script>
 
@@ -147,7 +468,10 @@
         <div class="pill points" aria-label="사용자 포인트">
           <div class="icon">🏅</div>
           <div>
-            <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
+            <div class="nums">
+              <span class="big" id="pointsAmt">0</span>
+              <span class="cap">/ <span id="pointsCap">5,000</span></span>
+            </div>
             <div class="bar"><span id="pointsBar"></span></div>
           </div>
         </div>
@@ -155,7 +479,10 @@
         <div class="pill tickets" aria-label="티켓 진행">
           <div class="icon">🎟️</div>
           <div>
-            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+            <div class="nums">
+              <span class="big" id="ticketsAmt">0</span>
+              <span class="cap">티켓</span>
+            </div>
             <div class="bar"><span id="ticketsBar"></span></div>
           </div>
           <div class="playCount" id="ticketsCap">0 / 10</div>
@@ -209,7 +536,10 @@
   <!-- Records Modal -->
   <div id="recModal">
     <div style="width:min(640px,94vw);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3><button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3>
+        <button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button>
+      </div>
       <div id="recBody" style="max-height:60vh;overflow:auto;border:1px solid #2a3a89;border-radius:12px;padding:8px"></div>
     </div>
   </div>
@@ -230,856 +560,1053 @@
     </div>
   </div>
 
-<script>
-/***** Ad 연동 (클라이언트 ID 정확히 일치) *****/
-const AD_CLIENT = 'ca-pub-6713974265397310';  // ✔ meta와 동일 ID
-const AD_SLOT   = ''; // 실제 슬롯 ID 보유 시 채워 넣으면 됨
+  <script>
+    /***** Ad 연동 (클라이언트 ID 정확히 일치, 전역 설정) *****/
+    const AD_CLIENT = 'ca-pub-6713974265397310';  // ✔ meta / head 스니펫과 동일한 ID
+    const AD_SLOT   = ''; // 실제 광고 유닛 슬롯 ID가 있으면 '1234567890' 형태로 입력
 
-function fallbackAdHTML(){
-  return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
-}
-function showInterstitialAd(){
-  const box=document.getElementById('adContainer'); 
-  if(!box) return;
-  box.innerHTML='';
-  const ins=document.createElement('ins');
-  ins.className='adsbygoogle'; 
-  ins.style.display='block';
-  ins.setAttribute('data-ad-client', AD_CLIENT);
-  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-  ins.setAttribute('data-ad-format','auto');
-  ins.setAttribute('data-full-width-responsive','true');
-  box.appendChild(ins);
-  try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }
-  catch(e){ console.warn(e); box.innerHTML=fallbackAdHTML(); }
-  document.getElementById('adModal').style.display='flex';
-}
-let _afterAd=null;
-function showAdThen(fn){ 
-  _afterAd = (typeof fn==='function') ? fn : null; 
-  showInterstitialAd(); 
-}
-document.getElementById('adClose').addEventListener('click',()=>{
-  document.getElementById('adModal').style.display='none';
-  const f=_afterAd; _afterAd=null; 
-  if(f) try{ f(); }catch(e){ console.error(e);} 
-});
-
-/***** Neon FX (background stars) *****/
-(function(){
-  const c=document.getElementById('fx'); if(!c) return;
-  const g=c.getContext('2d');
-  function fit(){ const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0); }
-  fit(); addEventListener('resize',fit,{passive:true});
-  const N=80;
-  const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
-  function loop(t){
-    g.clearRect(0,0,c.width,c.height);
-    for(const p of pts){
-      g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2);
-      const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle='rgba(43,123,255,'+a+')'; g.fill();
-      p.y+=p.s; if(p.y>innerHeight){ p.y=-10; p.x=Math.random()*innerWidth; }
-    }
-    requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
-})();
-
-/***** Helpers & Storage *****/
-const $=sel=>document.querySelector(sel);
-const DPR=()=>Math.min(2, window.devicePixelRatio||1);
-const clamp=(n,a,b)=>Math.max(a, Math.min(b,n));
-const fmt=n=>n.toLocaleString('ko-KR');
-
-/* Match-3 전용 키 (로컬 플레이/티켓 기록: 게임별 통계용) */
-const LS_KEYS={
-  plays   :'plays_match',
-  tickets :'tickets_match',
-  records :'records_match',
-  best    :'best_match'
-};
-
-function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch(e){ return def; }}
-function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
-function updateTicketUI(){
-  const plays   = +localStorage.getItem(LS_KEYS.plays)||0;
-  const tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-  $('#ticketsAmt').textContent = tickets;
-  $('#ticketsCap').textContent = (plays%10)+' / 10';
-  $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
-}
-
-/* ================= Wallet API & 글로벌 HUD 연동 =================
-   - user-retro-games.html 쪽에서 RG_addReward({ coins, tickets, xp })를
-     전역으로 제공한다고 가정하고, 여기서는 그 함수를 안전하게 사용.
-   - 서버 측 지갑 API (/api/wallet/reward)도 동시에 호출해서
-     로그인 계정 기준 통합 티켓/포인트/경험치를 유지.
-************************************************************* */
-const WALLET_API_BASE = '/api/wallet';
-
-async function postWalletReward(payload){
-  try{
-    const res = await fetch(WALLET_API_BASE + '/reward', {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        'Cache-Control':'no-store'
-      },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok){
-      console.warn('wallet/reward http error', res.status);
-      return null;
-    }
-    const data = await res.json().catch(()=>null);
-    if(!data || !data.ok){
-      console.warn('wallet/reward logical error', data);
-      return null;
-    }
-    return data.wallet || null;
-  }catch(err){
-    console.warn('wallet/reward failed', err);
-    return null;
-  }
-}
-
-/* 점수/포인트 → 코인/XP/티켓 변환 규칙 (브릭브레이커와 동일 계열 규칙) */
-function calcReward(score, points, level){
-  const s  = Math.max(0, score|0);
-  const p  = Math.max(0, points|0);
-  const lv = Math.max(1, level|0);
-
-  // 200점당 1코인, 난이도 계수 소폭 적용
-  const diffMult  = 1 + ((lv-1) * 0.002);
-  const coinsBase = s / 200 * diffMult;
-  const coins     = Math.floor(coinsBase);
-
-  // 포인트는 XP로 1:4 비율, 상한 2,000
-  const xp = Math.min(2000, p * 4);
-
-  // 티켓은 계정 기준으로 별도 정책 있을 수 있으므로 여기서는 0
-  const tickets = 0;
-
-  return { coins, xp, tickets };
-}
-
-/* 게임에서 계산된 보상을:
-   1) 메인 허브(RG_addReward)를 통해 통합 HUD/로컬 스토리지에 반영
-   2) 서버 지갑(/api/wallet/reward)에 동기화 */
-function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
-  if(!delta) return;
-  const coins   = Number(delta.coins)   || 0;
-  const xp      = Number(delta.xp)      || 0;
-  const tickets = Number(delta.tickets) || 0;
-  if(!(coins || xp || tickets)) return;
-
-  // 1) 홈(user-retro-games.html)의 글로벌 HUD 갱신
-  try{
-    if(typeof window.RG_addReward === 'function'){
-      window.RG_addReward({ coins, tickets, xp });
-    }
-  }catch(e){
-    console.warn('RG_addReward error', e);
-  }
-
-  // 2) 서버 지갑 API 호출
-  postWalletReward({
-    game: gameCode,
-    delta: { coins, xp, tickets },
-    meta: {
-      score : meta && meta.score  || 0,
-      points: meta && meta.points || 0,
-      level : meta && meta.level  || 0
-    }
-  });
-}
-
-/***** 난이도 배율 *****/
-function difficultyMult(){
-  const v=$('#tier')?.value||'beginner';
-  return {
-    beginner    : 1.00,
-    intermediate: 1.15,
-    advanced    : 1.30,
-    hell        : 1.50,
-    doom        : 1.65,
-    insane      : 1.85
-  }[v] || 1.0;
-}
-
-/***** Match-3 Game (원본 유지 + 좌표 매핑 픽스 + 허브/지갑 연동) *****/
-(function(){
-  const EMPTY=0, NORMAL=1, ROCK=2, ICE=3, STRIPE_H=4, STRIPE_V=5, BOMB=6, RAINBOW=7;
-
-  function paramsForLevel(lv){
-    const colors = lv<8?5: lv<15?6: lv<25?7: lv<40?7: lv<50?8: 8;
-    const timeLimit = lv<10? 70: lv<20? 60: lv<30? 55: lv<40? 45: lv<50? 40: lv<80?35: 28;
-    const rockRate = lv>=20? (lv<40?0.03: lv<50?0.05: lv<80?0.07: 0.10): 0;
-    const iceRate = lv>=15? (lv<40?0.05: lv<50?0.08: lv<80?0.10: 0.12): 0;
-    const bombRate = lv>=40? (lv<50?0.04: lv<80?0.06: 0.08): 0;
-    const goalScore = 800 + lv*25;
-    return { colors, timeLimit, rockRate, iceRate, bombRate, goalScore, shuffleOnStall:true };
-  }
-
-  class Match3{
-    constructor(canvas){
-      this.c=canvas; this.ctx=canvas.getContext('2d');
-      this.N=8; this.level=1; this.params=paramsForLevel(1);
-      this.state='idle'; this.score=0; this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-      this.timeLeft=60; this.grid=[]; this.sel=null; this.paused=false;
-      this.combo=1; this.points=0; this.chainLv=0; this.maxChain=0; this.goalAwarded=false;
-      this.swapAnim=null; this.fx=[]; this.last=0; this.ox=0; this.oy=0; this.step=0;
-
-      this.resize(); this.bind(); this.newGame(1);
-      requestAnimationFrame((t)=>this.run(t));
-
-      /* ✅ 서버 세션 시작 알림 (slug: 'match-3') */
-      notifyStart();
+    function fallbackAdHTML(){
+      return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
     }
 
-    DPR(){ return Math.min(2, window.devicePixelRatio||1); }
-    rnd(n){ return Math.floor(Math.random()*n); }
-    btype(v){ return Math.floor(v/10)===0? NORMAL: Math.floor(v/10); }
-    bval(v){ return Math.floor(v/10)===0? v: v%10; }
-    inBounds(x,y){ return x>=0&&x<this.N&&y>=0&&y<this.N; }
-
-    bind(){
-      // ✅ transform(scale)과 DPR 무시, 실제 DOM 크기 기준으로만 좌표 매핑
-      const map = (ev)=>{
-        const r=this.c.getBoundingClientRect();
-        const side=Math.min(r.width, r.height);
-        const left=r.left+(r.width - side)/2;
-        const top =r.top +(r.height- side)/2;
-        const x=ev.clientX-left, y=ev.clientY-top;
-        return {x,y,side};
-      };
-      let down=false,sx=0,sy=0;
-
-      this.c.addEventListener('mousedown',(e)=>{
-        if(this.paused||this.state==='over'||this.swapAnim) return;
-        down=true; const p=map(e);
-        if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-        this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
-        sx=p.x; sy=p.y;
-      });
-      window.addEventListener('mouseup',()=> down=false,{passive:true});
-      this.c.addEventListener('mousemove',(e)=>{
-        if(!down||!this.sel||this.swapAnim) return;
-        const p=map(e); const dx=p.x-sx, dy=p.y-sy; let dir=null;
-        if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>10) dir= dx>0?'r':'l';
-        else if(Math.abs(dy)>10) dir= dy>0?'d':'u';
-        if(dir){ this.trySwap(dir); down=false; }
-      });
-
-      this.c.addEventListener('touchstart',(e)=>{
-        if(this.paused||this.state==='over'||this.swapAnim) return;
-        const t=e.touches[0]; const p=map(t);
-        if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-        this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
-        sx=p.x; sy=p.y;
-      },{passive:true});
-      this.c.addEventListener('touchmove',(e)=>{
-        if(!this.sel||this.swapAnim) return; const t=e.touches[0]; const p=map(t);
-        const dx=p.x-sx, dy=p.y-sy; let dir=null;
-        if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>12) dir= dx>0?'r':'l';
-        else if(Math.abs(dy)>12) dir= dy>0?'d':'u';
-        if(dir){ this.trySwap(dir); }
-      },{passive:true});
-
-      // Deck / Keys
-      document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
-      document.getElementById('undoBtn').addEventListener('click',()=>{ if(this.state!=='over') this.paused=!this.paused; });
-      document.getElementById('endBtn').addEventListener('click',()=> 
-        showAdThen(()=> this.gameOver(true))
-      );
-
-      // ✅ HOME: 광고 후 로그인된 메인 허브(user-retro-games.html)로 이동
-      document.getElementById('homeBtn').addEventListener('click',()=> 
-        showAdThen(()=>{ window.location.href = '/user-retro-games.html'; })
-      );
-
-      const tier=$('#tier'), lvl=$('#lvlRange');
-      const applyTier=(t)=>{ 
-        let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; 
-        lvl.value=lv; 
-        this.setLevel(lv); 
-      };
-      tier.addEventListener('change',()=> applyTier(tier.value));
-      lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
-
-      document.addEventListener('keydown',(e)=>{
-        if(e.code==='Enter' || e.code==='KeyN'){ this.newGame(this.level); }
-        if(e.code==='Space' || e.code==='KeyU'){ 
-          if(this.state!=='over'){ 
-            this.paused=!this.paused; 
-            e.preventDefault(); 
-          } 
-        }
-      });
-
-      window.addEventListener('resize',()=> this.resize(),{passive:true});
-    }
-
-    /* 캔버스 크기 계산 */
-    resize(){
-      const wrap=document.getElementById('canvasWrap');
-      const d=this.DPR();
-      const r=wrap.getBoundingClientRect();
-      const side=Math.floor(Math.min(r.width, r.height));
-      this.c.style.width  = side+'px';
-      this.c.style.height = side+'px';
-      this.c.width  = Math.floor(side*d);
-      this.c.height = Math.floor(side*d);
-      const s=Math.min(this.c.width,this.c.height);
-      this.step=s/this.N; this.ox=(this.c.width - s)/2; this.oy=(this.c.height- s)/2;
-    }
-
-    setLevel(lv){ 
-      this.level=lv; 
-      this.params=paramsForLevel(lv); 
-      this.updateHUD(); 
-    }
-
-    updateHUD(){
-      $('#score').textContent=this.score|0;
-      if(this.score>this.best){ 
-        this.best=this.score|0; 
-        localStorage.setItem(LS_KEYS.best, String(this.best)); 
-      }
-      $('#best').textContent=this.best|0;
-      $('#moves').textContent=(Math.max(0,this.level-1))|0;
-      $('#pointsAmt').textContent=fmt(this.points|0);
-      const cap=5000; 
-      $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
-      updateTicketUI();
-    }
-
-    newGame(lv){
-      this.level=lv; this.params=paramsForLevel(lv);
-      this.score=0; this.combo=1; this.timeLeft=this.params.timeLimit;
-      this.points=0; this.chainLv=0; this.maxChain=0; this.goalAwarded=false;
-      this.state='playing'; this.paused=false; this.sel=null;
-      this.fx.length=0; this.swapAnim=null;
-      const ov=document.getElementById('gameOver'); 
-      if(ov) ov.style.display='none';
-
-      this.grid=[]; 
-      for(let i=0;i<this.N;i++){ 
-        this.grid[i]=[]; 
-        for(let j=0;j<this.N;j++){ 
-          this.grid[i][j]=this.randomTile(i,j); 
-        } 
-      }
-      this.addBlockers();
-
-      let guard=0; 
-      while(!this.hasAnyMatchMove() && guard<50){ 
-        this.shuffle(); 
-        guard++; 
-      }
-      this.updateHUD();
-    }
-
-    randomTile(i,j){
-      let col = 1 + this.rnd(this.params.colors);
-      if(i>=2 && this.grid[i-1] && this.grid[i-2]){
-        if(this.grid[i-1][j]===this.grid[i-2][j] && this.grid[i-1][j]!==ROCK && this.grid[i-1][j]!==ICE){
-          col = (this.grid[i-1][j]%this.params.colors)+1;
-        }
-      }
-      if(j>=2){
-        if(this.grid[i][j-1]===this.grid[i][j-2] && this.grid[i][j-1]!==ROCK && this.grid[i][j-1]!==ICE){
-          col = (this.grid[i][j-1]%this.params.colors)+1;
-        }
-      }
-      return col;
-    }
-
-    addBlockers(){
-      for(let i=0;i<this.N;i++) 
-        for(let j=0;j<this.N;j++){
-          if(Math.random()<this.params.rockRate) this.grid[i][j]=ROCK;
-          else if(Math.random()<this.params.iceRate) this.grid[i][j]=ICE*10 + this.grid[i][j];
-          else if(Math.random()<this.params.bombRate) this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
-        }
-    }
-
-    select(x,y){ if(this.inBounds(x,y)) this.sel={x,y}; }
-
-    trySwap(dir){
-      if(!this.sel || this.swapAnim) return;
-      let dx=0,dy=0; 
-      if(dir==='l')dx=-1; 
-      if(dir==='r')dx=1; 
-      if(dir==='u')dy=-1; 
-      if(dir==='d')dy=1;
-      const x=this.sel.x, y=this.sel.y, nx=x+dx, ny=y+dy; 
-      if(!this.inBounds(nx,ny)) return;
-
-      const animateSwap=(x1,y1,x2,y2,reverse=false)=> new Promise(res=>{
-        const dur=140; const t0=performance.now();
-        this.swapAnim={x1,y1,x2,y2,reverse,t0,dur,done:res};
-      });
-
-      animateSwap(x,y,nx,ny,false).then(()=>{
-        this.swap(x,y,nx,ny);
-        const found=this.findMatches().length>0;
-        if(!found){
-          animateSwap(x,y,nx,ny,true).then(()=>{ 
-            this.swap(x,y,nx,ny); 
-            if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5); 
-          });
-        }else{
-          this.sel=null; 
-          this.processCascade();
-        }
-      });
-    }
-
-    swap(x1,y1,x2,y2){ 
-      const t=this.grid[x1][y1]; 
-      this.grid[x1][y1]=this.grid[x2][y2]; 
-      this.grid[x2][y2]=t; 
-    }
-
-    findMatches(){
-      const res=[]; let i,j,cnt,val,prev,vType,pType,vCol,pCol,lastCol;
-      for(j=0;j<this.N;j++){
-        cnt=1;
-        for(i=1;i<this.N;i++){
-          val=this.grid[i][j]; prev=this.grid[i-1][j];
-          vType=this.btype(val)===NORMAL? NORMAL: this.btype(val);
-          pType=this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
-          vCol=this.bval(val); pCol=this.bval(prev);
-          const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
-          if(eq) cnt++;
-          else { 
-            if (cnt >= 3) { 
-              res.push({ dir: 'h', y: j, x: i - cnt, len: cnt, col: pCol }); 
-            } 
-            cnt = 1; 
-          }
-        }
-        if (cnt>=3){ 
-          lastCol=this.bval(this.grid[this.N-1][j]); 
-          res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol}); 
-        }
-      }
-      for(i=0;i<this.N;i++){
-        cnt=1;
-        for(j=1;j<this.N;j++){
-          val=this.grid[i][j]; prev=this.grid[i][j-1];
-          vType=this.btype(val)===NORMAL? NORMAL: this.btype(val);
-          pType=this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
-          vCol=this.bval(val); pCol=this.bval(prev);
-          const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
-          if(eq) cnt++;
-          else { 
-            if (cnt >= 3) { 
-              res.push({ dir: 'v', x: i, y: j - cnt, len: cnt, col: pCol }); 
-            }
-            cnt = 1; 
-          }
-        }
-        if(cnt>=3){ 
-          lastCol=this.bval(this.grid[i][this.N-1]); 
-          res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol}); 
-        }
-      }
-      return res;
-    }
-
-    resolveMatches(chainLv){
-      const matches=this.findMatches(); 
-      if(matches.length===0) return {found:false};
-      let cleared=0; const specials=[]; let basePoint=0;
-
-      for(const m of matches){
-        const sp=this.createSpecialFromMatch(m);
-        const cx=m.dir==='h'? m.x+Math.floor(m.len/2): m.x;
-        const cy=m.dir==='h'? m.y: m.y+Math.floor(m.len/2);
-        if(sp) specials.push({ x: cx, y: cy, val: sp });
-
-        const per = (m.len>=5)?24 : (m.len===4?14:8);
-        basePoint += per;
-
-        if(m.dir==='h'){
-          for(let j=0;j<m.len;j++){
-            const gx=m.x+j, gy=m.y;
-            if(this.btype(this.grid[gx][gy])!==ROCK){
-              this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
-              this.grid[gx][gy]=EMPTY; cleared++;
-            }
-          }
-        } else {
-          for(let j=0;j<m.len;j++){
-            const gx=m.x, gy=m.y+j;
-            if(this.btype(this.grid[gx][gy])!==ROCK){
-              this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
-              this.grid[gx][gy]=EMPTY; cleared++;
-            }
-          }
-        }
-      }
-      for(const s of specials){ this.grid[s.x][s.y]=s.val; }
-
-      this.score += cleared*10*this.combo; 
-      this.combo++;
-      if(chainLv>this.maxChain) this.maxChain = chainLv;
-
-      const chainBonus = Math.min(0.6, Math.max(0, (chainLv-1)*0.2));
-      const mult = difficultyMult();
-      const earned = Math.floor(basePoint * (1+chainBonus) * mult);
-      if(earned>0) this.addPoints(earned);
-
-      if(!this.goalAwarded && this.score >= this.params.goalScore){
-        this.goalAwarded = true;
-        this.addPoints(Math.floor(100 * mult));
-      }
-
-      this.timeLeft = Math.min(this.params.timeLimit, this.timeLeft + Math.min(2, cleared*0.05));
-      this.dropAndFill();
-      return {found:true};
-    }
-
-    addPoints(p){
-      this.points = Math.min(5000, this.points + p);
-      this.updateHUD();
-    }
-
-    createSpecialFromMatch(m){
-      if(m.len>=5) return RAINBOW*10 + m.col;
-      if(m.len===4) return (m.dir==='h'? STRIPE_H: STRIPE_V)*10 + m.col;
-      return 0;
-    }
-
-    processCascade(){
-      this.chainLv=1;
-      while(true){
-        const r=this.resolveMatches(this.chainLv);
-        if(!r.found) break;
-        this.chainLv++;
-      }
-      this.chainLv=0;
-    }
-
-    dropAndFill(){
-      for(let i=0;i<this.N;i++){
-        for(let j=this.N-1;j>=0;j--){
-          if(this.grid[i][j]===EMPTY){
-            for(let k=j-1;k>=0;k--){
-              if(this.grid[i][k]!==EMPTY){ 
-                this.grid[i][j]=this.grid[i][k]; 
-                this.grid[i][k]=EMPTY; 
-                break; 
-              } 
-            }
-            if(this.grid[i][j]===EMPTY){ this.grid[i][j]=this.randomTile(i,j); }
-          }
-        }
-      }
-      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
-        const v=this.grid[i][j];
-        if(Math.floor(v/10)===BOMB){
-          let n=v%10; n--;
-          if(n<=0){ 
-            this.explodeAt(i,j); 
-            this.grid[i][j]=EMPTY; 
-          }
-          else { 
-            this.grid[i][j]=BOMB*10+n; 
-          }
-        }
-      }
-      if(!this.hasAnyMatchMove()) this.shuffle();
-    }
-
-    explodeAt(cx,cy){
-      for(let i=cx-1;i<=cx+1;i++) 
-        for(let j=cy-1;j<=cy+1;j++)
-          if(this.inBounds(i,j)){ 
-            if(this.btype(this.grid[i][j])!==ROCK){ 
-              this.spawnPop(i,j,this.bval(this.grid[i][j])); 
-              this.grid[i][j]=EMPTY; 
-              this.score+=5; 
-            } 
-          }
-    }
-
-    hasAnyMatchMove(){
-      for(let x=0;x<this.N;x++) 
-        for(let y=0;y<this.N;y++){
-          if(x+1<this.N){ 
-            this.swap(x,y,x+1,y); 
-            if(this.findMatches().length>0){ 
-              this.swap(x,y,x+1,y); 
-              return true; 
-            } 
-            this.swap(x,y,x+1,y); 
-          }
-          if(y+1<this.N){ 
-            this.swap(x,y,x,y+1); 
-            if(this.findMatches().length>0){ 
-              this.swap(x,y,x,y+1); 
-              return true; 
-            } 
-            this.swap(x,y,x,y+1); 
-          }
-        }
-      return false;
-    }
-
-    shuffle(){
-      const flat=[]; 
-      for(let i=0;i<this.N;i++) 
-        for(let j=0;j<this.N;j++) 
-          if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
-      for(let i=flat.length-1;i>0;i--){ 
-        const r=this.rnd(i+1); 
-        [flat[i],flat[r]]=[flat[r],flat[i]]; 
-      }
-      let idx=0; 
-      for(let i=0;i<this.N;i++) 
-        for(let j=0;j<this.N;j++) 
-          if(this.grid[i][j]!==ROCK) this.grid[i][j]=flat[idx++];
-    }
-
-    spawnPop(gx,gy,colIdx){
-      const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-      const col=pal[(Math.max(1,colIdx)-1)%pal.length];
-      this.fx.push({gx,gy,tStart:this.last||performance.now(), col});
-    }
-
-    drawPops(ctx){
-      const now=this.last||performance.now(); const DURATION=220;
-      const keep=[]; 
-      for(const fx of this.fx){
-        const k=(now-fx.tStart)/DURATION; if(k>=1) continue;
-        const x=this.ox+(fx.gx+0.5)*this.step, y=this.oy+(fx.gy+0.5)*this.step;
-        const r=this.step*0.45*(0.25+0.75*k);
-        ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
-        const v=parseInt(fx.col.slice(1),16), rr=(v>>16)&255, gg=(v>>8)&255, bb=v&255;
-        ctx.fillStyle=`rgba(${rr},${gg},${bb},${(1-k)*0.6})`; ctx.fill();
-        keep.push(fx);
-      }
-      this.fx=keep;
-    }
-
-    update(dt){
-      if(this.paused||this.state==='over') return;
-      this.timeLeft -= dt; 
-      if(this.timeLeft<=0){ 
-        this.timeLeft=0; 
-        this.gameOver(false); 
-      }
-      this.updateHUD();
-    }
-
-    draw(){
-      const ctx=this.ctx, d=this.DPR();
-      ctx.clearRect(0,0,this.c.width,this.c.height);
-
-      const g=ctx.createLinearGradient(0,0,0,this.c.height);
-      g.addColorStop(0,'#0b1440'); 
-      g.addColorStop(1,'#070c22');
-      ctx.fillStyle=g; 
-      ctx.fillRect(0,0,this.c.width,this.c.height);
-
-      const s=Math.min(this.c.width,this.c.height); 
-      const x0=this.ox, y0=this.oy; 
-      this.step=s/this.N;
-
-      for(let i=0;i<this.N;i++) 
-        for(let j=0;j<this.N;j++){
-          const v=this.grid[i][j]; 
-          const bt=this.btype(v); 
-          const val=this.bval(v);
-          let x=x0+i*this.step, y=y0+j*this.step;
-
-          if(this.swapAnim){
-            const a=this.swapAnim, now=performance.now();
-            let t=(now-a.t0)/a.dur; 
-            t=Math.max(0,Math.min(1,t));
-            const dirX=a.x2-a.x1, dirY=a.y2-a.y1;
-            const off = (i===a.x1&&j===a.y1)? (a.reverse?1-t:t) : (i===a.x2&&j===a.y2? (a.reverse?1-t:t)*-1 : 0);
-            if(off!==0){ 
-              x += off*dirX*this.step; 
-              y += off*dirY*this.step; 
-            }
-            if(t>=1){ 
-              const done=a.done; 
-              this.swapAnim=null; 
-              if(done) done(); 
-            }
-          }
-
-          ctx.strokeStyle='#283273'; 
-          ctx.strokeRect(x,y,this.step,this.step);
-          if(v===EMPTY) continue;
-
-          const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-          const col=pal[(val-1)%pal.length];
-          ctx.fillStyle= bt===ROCK? '#444a66' 
-               : bt===ICE? '#a7d8ff' 
-               : bt===STRIPE_H||bt===STRIPE_V? '#fff2' 
-               : bt===BOMB? '#ff9aa6' 
-               : bt===RAINBOW? '#ffffff' 
-               : col;
-          ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
-          ctx.strokeStyle='#0006'; 
-          ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
-
-          ctx.fillStyle='#001'; 
-          ctx.font=(12*d)+'px ui-sans-serif'; 
-          ctx.textAlign='center'; 
-          ctx.textBaseline='middle';
-          if(bt===STRIPE_H)      ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
-          else if(bt===STRIPE_V) ctx.fillText('|',      x+this.step/2, y+this.step/2);
-          else if(bt===BOMB)     ctx.fillText(String(v%10),x+this.step/2, y+this.step/2);
-          else if(bt===RAINBOW)  ctx.fillText('*',      x+this.step/2, y+this.step/2);
-          else if(bt===ICE)      ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
-          else if(bt===ROCK)     ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
-
-          if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
-            ctx.strokeStyle='#8ea3ff'; 
-            ctx.lineWidth=3; 
-            ctx.strokeRect(x+3,y+3,this.step-6,this.step-6); 
-            ctx.lineWidth=1;
-          }
-        }
-
-      this.drawPops(ctx);
-
-      ctx.globalAlpha=0.12; 
-      ctx.fillStyle='#000';
-      for(let yy=0; yy<this.c.height; yy+=2*d){ 
-        ctx.fillRect(0,yy,this.c.width,1*d); 
-      }
-      ctx.globalAlpha=1;
-    }
-
-    run(ts){ 
-      const dt=(ts-(this.last||ts))/1000; 
-      this.last=ts; 
-      this.update(Math.min(dt,0.033)); 
-      this.draw(); 
-      requestAnimationFrame((t)=>this.run(t)); 
-    }
-
-    gameOver(manual=false){
-      if(this.state==='over') return;
-      this.state='over';
-      if(this.score>this.best){ 
-        this.best=this.score; 
-        localStorage.setItem(LS_KEYS.best, String(this.best)); 
-      }
-      addRecord(this.score, this.points); 
-      addPlay();
-
-      const ov=document.getElementById('gameOver'); 
-      if(ov) ov.style.display='flex';
-
-      /* ✅ 서버 세션 종료 (최종 점수 보고) */
-      notifyFinish(this.score|0);
-
-      /* ✅ 계정 지갑/글로벌 HUD 보상 연동 */
+    function showInterstitialAd(){
+      const box=document.getElementById('adContainer');
+      if(!box) return;
+      box.innerHTML='';
+      const ins=document.createElement('ins');
+      ins.className='adsbygoogle';
+      ins.style.display='block';
+      ins.setAttribute('data-ad-client', AD_CLIENT);
+      if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
+      ins.setAttribute('data-ad-format','auto');
+      ins.setAttribute('data-full-width-responsive','true');
+      box.appendChild(ins);
       try{
-        const delta = calcReward(this.score||0, this.points||0, this.level||1);
-        applyGlobalRewardAndSyncWallet('match-3', delta, {
-          score : this.score||0,
-          points: this.points||0,
-          level : this.level||1
-        });
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
       }catch(e){
-        console.error('reward sync error', e);
+        console.warn(e);
+        box.innerHTML = fallbackAdHTML();
       }
+      document.getElementById('adModal').style.display='flex';
     }
-  }
 
-  function addPlay(){
-    let plays   = +localStorage.getItem(LS_KEYS.plays)||0; 
-    plays++;
-    let tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-    if(plays%10===0) tickets++;
-    localStorage.setItem(LS_KEYS.plays,   String(plays));
-    localStorage.setItem(LS_KEYS.tickets, String(tickets));
-    updateTicketUI();
-
-    // 🔁 광고 노출 주기: 3회 플레이마다 1회 팝업
-    if(plays % 3 === 0){
+    let _afterAd = null;
+    function showAdThen(fn){
+      _afterAd = (typeof fn === 'function') ? fn : null;
       showInterstitialAd();
     }
-  }
 
-  function addRecord(score, points){
-    const recs=loadJSON(LS_KEYS.records,[]); 
-    const now=new Date();
-    recs.unshift({ts:now.toISOString(), score, points});
-    saveJSON(LS_KEYS.records,recs.slice(0,200));
-  }
+    document.getElementById('adClose').addEventListener('click', () => {
+      document.getElementById('adModal').style.display='none';
+      const f = _afterAd;
+      _afterAd = null;
+      if(f) {
+        try{ f(); }catch(e){ console.error(e); }
+      }
+    });
 
-  function showRecords(){
-    const recs=loadJSON(LS_KEYS.records,[]);
-    const rows = recs.map(r=>{
-      const d=new Date(r.ts); 
-      const date=d.toLocaleString('ko-KR');
-      return `<tr>
-        <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
-        <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
-        <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
-      </tr>`;
-    }).join('');
-    $('#recBody').innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
-      <tbody>${rows}</tbody></table>`;
-    $('#recModal').style.display='flex';
-  }
+    /***** Neon FX (background stars) *****/
+    (function(){
+      const c=document.getElementById('fx'); if(!c) return;
+      const g=c.getContext('2d');
+      function fit(){
+        const d=window.devicePixelRatio||1;
+        c.width = innerWidth*d;
+        c.height= innerHeight*d;
+        g.setTransform(d,0,0,d,0,0);
+      }
+      fit();
+      addEventListener('resize',fit,{passive:true});
 
-  document.getElementById('recordsBtn').addEventListener('click',showRecords);
-  document.getElementById('recClose').addEventListener('click',()=>$('#recModal').style.display='none');
-  document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
+      const N=80;
+      const pts=new Array(N).fill(0).map(()=>({
+        x:Math.random()*innerWidth,
+        y:Math.random()*innerHeight*0.9,
+        r:Math.random()*2+0.5,
+        s:Math.random()*0.6+0.2,
+        ph:Math.random()*6.283
+      }));
 
-  const m3=new Match3(document.getElementById('game'));
-  (function initUI(){
-    const tier=$('#tier'), lvl=$('#lvlRange');
-    const applyTier=(t)=>{ 
-      let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; 
-      lvl.value=lv; 
-      m3.setLevel(lv); 
+      function loop(t){
+        g.clearRect(0,0,c.width,c.height);
+        for(const p of pts){
+          g.beginPath();
+          g.arc(p.x,p.y,p.r,0,Math.PI*2);
+          const a=0.3+Math.sin(t*0.002+p.ph)*0.25;
+          g.fillStyle='rgba(43,123,255,'+a+')';
+          g.fill();
+          p.y+=p.s;
+          if(p.y>innerHeight){
+            p.y=-10;
+            p.x=Math.random()*innerWidth;
+          }
+        }
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    })();
+
+    /***** Helpers & Storage *****/
+    const $ = sel => document.querySelector(sel);
+    const DPR = () => Math.min(2, window.devicePixelRatio||1);
+    const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
+    const fmt = n => n.toLocaleString('ko-KR');
+
+    /* Match-3 전용 키 (로컬 플레이/티켓 기록: 게임별 통계용) */
+    const LS_KEYS = {
+      plays   : 'plays_match',
+      tickets : 'tickets_match',
+      records : 'records_match',
+      best    : 'best_match'
     };
-    applyTier(tier.value);
-    lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
-    updateTicketUI();
-  })();
-})();
 
-/***** Cabinet fit *****/
-function fitCabinet(){
-  const cab = document.querySelector('.cabinet'); 
-  if(!cab) return;
-  const margin = 16;
-  cab.style.transform='none';
-  const w=cab.offsetWidth, h=cab.offsetHeight;
-  const scale = Math.min(1, (window.innerWidth - margin*2)/w, (window.innerHeight - margin*2)/h);
-  cab.style.transform = 'scale('+scale+')';
-}
-window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-setTimeout(fitCabinet, 0);
+    function loadJSON(k,def){
+      try{
+        const v=localStorage.getItem(k);
+        return v? JSON.parse(v) : def;
+      }catch(e){
+        return def;
+      }
+    }
+    function saveJSON(k,v){
+      localStorage.setItem(k, JSON.stringify(v));
+    }
+    function updateTicketUI(){
+      const plays   = +localStorage.getItem(LS_KEYS.plays)||0;
+      const tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
+      $('#ticketsAmt').textContent = tickets;
+      $('#ticketsCap').textContent = (plays%10)+' / 10';
+      $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
+    }
 
-/***** 세션 훅(안전 래퍼) *****/
-function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('match-3'); }catch(e){} }
-function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('match-3', finalScore|0); }catch(e){} }
+    /***** Wallet API & 글로벌 HUD 연동 *****
+     * - user-retro-games.html: window.RG_addReward({ coins, tickets, xp })
+     * - 서버: /api/wallet/reward
+     **************************************/
+    const WALLET_API_BASE = '/api/wallet';
 
-/***** 가시성 훅 *****/
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    // 필요 시 일시정지, 로깅 등 연결 지점
-  }
-});
-</script>
+    async function postWalletReward(payload){
+      try{
+        const res = await fetch(WALLET_API_BASE + '/reward', {
+          method: 'POST',
+          headers: {
+            'Content-Type':'application/json',
+            'Accept':'application/json',
+            'Cache-Control':'no-store'
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        if(!res.ok){
+          console.warn('wallet/reward http error', res.status);
+          return null;
+        }
+        const data = await res.json().catch(()=>null);
+        if(!data || !data.ok){
+          console.warn('wallet/reward logical error', data);
+          return null;
+        }
+        return data.wallet || null;
+      }catch(err){
+        console.warn('wallet/reward failed', err);
+        return null;
+      }
+    }
+
+    /* 점수/포인트 → 코인/XP/티켓 변환 규칙 (브릭브레이커와 동일 계열) */
+    function calcReward(score, points, level){
+      const s  = Math.max(0, score|0);
+      const p  = Math.max(0, points|0);
+      const lv = Math.max(1, level|0);
+
+      // 200점당 1코인, 난이도 계수 소폭 적용
+      const diffMult  = 1 + ((lv-1) * 0.002);
+      const coinsBase = s / 200 * diffMult;
+      const coins     = Math.floor(coinsBase);
+
+      // 포인트는 XP로 1:4 비율, 상한 2,000
+      const xp = Math.min(2000, p * 4);
+
+      // 티켓은 별도 정책 (여기서는 0)
+      const tickets = 0;
+
+      return { coins, xp, tickets };
+    }
+
+    /* 게임 보상 → 글로벌 HUD + 서버 지갑 */
+    function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+      if(!delta) return;
+      const coins   = Number(delta.coins)   || 0;
+      const xp      = Number(delta.xp)      || 0;
+      const tickets = Number(delta.tickets) || 0;
+      if(!(coins || xp || tickets)) return;
+
+      // 1) 홈(user-retro-games.html)의 HUD/localStorage 갱신
+      try{
+        if(typeof window.RG_addReward === 'function'){
+          window.RG_addReward({ coins, tickets, xp });
+        }
+      }catch(e){
+        console.warn('RG_addReward error', e);
+      }
+
+      // 2) 서버 지갑 API 호출
+      postWalletReward({
+        game: gameCode,
+        delta: { coins, xp, tickets },
+        meta: {
+          score : meta && meta.score  || 0,
+          points: meta && meta.points || 0,
+          level : meta && meta.level  || 0
+        }
+      });
+    }
+
+    /***** 난이도 배율 *****/
+    function difficultyMult(){
+      const v = $('#tier')?.value || 'beginner';
+      return {
+        beginner    : 1.00,
+        intermediate: 1.15,
+        advanced    : 1.30,
+        hell        : 1.50,
+        doom        : 1.65,
+        insane      : 1.85
+      }[v] || 1.0;
+    }
+
+    /***** Match-3 Game (기능/디자인 유지 + 좌표 매핑 및 허브/지갑/광고 연동 보완) *****/
+    (function(){
+      const EMPTY   = 0;
+      const NORMAL  = 1;
+      const ROCK    = 2;
+      const ICE     = 3;
+      const STRIPE_H= 4;
+      const STRIPE_V= 5;
+      const BOMB    = 6;
+      const RAINBOW = 7;
+
+      function paramsForLevel(lv){
+        const colors    = lv<8?5: lv<15?6: lv<25?7: lv<40?7: lv<50?8: 8;
+        const timeLimit = lv<10? 70: lv<20? 60: lv<30? 55: lv<40? 45: lv<50? 40: lv<80?35: 28;
+        const rockRate  = lv>=20? (lv<40?0.03: lv<50?0.05: lv<80?0.07: 0.10): 0;
+        const iceRate   = lv>=15? (lv<40?0.05: lv<50?0.08: lv<80?0.10: 0.12): 0;
+        const bombRate  = lv>=40? (lv<50?0.04: lv<80?0.06: 0.08): 0;
+        const goalScore = 800 + lv*25;
+
+        return {
+          colors,
+          timeLimit,
+          rockRate,
+          iceRate,
+          bombRate,
+          goalScore,
+          shuffleOnStall:true
+        };
+      }
+
+      class Match3{
+        constructor(canvas){
+          this.c = canvas;
+          this.ctx = canvas.getContext('2d');
+          this.N = 8;
+          this.level = 1;
+          this.params = paramsForLevel(1);
+          this.state = 'idle';
+          this.score = 0;
+          this.best  = +(localStorage.getItem(LS_KEYS.best)||0);
+          this.timeLeft = 60;
+          this.grid = [];
+          this.sel  = null;
+          this.paused = false;
+          this.combo  = 1;
+          this.points = 0;
+          this.chainLv = 0;
+          this.maxChain = 0;
+          this.goalAwarded = false;
+          this.swapAnim = null;
+          this.fx = [];
+          this.last = 0;
+          this.ox = 0;
+          this.oy = 0;
+          this.step = 0;
+
+          this.resize();
+          this.bind();
+          this.newGame(1);
+          requestAnimationFrame((t)=>this.run(t));
+
+          /* ✅ 서버 세션 시작 알림 (slug: 'match-3') */
+          notifyStart();
+        }
+
+        DPR(){ return Math.min(2, window.devicePixelRatio||1); }
+        rnd(n){ return Math.floor(Math.random()*n); }
+        btype(v){ return Math.floor(v/10)===0? NORMAL: Math.floor(v/10); }
+        bval(v){ return Math.floor(v/10)===0? v: v%10; }
+        inBounds(x,y){ return x>=0 && x<this.N && y>=0 && y<this.N; }
+
+        bind(){
+          // ✅ transform(scale)과 DPR에 상관없이 DOM 기준 좌표로 매핑
+          const map = (ev)=>{
+            const r=this.c.getBoundingClientRect();
+            const side=Math.min(r.width, r.height);
+            const left=r.left+(r.width - side)/2;
+            const top =r.top +(r.height- side)/2;
+            const x=ev.clientX-left;
+            const y=ev.clientY-top;
+            return {x,y,side};
+          };
+
+          let down=false,sx=0,sy=0;
+
+          this.c.addEventListener('mousedown',(e)=>{
+            if(this.paused || this.state==='over' || this.swapAnim) return;
+            down=true;
+            const p=map(e);
+            if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
+            this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
+            sx=p.x; sy=p.y;
+          });
+          window.addEventListener('mouseup',()=>{ down=false; },{passive:true});
+          this.c.addEventListener('mousemove',(e)=>{
+            if(!down || !this.sel || this.swapAnim) return;
+            const p=map(e);
+            const dx=p.x-sx, dy=p.y-sy;
+            let dir=null;
+            if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>10) dir = dx>0?'r':'l';
+            else if(Math.abs(dy)>10) dir = dy>0?'d':'u';
+            if(dir){
+              this.trySwap(dir);
+              down=false;
+            }
+          });
+
+          this.c.addEventListener('touchstart',(e)=>{
+            if(this.paused || this.state==='over' || this.swapAnim) return;
+            const t=e.touches[0];
+            const p=map(t);
+            if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
+            this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
+            sx=p.x; sy=p.y;
+          },{passive:true});
+          this.c.addEventListener('touchmove',(e)=>{
+            if(!this.sel || this.swapAnim) return;
+            const t=e.touches[0];
+            const p=map(t);
+            const dx=p.x-sx, dy=p.y-sy;
+            let dir=null;
+            if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>12) dir=dx>0?'r':'l';
+            else if(Math.abs(dy)>12) dir=dy>0?'d':'u';
+            if(dir){
+              this.trySwap(dir);
+            }
+          },{passive:true});
+
+          // Deck 버튼
+          document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
+          document.getElementById('undoBtn').addEventListener('click',()=>{
+            if(this.state!=='over') this.paused = !this.paused;
+          });
+          document.getElementById('endBtn').addEventListener('click',()=>
+            showAdThen(()=> this.gameOver(true))
+          );
+
+          // HOME: 광고 후 허브로 이동
+          document.getElementById('homeBtn').addEventListener('click',()=>
+            showAdThen(()=>{ window.location.href = '/user-retro-games.html'; })
+          );
+
+          const tier=$('#tier'), lvl=$('#lvlRange');
+          const applyTier=(t)=>{
+            let lv = {
+              beginner    : 1,
+              intermediate: 11,
+              advanced    : 21,
+              hell        : 40,
+              doom        : 50,
+              insane      : 100
+            }[t] || 1;
+            lvl.value = lv;
+            this.setLevel(lv);
+          };
+          tier.addEventListener('change',()=> applyTier(tier.value));
+          lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
+
+          document.addEventListener('keydown',(e)=>{
+            if(e.code==='Enter' || e.code==='KeyN'){
+              this.newGame(this.level);
+            }
+            if(e.code==='Space' || e.code==='KeyU'){
+              if(this.state!=='over'){
+                this.paused = !this.paused;
+                e.preventDefault();
+              }
+            }
+          });
+
+          window.addEventListener('resize',()=> this.resize(), {passive:true});
+        }
+
+        resize(){
+          const wrap=document.getElementById('canvasWrap');
+          const d=this.DPR();
+          const r=wrap.getBoundingClientRect();
+          const side=Math.floor(Math.min(r.width, r.height));
+          const safeSide = side>0?side:400;
+          this.c.style.width  = safeSide+'px';
+          this.c.style.height = safeSide+'px';
+          this.c.width  = Math.floor(safeSide*d);
+          this.c.height = Math.floor(safeSide*d);
+          const s=Math.min(this.c.width,this.c.height);
+          this.step = s/this.N;
+          this.ox   = (this.c.width - s)/2;
+          this.oy   = (this.c.height- s)/2;
+        }
+
+        setLevel(lv){
+          this.level = lv;
+          this.params = paramsForLevel(lv);
+          this.updateHUD();
+        }
+
+        updateHUD(){
+          $('#score').textContent = this.score|0;
+          if(this.score>this.best){
+            this.best = this.score|0;
+            localStorage.setItem(LS_KEYS.best, String(this.best));
+          }
+          $('#best').textContent = this.best|0;
+          $('#moves').textContent = (Math.max(0,this.level-1))|0;
+          $('#pointsAmt').textContent = fmt(this.points|0);
+          const cap=5000;
+          $('#pointsBar').style.width = Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
+          updateTicketUI();
+        }
+
+        newGame(lv){
+          this.level = lv;
+          this.params = paramsForLevel(lv);
+          this.score  = 0;
+          this.combo  = 1;
+          this.timeLeft = this.params.timeLimit;
+          this.points = 0;
+          this.chainLv = 0;
+          this.maxChain = 0;
+          this.goalAwarded = false;
+          this.state  = 'playing';
+          this.paused = false;
+          this.sel = null;
+          this.fx.length = 0;
+          this.swapAnim  = null;
+          const ov=document.getElementById('gameOver');
+          if(ov) ov.style.display='none';
+
+          this.grid=[];
+          for(let i=0;i<this.N;i++){
+            this.grid[i]=[];
+            for(let j=0;j<this.N;j++){
+              this.grid[i][j]=this.randomTile(i,j);
+            }
+          }
+          this.addBlockers();
+
+          let guard=0;
+          while(!this.hasAnyMatchMove() && guard<50){
+            this.shuffle();
+            guard++;
+          }
+          this.updateHUD();
+        }
+
+        randomTile(i,j){
+          let col = 1 + this.rnd(this.params.colors);
+          if(i>=2 && this.grid[i-1] && this.grid[i-2]){
+            if(this.grid[i-1][j]===this.grid[i-2][j] && this.grid[i-1][j]!==ROCK && this.grid[i-1][j]!==ICE){
+              col = (this.grid[i-1][j]%this.params.colors)+1;
+            }
+          }
+          if(j>=2){
+            if(this.grid[i][j-1]===this.grid[i][j-2] && this.grid[i][j-1]!==ROCK && this.grid[i][j-1]!==ICE){
+              col = (this.grid[i][j-1]%this.params.colors)+1;
+            }
+          }
+          return col;
+        }
+
+        addBlockers(){
+          for(let i=0;i<this.N;i++){
+            for(let j=0;j<this.N;j++){
+              if(Math.random()<this.params.rockRate){
+                this.grid[i][j]=ROCK;
+              }else if(Math.random()<this.params.iceRate){
+                this.grid[i][j]=ICE*10 + this.grid[i][j];
+              }else if(Math.random()<this.params.bombRate){
+                this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
+              }
+            }
+          }
+        }
+
+        select(x,y){
+          if(this.inBounds(x,y)) this.sel={x,y};
+        }
+
+        trySwap(dir){
+          if(!this.sel || this.swapAnim) return;
+          let dx=0,dy=0;
+          if(dir==='l')dx=-1;
+          if(dir==='r')dx= 1;
+          if(dir==='u')dy=-1;
+          if(dir==='d')dy= 1;
+          const x=this.sel.x, y=this.sel.y;
+          const nx=x+dx, ny=y+dy;
+          if(!this.inBounds(nx,ny)) return;
+
+          const animateSwap=(x1,y1,x2,y2,reverse=false)=> new Promise(res=>{
+            const dur=140;
+            const t0=performance.now();
+            this.swapAnim={x1,y1,x2,y2,reverse,t0,dur,done:res};
+          });
+
+          animateSwap(x,y,nx,ny,false).then(()=>{
+            this.swap(x,y,nx,ny);
+            const found=this.findMatches().length>0;
+            if(!found){
+              animateSwap(x,y,nx,ny,true).then(()=>{
+                this.swap(x,y,nx,ny);
+                if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5);
+              });
+            }else{
+              this.sel=null;
+              this.processCascade();
+            }
+          });
+        }
+
+        swap(x1,y1,x2,y2){
+          const t=this.grid[x1][y1];
+          this.grid[x1][y1]=this.grid[x2][y2];
+          this.grid[x2][y2]=t;
+        }
+
+        findMatches(){
+          const res=[];
+          let i,j,cnt,val,prev,vType,pType,vCol,pCol,lastCol;
+
+          // 가로
+          for(j=0;j<this.N;j++){
+            cnt=1;
+            for(i=1;i<this.N;i++){
+              val = this.grid[i][j];
+              prev= this.grid[i-1][j];
+              vType = this.btype(val)===NORMAL? NORMAL: this.btype(val);
+              pType = this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
+              vCol  = this.bval(val);
+              pCol  = this.bval(prev);
+              const eq = (vType===NORMAL && pType===NORMAL && vCol===pCol);
+              if(eq){
+                cnt++;
+              }else{
+                if(cnt>=3){
+                  res.push({dir:'h', y:j, x:i-cnt, len:cnt, col:pCol});
+                }
+                cnt=1;
+              }
+            }
+            if(cnt>=3){
+              lastCol = this.bval(this.grid[this.N-1][j]);
+              res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol});
+            }
+          }
+
+          // 세로
+          for(i=0;i<this.N;i++){
+            cnt=1;
+            for(j=1;j<this.N;j++){
+              val = this.grid[i][j];
+              prev= this.grid[i][j-1];
+              vType = this.btype(val)===NORMAL? NORMAL: this.btype(val);
+              pType = this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
+              vCol  = this.bval(val);
+              pCol  = this.bval(prev);
+              const eq = (vType===NORMAL && pType===NORMAL && vCol===pCol);
+              if(eq){
+                cnt++;
+              }else{
+                if(cnt>=3){
+                  res.push({dir:'v', x:i, y:j-cnt, len:cnt, col:pCol});
+                }
+                cnt=1;
+              }
+            }
+            if(cnt>=3){
+              lastCol = this.bval(this.grid[i][this.N-1]);
+              res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol});
+            }
+          }
+          return res;
+        }
+
+        resolveMatches(chainLv){
+          const matches=this.findMatches();
+          if(matches.length===0) return {found:false};
+
+          let cleared=0;
+          const specials=[];
+          let basePoint=0;
+
+          for(const m of matches){
+            const sp=this.createSpecialFromMatch(m);
+            const cx = m.dir==='h'? m.x+Math.floor(m.len/2) : m.x;
+            const cy = m.dir==='h'? m.y : m.y+Math.floor(m.len/2);
+            if(sp) specials.push({x:cx,y:cy,val:sp});
+
+            const per = (m.len>=5)?24 : (m.len===4?14:8);
+            basePoint += per;
+
+            if(m.dir==='h'){
+              for(let j=0;j<m.len;j++){
+                const gx=m.x+j, gy=m.y;
+                if(this.btype(this.grid[gx][gy])!==ROCK){
+                  this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
+                  this.grid[gx][gy]=EMPTY;
+                  cleared++;
+                }
+              }
+            }else{
+              for(let j=0;j<m.len;j++){
+                const gx=m.x, gy=m.y+j;
+                if(this.btype(this.grid[gx][gy])!==ROCK){
+                  this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
+                  this.grid[gx][gy]=EMPTY;
+                  cleared++;
+                }
+              }
+            }
+          }
+
+          for(const s of specials){
+            this.grid[s.x][s.y]=s.val;
+          }
+
+          this.score += cleared*10*this.combo;
+          this.combo++;
+          if(chainLv>this.maxChain) this.maxChain = chainLv;
+
+          const chainBonus = Math.min(0.6, Math.max(0, (chainLv-1)*0.2));
+          const mult       = difficultyMult();
+          const earned     = Math.floor(basePoint * (1+chainBonus) * mult);
+          if(earned>0) this.addPoints(earned);
+
+          if(!this.goalAwarded && this.score>=this.params.goalScore){
+            this.goalAwarded=true;
+            this.addPoints(Math.floor(100*mult));
+          }
+
+          this.timeLeft = Math.min(this.params.timeLimit, this.timeLeft + Math.min(2, cleared*0.05));
+
+          this.dropAndFill();
+          return {found:true};
+        }
+
+        addPoints(p){
+          this.points = Math.min(5000, this.points + p);
+          this.updateHUD();
+        }
+
+        createSpecialFromMatch(m){
+          if(m.len>=5) return RAINBOW*10 + m.col;
+          if(m.len===4) return (m.dir==='h'? STRIPE_H : STRIPE_V)*10 + m.col;
+          return 0;
+        }
+
+        processCascade(){
+          this.chainLv=1;
+          while(true){
+            const r=this.resolveMatches(this.chainLv);
+            if(!r.found) break;
+            this.chainLv++;
+          }
+          this.chainLv=0;
+        }
+
+        dropAndFill(){
+          for(let i=0;i<this.N;i++){
+            for(let j=this.N-1;j>=0;j--){
+              if(this.grid[i][j]===EMPTY){
+                for(let k=j-1;k>=0;k--){
+                  if(this.grid[i][k]!==EMPTY){
+                    this.grid[i][j]=this.grid[i][k];
+                    this.grid[i][k]=EMPTY;
+                    break;
+                  }
+                }
+                if(this.grid[i][j]===EMPTY){
+                  this.grid[i][j]=this.randomTile(i,j);
+                }
+              }
+            }
+          }
+
+          for(let i=0;i<this.N;i++){
+            for(let j=0;j<this.N;j++){
+              const v=this.grid[i][j];
+              if(Math.floor(v/10)===BOMB){
+                let n=v%10;
+                n--;
+                if(n<=0){
+                  this.explodeAt(i,j);
+                  this.grid[i][j]=EMPTY;
+                }else{
+                  this.grid[i][j]=BOMB*10+n;
+                }
+              }
+            }
+          }
+
+          if(!this.hasAnyMatchMove()) this.shuffle();
+        }
+
+        explodeAt(cx,cy){
+          for(let i=cx-1;i<=cx+1;i++){
+            for(let j=cy-1;j<=cy+1;j++){
+              if(this.inBounds(i,j)){
+                if(this.btype(this.grid[i][j])!==ROCK){
+                  this.spawnPop(i,j,this.bval(this.grid[i][j]));
+                  this.grid[i][j]=EMPTY;
+                  this.score+=5;
+                }
+              }
+            }
+          }
+        }
+
+        hasAnyMatchMove(){
+          for(let x=0;x<this.N;x++){
+            for(let y=0;y<this.N;y++){
+              if(x+1<this.N){
+                this.swap(x,y,x+1,y);
+                if(this.findMatches().length>0){
+                  this.swap(x,y,x+1,y);
+                  return true;
+                }
+                this.swap(x,y,x+1,y);
+              }
+              if(y+1<this.N){
+                this.swap(x,y,x,y+1);
+                if(this.findMatches().length>0){
+                  this.swap(x,y,x,y+1);
+                  return true;
+                }
+                this.swap(x,y,x,y+1);
+              }
+            }
+          }
+          return false;
+        }
+
+        shuffle(){
+          const flat=[];
+          for(let i=0;i<this.N;i++){
+            for(let j=0;j<this.N;j++){
+              if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
+            }
+          }
+          for(let i=flat.length-1;i>0;i--){
+            const r=this.rnd(i+1);
+            [flat[i],flat[r]]=[flat[r],flat[i]];
+          }
+          let idx=0;
+          for(let i=0;i<this.N;i++){
+            for(let j=0;j<this.N;j++){
+              if(this.grid[i][j]!==ROCK){
+                this.grid[i][j]=flat[idx++];
+              }
+            }
+          }
+        }
+
+        spawnPop(gx,gy,colIdx){
+          const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
+          const col=pal[(Math.max(1,colIdx)-1)%pal.length];
+          this.fx.push({gx,gy,tStart:this.last||performance.now(),col});
+        }
+
+        drawPops(ctx){
+          const now=this.last||performance.now();
+          const DURATION=220;
+          const keep=[];
+          for(const fx of this.fx){
+            const k=(now-fx.tStart)/DURATION;
+            if(k>=1) continue;
+            const x=this.ox+(fx.gx+0.5)*this.step;
+            const y=this.oy+(fx.gy+0.5)*this.step;
+            const r=this.step*0.45*(0.25+0.75*k);
+            ctx.beginPath();
+            ctx.arc(x,y,r,0,Math.PI*2);
+            const v=parseInt(fx.col.slice(1),16);
+            const rr=(v>>16)&255, gg=(v>>8)&255, bb=v&255;
+            ctx.fillStyle=`rgba(${rr},${gg},${bb},${(1-k)*0.6})`;
+            ctx.fill();
+            keep.push(fx);
+          }
+          this.fx=keep;
+        }
+
+        update(dt){
+          if(this.paused || this.state==='over') return;
+          this.timeLeft -= dt;
+          if(this.timeLeft<=0){
+            this.timeLeft=0;
+            this.gameOver(false);
+          }
+          this.updateHUD();
+        }
+
+        draw(){
+          const ctx=this.ctx;
+          const d = this.DPR();
+          ctx.clearRect(0,0,this.c.width,this.c.height);
+
+          const g=ctx.createLinearGradient(0,0,0,this.c.height);
+          g.addColorStop(0,'#0b1440');
+          g.addColorStop(1,'#070c22');
+          ctx.fillStyle=g;
+          ctx.fillRect(0,0,this.c.width,this.c.height);
+
+          const s=Math.min(this.c.width,this.c.height);
+          const x0=this.ox, y0=this.oy;
+          this.step=s/this.N;
+
+          for(let i=0;i<this.N;i++){
+            for(let j=0;j<this.N;j++){
+              const v=this.grid[i][j];
+              const bt=this.btype(v);
+              const val=this.bval(v);
+              let x=x0+i*this.step, y=y0+j*this.step;
+
+              if(this.swapAnim){
+                const a=this.swapAnim;
+                const now=performance.now();
+                let t=(now-a.t0)/a.dur;
+                t=Math.max(0,Math.min(1,t));
+                const dirX=a.x2-a.x1;
+                const dirY=a.y2-a.y1;
+                const off = (i===a.x1&&j===a.y1)
+                  ? (a.reverse?1-t:t)
+                  : (i===a.x2&&j===a.y2 ? (a.reverse?1-t:t)*-1 : 0);
+                if(off!==0){
+                  x += off*dirX*this.step;
+                  y += off*dirY*this.step;
+                }
+                if(t>=1){
+                  const done=a.done;
+                  this.swapAnim=null;
+                  if(done) done();
+                }
+              }
+
+              ctx.strokeStyle='#283273';
+              ctx.strokeRect(x,y,this.step,this.step);
+              if(v===EMPTY) continue;
+
+              const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
+              const col=pal[(val-1)%pal.length];
+
+              ctx.fillStyle =
+                bt===ROCK   ? '#444a66' :
+                bt===ICE    ? '#a7d8ff' :
+                (bt===STRIPE_H||bt===STRIPE_V) ? '#fff2' :
+                bt===BOMB   ? '#ff9aa6' :
+                bt===RAINBOW? '#ffffff' :
+                col;
+
+              ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
+              ctx.strokeStyle='#0006';
+              ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
+
+              ctx.fillStyle='#001';
+              ctx.font=(12*d)+'px ui-sans-serif';
+              ctx.textAlign='center';
+              ctx.textBaseline='middle';
+
+              if(bt===STRIPE_H)      ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
+              else if(bt===STRIPE_V) ctx.fillText('|',      x+this.step/2, y+this.step/2);
+              else if(bt===BOMB)     ctx.fillText(String(v%10), x+this.step/2, y+this.step/2);
+              else if(bt===RAINBOW)  ctx.fillText('*',      x+this.step/2, y+this.step/2);
+              else if(bt===ICE)      ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
+              else if(bt===ROCK)     ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
+
+              if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
+                ctx.strokeStyle='#8ea3ff';
+                ctx.lineWidth=3;
+                ctx.strokeRect(x+3,y+3,this.step-6,this.step-6);
+                ctx.lineWidth=1;
+              }
+            }
+          }
+
+          this.drawPops(ctx);
+
+          ctx.globalAlpha=0.12;
+          ctx.fillStyle='#000';
+          for(let yy=0; yy<this.c.height; yy+=2*d){
+            ctx.fillRect(0,yy,this.c.width,1*d);
+          }
+          ctx.globalAlpha=1;
+        }
+
+        run(ts){
+          const dt=(ts-(this.last||ts))/1000;
+          this.last=ts;
+          this.update(Math.min(dt,0.033));
+          this.draw();
+          requestAnimationFrame((t)=>this.run(t));
+        }
+
+        gameOver(manual=false){
+          if(this.state==='over') return;
+          this.state='over';
+          if(this.score>this.best){
+            this.best=this.score;
+            localStorage.setItem(LS_KEYS.best, String(this.best));
+          }
+
+          addRecord(this.score, this.points);
+          addPlay();
+
+          const ov=document.getElementById('gameOver');
+          if(ov) ov.style.display='flex';
+
+          /* ✅ 서버 세션 종료 (최종 점수 보고) */
+          notifyFinish(this.score|0);
+
+          /* ✅ 계정 지갑/글로벌 HUD 보상 연동 */
+          try{
+            const delta = calcReward(this.score||0, this.points||0, this.level||1);
+            applyGlobalRewardAndSyncWallet('match-3', delta, {
+              score : this.score||0,
+              points: this.points||0,
+              level : this.level||1
+            });
+          }catch(e){
+            console.error('reward sync error', e);
+          }
+        }
+      }
+
+      function addPlay(){
+        let plays   = +localStorage.getItem(LS_KEYS.plays)||0;
+        plays++;
+        let tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
+        if(plays%10===0) tickets++;
+        localStorage.setItem(LS_KEYS.plays,   String(plays));
+        localStorage.setItem(LS_KEYS.tickets, String(tickets));
+        updateTicketUI();
+
+        // 🔁 광고 노출 주기: 3회 플레이마다 1회 팝업
+        if(plays % 3 === 0){
+          showInterstitialAd();
+        }
+      }
+
+      function addRecord(score, points){
+        const recs=loadJSON(LS_KEYS.records,[]);
+        const now=new Date();
+        recs.unshift({ts:now.toISOString(), score, points});
+        saveJSON(LS_KEYS.records, recs.slice(0,200));
+      }
+
+      function showRecords(){
+        const recs=loadJSON(LS_KEYS.records,[]);
+        const rows = recs.map(r=>{
+          const d=new Date(r.ts);
+          const date=d.toLocaleString('ko-KR');
+          return `<tr>
+            <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
+            <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
+            <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
+          </tr>`;
+        }).join('');
+        $('#recBody').innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr>
+              <th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th>
+              <th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th>
+              <th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+        $('#recModal').style.display='flex';
+      }
+
+      document.getElementById('recordsBtn').addEventListener('click',showRecords);
+      document.getElementById('recClose').addEventListener('click',()=>$('#recModal').style.display='none');
+      document.getElementById('recModal').addEventListener('click',e=>{
+        if(e.target.id==='recModal') $('#recModal').style.display='none';
+      });
+
+      const m3 = new Match3(document.getElementById('game'));
+      (function initUI(){
+        const tier=$('#tier'), lvl=$('#lvlRange');
+        const applyTier=(t)=>{
+          let lv={
+            beginner    : 1,
+            intermediate: 11,
+            advanced    : 21,
+            hell        : 40,
+            doom        : 50,
+            insane      : 100
+          }[t] || 1;
+          lvl.value = lv;
+          m3.setLevel(lv);
+        };
+        applyTier(tier.value);
+        lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
+        updateTicketUI();
+      })();
+    })();
+
+    /***** Cabinet fit (뷰포트에 맞게 비율 유지) *****/
+    function fitCabinet(){
+      const cab = document.querySelector('.cabinet');
+      if(!cab) return;
+      const margin = 16;
+      cab.style.transform='none';
+      const w=cab.offsetWidth || 1;
+      const h=cab.offsetHeight|| 1;
+      const scale = Math.min(
+        1,
+        (window.innerWidth  - margin*2)/w,
+        (window.innerHeight - margin*2)/h
+      );
+      cab.style.transform = 'scale('+scale+')';
+    }
+    window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+    window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+    setTimeout(fitCabinet, 0);
+
+    /***** 세션 훅(안전 래퍼) *****/
+    function notifyStart(){
+      try{
+        if(typeof window.gameStart === 'function') window.gameStart('match-3');
+      }catch(e){}
+    }
+    function notifyFinish(finalScore){
+      try{
+        if(typeof window.gameFinish === 'function') window.gameFinish('match-3', finalScore|0);
+      }catch(e){}
+    }
+
+    /***** 가시성 훅 *****/
+    document.addEventListener('visibilitychange', () => {
+      if(document.hidden){
+        // 필요 시 일시정지, 로깅 등 연결 지점 (현재는 동작 보존 위해 no-op)
+      }
+    });
+  </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
@@ -1089,32 +1616,41 @@ document.addEventListener('visibilitychange', () => {
   </div>
 
   <script>
-  (function(){
-    try{
-      var KEY='rg_analytics_consent';
-      function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
-      var v=null; 
-      try{ v=localStorage.getItem(KEY); }catch(e){}
-      var el=document.getElementById('cookieBanner');
-      if(v==='yes'){ 
-        init(); 
-        if(el) el.style.display='none'; 
-        return; 
+    (function(){
+      try{
+        var KEY='rg_analytics_consent';
+        function init(){
+          if(typeof window.analyticsInit==='function') window.analyticsInit();
+        }
+        var v=null;
+        try{
+          v=localStorage.getItem(KEY);
+        }catch(e){}
+        var el=document.getElementById('cookieBanner');
+        if(v==='yes'){
+          init();
+          if(el) el.style.display='none';
+          return;
+        }
+        if(!el){ return; } // no banner -> do not init
+
+        el.style.display='flex';
+        var agree=el.querySelector('.agree');
+        var deny =el.querySelector('.deny');
+
+        if(agree) agree.addEventListener('click', function(){
+          try{ localStorage.setItem(KEY,'yes'); }catch(e){}
+          el.style.display='none';
+          init();
+        });
+        if(deny) deny.addEventListener('click', function(){
+          try{ localStorage.setItem(KEY,'no'); }catch(e){}
+          el.style.display='none';
+        });
+      }catch(e){
+        /* no-op */
       }
-      if(!el){ return; } // no banner -> do not init
-      el.style.display='flex';
-      var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
-      if(agree) agree.addEventListener('click', function(){
-        try{ localStorage.setItem(KEY,'yes'); }catch(e){}
-        el.style.display='none'; 
-        init();
-      });
-      if(deny) deny.addEventListener('click', function(){
-        try{ localStorage.setItem(KEY,'no'); }catch(e){}
-        el.style.display='none';
-      });
-    }catch(e){ /* no-op */ }
-  })();
+    })();
   </script>
 
   <div id="site-footer"></div>

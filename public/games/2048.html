@@ -290,6 +290,111 @@ const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
 const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
 const fmt=n=> n.toLocaleString('ko-KR');
 
+/* ===== Wallet API (spec & helpers) ===== */
+/**
+ * WALLET API 스펙 (Cloudflare Pages Functions 기준 예시)
+ *
+ * 1) GET /api/wallet/me
+ *    - 응답: {
+ *        ok: boolean,
+ *        wallet?: { coins: number, xp: number, tickets: number }
+ *      }
+ *
+ * 2) POST /api/wallet/reward
+ *    - 요청 JSON:
+ *      {
+ *        game: "2048",
+ *        delta: { coins: number, xp: number, tickets: number },
+ *        meta:  { score: number, points: number, level: number, maxTile: number }
+ *      }
+ *    - 응답:
+ *      {
+ *        ok: boolean,
+ *        wallet?: { coins: number, xp: number, tickets: number },
+ *        error?: string
+ *      }
+ */
+const WALLET_API_BASE = '/api/wallet';
+
+async function postWalletReward(payload){
+  try{
+    const res = await fetch(WALLET_API_BASE + '/reward', {
+      method: 'POST',
+      headers: {
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+        'Cache-Control':'no-store'
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok){
+      console.warn('wallet/reward http error', res.status);
+      return null;
+    }
+    const data = await res.json().catch(()=>null);
+    if(!data || !data.ok){
+      console.warn('wallet/reward logical error', data);
+      return null;
+    }
+    return data.wallet || null;
+  }catch(err){
+    console.warn('wallet/reward failed', err);
+    return null;
+  }
+}
+
+/* 게임 세션 보상 → 글로벌 HUD(RG_addReward) + 서버 지갑 동시 업데이트 */
+function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+  if(!delta) return;
+  const coins   = Number(delta.coins)   || 0;
+  const xp      = Number(delta.xp)      || 0;
+  const tickets = Number(delta.tickets) || 0;
+  if(!(coins || xp || tickets)) return;
+
+  // 1) 홈(user-retro-games.html)의 HUD와 localStorage 갱신
+  try{
+    if(typeof window.RG_addReward === 'function'){
+      window.RG_addReward({ coins, tickets, xp });
+    }
+  }catch(e){
+    console.warn('RG_addReward error', e);
+  }
+
+  // 2) 서버 지갑 API 호출
+  postWalletReward({
+    game: gameCode,
+    delta: { coins, xp, tickets },
+    meta: {
+      score:  meta && meta.score  || 0,
+      points: meta && meta.points || 0,
+      level:  meta && meta.level  || 0,
+      maxTile:meta && meta.maxTile|| 0
+    }
+  });
+}
+
+/* 점수/포인트를 RETRO GAMES 지갑 보상으로 변환하는 규칙 */
+function calcReward(score, points, maxTile, level){
+  const s  = Math.max(0, score|0);
+  const p  = Math.max(0, points|0);
+  const lv = Math.max(1, level|0);
+
+  // 150점당 1코인, 난이도 계수 약간 반영
+  const diffMult = 1 + ((lv-1) * 0.002);
+  const coinsBase = s / 150 * diffMult;
+  const coins = Math.floor(coinsBase);
+
+  // 포인트는 XP로 1:5 비율, 상한 2,000
+  const xp = Math.min(2000, p * 5);
+
+  // 세션 안에서 별도 티켓 보너스: 2048 이상 달성 시 +1
+  let bonusTickets = 0;
+  if(maxTile >= 2048) bonusTickets = 1;
+
+  return { coins, xp, tickets: bonusTickets };
+}
+
 /* ===== Difficulty Multiplier ===== */
 function difficultyMult(){
   const val=$('#tier')?.value||'beginner';
@@ -384,9 +489,9 @@ class G2048{
   makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
 
   bind(){
-    /* HOME: 광고 이후 RETRO GAMES 로그인 홈으로 이동 */
+    /* HOME: 광고 이후 로그인 홈(user-retro-games.html)으로 이동 */
     $('#homeBtn').onclick = () => showAdThen(()=> {
-      window.location.href = 'user-retro-games.html';
+      window.location.href = '/user-retro-games.html';
     });
 
     $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
@@ -539,11 +644,26 @@ class G2048{
   manualEnd(){
     if(this._ended) return;
     this._ended=true;
-    this._snapshotBonusAtEnd(this.maxTile());
+    const maxT = this.maxTile();
+    this._snapshotBonusAtEnd(maxT);
     this.syncHUD();
     addRecord(this.score, this.points||0);
     addPlay();
     notifyFinish(this.score|0);   /* ✅ 서버로 최종 점수 알림 */
+
+    /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
+    try{
+      const delta = calcReward(this.score||0, this.points||0, maxT, this.level||1);
+      applyGlobalRewardAndSyncWallet('2048', delta, {
+        score:  this.score||0,
+        points: this.points||0,
+        level:  this.level||1,
+        maxTile:maxT
+      });
+    }catch(e){
+      console.error('reward sync error', e);
+    }
+
     this.flash('Game Over');
   }
 

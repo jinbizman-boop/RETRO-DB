@@ -263,8 +263,13 @@
 
 <script>
 /* ================= AdSense ================= */
-const AD_CLIENT = 'ca-pub-6713974263597310';
-const AD_SLOT   = ''; // 필요 시 실제 슬롯으로 교체
+/* ⚠️ 실제 광고 노출을 위해:
+ *  1) AD_CLIENT 는 메타/글로벌 스니펫과 동일한 ca-pub ID 사용 (이미 일치)
+ *  2) AD_SLOT 에 AdSense 콘솔에서 생성한 광고 유닛 ID를 넣어주세요.
+ */
+const AD_CLIENT = 'ca-pub-6713974265397310';
+const AD_SLOT   = ''; // 예: '1234567890' 형태의 광고 단위 ID (AdSense 콘솔에서 복사해서 넣기)
+
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
 }
@@ -527,9 +532,9 @@ class BrickBreaker{
     $('#newBtn').addEventListener('click',()=> this.reset(this.level));
     $('#undoBtn').addEventListener('click',()=>{ this.paused=!this.paused; });
 
-    /* HOME: 광고 후 로그인 상태 홈(user-retro-games.html)으로 이동 */
+    /* HOME: 광고 후 로그인 상태 홈(user-retro-games.html)으로 이동 (절대경로) */
     $('#homeBtn').addEventListener('click',()=> 
-      showAdThen(()=> window.location.href = 'user-retro-games.html')
+      showAdThen(()=> window.location.href = '/user-retro-games.html')
     );
 
     $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.manualEnd()));

@@ -9,7 +9,7 @@
   <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
   <title>RETRO GAMES – Neon Home (Logged-in)</title>
 
-  <!-- Google AdSense -->
+  <!-- ✅ 실제 Google AdSense(자동광고) 공통 코드 -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
     crossorigin="anonymous"></script>
 
@@ -371,51 +371,10 @@
       border:1px solid #3250c2;
       background:linear-gradient(90deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
       box-shadow:0 8px 20px rgba(0,0,0,.65),0 0 22px rgba(40,120,255,.55);
+      box-sizing:border-box;
       display:flex;
       align-items:center;
-      gap:12px;
-      text-decoration:none;
-      color:#e9f0ff;
-      cursor:pointer;
-      box-sizing:border-box;
-    }
-    .adBadge{
-      padding:4px 10px;
-      border-radius:999px;
-      font-size:10px;
-      font-weight:900;
-      letter-spacing:.8px;
-      text-transform:uppercase;
-      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
-      color:#3a2400;
-      box-shadow:0 0 10px rgba(255,230,150,.75);
-      flex-shrink:0;
-    }
-    .adTextWrap{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      min-width:0;
-    }
-    .adTitle{
-      font-size:13px;
-      font-weight:800;
-      color:#fff9da;
-      text-shadow:0 0 8px rgba(255,220,140,.9);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .adDesc{
-      font-size:11px;
-      opacity:.9;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .adBanner-inner:hover{
-      filter:brightness(1.06);
-      box-shadow:0 10px 24px rgba(0,0,0,.75),0 0 26px rgba(60,140,255,.8);
+      justify-content:center;
     }
 
     footer{
@@ -530,12 +489,6 @@
       }
       .adBanner-inner{
         padding:10px 12px;
-      }
-      .adTitle{
-        font-size:12px;
-      }
-      .adDesc{
-        font-size:10px;
       }
     }
 
@@ -955,15 +908,24 @@
             </div>
           </div>
 
-          <!-- 가로형 광고 배너 (728x90) -->
+          <!-- ✅ 가로형 광고 배너 (728x90, 실제 AdSense 단위 자리) -->
           <div class="adBanner" aria-label="광고 배너">
-            <a href="#" class="adBanner-inner">
-              <span class="adBadge">AD</span>
-              <div class="adTextWrap">
-                <span class="adTitle">RETRO GAMES 스폰서 배너 영역</span>
-                <span class="adDesc">이 공간에 파트너사 이벤트/프로모션 이미지 또는 링크가 들어갑니다.</span>
-              </div>
-            </a>
+            <div class="adBanner-inner">
+              <!-- AdSense display ad unit (반응형 / 리더보드 자리) -->
+              <ins class="adsbygoogle"
+                   style="display:block;width:100%;height:100%;"
+                   data-ad-client="ca-pub-6713974265397310"
+                   data-ad-slot=""
+                   data-ad-format="auto"
+                   data-full-width-responsive="true"></ins>
+              <script>
+                try{
+                  (adsbygoogle = window.adsbygoogle || []).push({});
+                }catch(e){
+                  console.warn("AdSense render error:", e);
+                }
+              </script>
+            </div>
           </div>
         </div>
       </main>
@@ -1020,6 +982,7 @@
     const BASE = "/";
     const AUTH_API_BASE = "/api/auth";
     const LEADERBOARD_API_BASE = "/api/leaderboard";
+    const WALLET_API_BASE = "/api/wallet"; // ✅ 통합 지갑(/api/wallet) 연동 베이스
 
     /* 경로 매핑 (각 게임에서 홈 버튼으로 돌아올 때 이 페이지가 로그인된 메인 허브 역할을 하도록 유지) */
     const GAME = {
@@ -1220,6 +1183,48 @@
       }catch(e){}
     }
 
+    // ✅ 서버 지갑(/api/wallet)에서 최신 통합 스탯을 한 번 더 동기화 (있을 때만)
+    async function syncWalletFromServer(){
+      try{
+        const res = await fetch(WALLET_API_BASE + "?summary=1", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Accept": "application/json",
+            "Cache-Control": "no-store"
+          }
+        });
+        if(!res.ok) return;
+        const data = await res.json().catch(()=>null);
+        if(!data || !data.wallet) return;
+
+        const w = data.wallet;
+        if(w.points != null)  ACCOUNT_TOTALS.coins   = NUM(w.points);
+        if(w.tickets != null) ACCOUNT_TOTALS.tickets = NUM(w.tickets);
+        if(w.exp != null || w.xp != null){
+          ACCOUNT_TOTALS.xp = NUM(w.exp ?? w.xp);
+        }
+        if(w.plays != null || w.play_count != null || w.totalPlays != null){
+          ACCOUNT_TOTALS.plays = NUM(w.plays ?? w.play_count ?? w.totalPlays);
+        }
+        if(w.xpCap != null){
+          ACCOUNT_TOTALS.xpCap = NUM(w.xpCap);
+        }
+
+        const localBase = readTotalsFromLocal();
+        writeTotalsToLocal({
+          coins:   ACCOUNT_TOTALS.coins   != null ? ACCOUNT_TOTALS.coins   : localBase.coins,
+          tickets: ACCOUNT_TOTALS.tickets != null ? ACCOUNT_TOTALS.tickets : localBase.tickets,
+          xp:      ACCOUNT_TOTALS.xp      != null ? ACCOUNT_TOTALS.xp      : localBase.xp,
+          xpCap:   ACCOUNT_TOTALS.xpCap   != null ? ACCOUNT_TOTALS.xpCap   : localBase.xpCap,
+        });
+
+        renderHUD();
+      }catch(err){
+        console.warn("[RG][wallet] sync from /api/wallet failed:", err);
+      }
+    }
+
     // 로그인 체크: 허브에서는 자동 리다이렉트 없이 "로그인된 계정의 허브" 역할만 수행
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
@@ -1262,6 +1267,9 @@
           // 계정 단위 허브이기 때문에, 게임 → 홈으로 돌아온 직후에도 최신 스탯을 강제로 반영
           window.RG.getSession({ refresh: true }).catch(()=>{});
         }
+
+        // ✅ 로그인된 경우, /api/wallet 기준으로 한 번 더 통합 스탯 동기화
+        syncWalletFromServer().catch(()=>{});
       }catch(err){
         console.error("auth check error", err);
         updateUserGreeting(null);
@@ -1573,7 +1581,7 @@
     }
     loop();
 
-    /* 외부 적립 호출 예 */
+    /* 외부 적립 호출 예 (각 게임에서 window.RG_addReward 호출 시 허브 HUD에 반영) */
     window.RG_addReward = addReward;
   </script>
 

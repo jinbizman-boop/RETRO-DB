@@ -5,23 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <!-- Google AdSense 소유권 확인 메타 태그 -->
 <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
-<title>RETRO Brick Breaker – Arcade Cabinet</title>
+<title>RETRO 2048 – Arcade Cabinet</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0e1b34">
-<meta name="description" content="RETRO Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta name="robots" content="index,follow">
 <meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="RETRO Brick Breaker – Arcade Cabinet">
-<meta property="og:description" content="RETRO Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta property="og:title" content="RETRO 2048 – Arcade Cabinet">
+<meta property="og:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/assets/og/retro-games-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RETRO Brick Breaker – Arcade Cabinet">
-<meta name="twitter:description" content="RETRO Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="twitter:title" content="RETRO 2048 – Arcade Cabinet">
+<meta name="twitter:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 <script>
   // fixed environment flags for analytics/runtime
@@ -34,7 +34,7 @@
 </script>
 <!-- === /Common SEO/A11y === -->
 
-<!-- AdSense 글로벌 스니펫 (첨부된 코드 그대로) -->
+<!-- AdSense 글로벌 스니펫 (실제 발급 코드 그대로) -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
 
@@ -160,8 +160,8 @@
     <section class="cabinet" aria-label="retro arcade cabinet">
       <header class="marquee">
         <div class="title">
-          <h1>RETRO BRICK BREAKER</h1>
-          <div class="subtitle">MOUSE · TOUCH · ARROWS</div>
+          <h1>RETRO 2048</h1>
+          <div class="subtitle">ARROWS · SWIPE</div>
         </div>
       </header>
 
@@ -306,8 +306,8 @@ const DPR=()=> Math.min(2, window.devicePixelRatio||1);
 const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
 const fmt=n=> n.toLocaleString('ko-KR');
 
-/* ★ 브릭브레이커 전용 키(다른 게임과 기록 분리) */
-const LS_KEYS={plays:'plays_brick',tickets:'tickets_brick',records:'records_brick',best:'best_brick'};
+/* ★ 2048 전용 키(다른 게임과 기록 분리) */
+const LS_KEYS={plays:'plays_2048',tickets:'tickets_2048',records:'records_2048',best:'best_2048'};
 
 function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
@@ -361,7 +361,7 @@ $('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#re
  * 2) POST /api/wallet/reward
  *    - 요청 JSON:
  *      {
- *        game: "brick-breaker",
+ *        game: "2048",
  *        delta: { coins: number, xp: number, tickets: number },
  *        meta:  { score: number, points: number, level: number }
  *      }
@@ -445,7 +445,7 @@ function calcReward(score, points, level){
   // 포인트는 XP로 1:4 비율, 상한 2,000
   const xp = Math.min(2000, p * 4);
 
-  // 브릭브레이커는 티켓은 별도(플레이 카운트)에서 관리, 여기서는 0
+  // 2048은 티켓은 별도(플레이 카운트)에서 관리, 여기서는 0
   const tickets = 0;
 
   return { coins, xp, tickets };
@@ -457,7 +457,7 @@ function difficultyMult(){
   return {beginner:1.00, intermediate:1.15, advanced:1.35, hell:1.50, doom:1.60, insane:1.85}[val]||1.0;
 }
 
-/* ================= 브릭브레이커 파라미터 ================= */
+/* ================= 퍼즐 파라미터(레벨 스케일링) ================= */
 let _colsPreset=12;
 function paramsForLevel(lv){
   const baseSpeed = 220 + lv*7.5;
@@ -489,7 +489,7 @@ class BrickBreaker{
     this.resize();
     this.last=0; requestAnimationFrame(t=>this.loop(t));
 
-    /* ✅ 서버 세션 시작 알림 (slug 고정: 'brick-breaker') */
+    /* ✅ 서버 세션 시작 알림 (slug: '2048') */
     notifyStart();
   }
   _initResizeObserver(){
@@ -591,7 +591,7 @@ class BrickBreaker{
     /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
     try{
       const delta = calcReward(this.score||0, this.points||0, this.level||1);
-      applyGlobalRewardAndSyncWallet('brick-breaker', delta, {
+      applyGlobalRewardAndSyncWallet('2048', delta, {
         score:  this.score||0,
         points: this.points||0,
         level:  this.level||1
@@ -796,7 +796,7 @@ class BrickBreaker{
     /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
     try{
       const delta = calcReward(this.score||0, this.points||0, this.level||1);
-      applyGlobalRewardAndSyncWallet('brick-breaker', delta, {
+      applyGlobalRewardAndSyncWallet('2048', delta, {
         score:  this.score||0,
         points: this.points||0,
         level:  this.level||1
@@ -869,8 +869,8 @@ setTimeout(fitCabinet, 0);
 /* ================= 서버 세션 연동 (안전 래퍼) =================
    - assets/js/app.js 내부에서 window.gameStart / window.gameFinish 를 export 하지 않는 경우도
      있으므로, 존재 여부를 검사해서 조용히 동작하도록 처리합니다. */
-function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('brick-breaker'); }catch(e){} }
-function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('brick-breaker', finalScore|0); }catch(e){} }
+function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
+function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
 
 /* 가시성 이벤트 훅 (필요 시 일시정지/로깅 처리) */
 document.addEventListener('visibilitychange', () => {

@@ -5,23 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <!-- Google AdSense 소유권 확인 메타 태그 -->
 <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
-<title>RETRO 2048 → Canvas Tetris – Arcade Cabinet</title>
+<title>RETRO TETRIS – Arcade Cabinet</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0e1b34">
-<meta name="description" content="RETRO 2048 → Canvas Tetris – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="description" content="RETRO TETRIS – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta name="robots" content="index,follow">
 <meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="RETRO 2048 → Canvas Tetris – Arcade Cabinet">
-<meta property="og:description" content="RETRO 2048 → Canvas Tetris – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta property="og:title" content="RETRO TETRIS – Arcade Cabinet">
+<meta property="og:description" content="RETRO TETRIS – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/assets/og/retro-games-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RETRO 2048 → Canvas Tetris – Arcade Cabinet">
-<meta name="twitter:description" content="RETRO 2048 → Canvas Tetris – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="twitter:title" content="RETRO TETRIS – Arcade Cabinet">
+<meta name="twitter:description" content="RETRO TETRIS – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 <script>
   // fixed environment flags for analytics/runtime
@@ -34,7 +34,7 @@
 </script>
 <!-- === /Common SEO/A11y === -->
 
-<!-- AdSense 스니펫(요청 그대로) -->
+<!-- AdSense 스니펫(요청 그대로, 실제 클라이언트 ID 적용) -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
   
@@ -265,7 +265,7 @@
 
 <script>
 /***** AdSense 연동 *****/
-const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 메타/스니펫과 동일하게 정정
+const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 메타/스니펫과 동일
 const AD_SLOT   = ''; // TODO: 실제 애드센스 광고 유닛 slot ID로 교체하면 개별 광고 노출 가능
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
@@ -734,8 +734,8 @@ async function RG_addReward(payload){
       if(!this.lastRotate) return {is:false, mini:false};
       const pivot = {x:this.current.x+1, y:this.current.y+1};
       const corners = [
-        {x:pivot.x-1,y:pivot.y-1},{x:pivot.x+1,y:pivot.y-1},
-        {x:pivot.x-1,y:pivot.y+1},{x:pivot.x+1,y:pivot.y+1}
+        {x:pivot.x-1,y:pivot.y-1},{x;pivot.x+1,y:pivot.y-1},
+        {x:pivot.x-1,y:pivot.y+1},{x;pivot.x+1,y;pivot.y+1}
       ];
       let occupied=0;
       for(const c of corners){

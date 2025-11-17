@@ -324,30 +324,46 @@
   </div>
 
 <script>
-/***** AdSense 연동 *****/
-const AD_CLIENT = 'ca-pub-6713974263597310';
-const AD_SLOT   = '';
+/***** AdSense 연동 (클라이언트 ID 정합 + 슬롯 분리) *****/
+const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 메타 태그와 동일하게 정합
+// TODO: AdSense에서 발급받은 디스플레이 광고 슬롯 ID로 교체
+const AD_SLOT   = window.RG_AD_SLOT || '';   
+
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
 }
 function showInterstitialAd(){
-  const box=document.getElementById('adContainer'); box.innerHTML='';
+  const box=document.getElementById('adContainer'); 
+  if(!box) return;
+  box.innerHTML='';
   const ins=document.createElement('ins');
-  ins.className='adsbygoogle'; ins.style.display='block';
+  ins.className='adsbygoogle'; 
+  ins.style.display='block';
   ins.setAttribute('data-ad-client', AD_CLIENT);
-  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
+  if(AD_SLOT){
+    ins.setAttribute('data-ad-slot', AD_SLOT);
+  }
   ins.setAttribute('data-ad-format','auto');
   ins.setAttribute('data-full-width-responsive','true');
   box.appendChild(ins);
-  try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }
-  catch(e){ console.warn(e); box.innerHTML=fallbackAdHTML(); }
+  try{
+    (window.adsbygoogle=window.adsbygoogle||[]).push({});
+  }catch(e){
+    console.warn(e); 
+    box.innerHTML=fallbackAdHTML();
+  }
   document.getElementById('adModal').style.display='flex';
 }
 let _afterAd=null;
-function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
+function showAdThen(fn){ 
+  _afterAd = (typeof fn==='function') ? fn : null; 
+  showInterstitialAd(); 
+}
 document.getElementById('adClose').addEventListener('click',()=>{
   document.getElementById('adModal').style.display='none';
-  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e);} 
+  const f=_afterAd; 
+  _afterAd=null; 
+  if(f) try{ f(); }catch(e){ console.error(e);} 
 });
 
 /***** Neon FX *****/
@@ -452,56 +468,96 @@ function showToast(msg, ms=2000){
   clearTimeout(showToast._timer); showToast._timer=setTimeout(()=>{ t.style.display='none'; }, ms);
 }
 
-/***** RG Wallet 연동 공통 유틸 *****/
+/***** RG Wallet 연동 (허브/통합 티켓·포인트·플레이 수 기준) *****/
 /**
- * /api/wallet 스펙 (예시)
- * 1) 보상 적립
+ * /api/wallet 엔드포인트 스펙 (게임 리워드 적립 + 허브 동기화)
+ *
+ * 1) 게임 리워드 적립
  *   POST /api/wallet
  *   {
- *     "action": "ADD_REWARD",
- *     "gameId": "dino-runner",
- *     "score": 1234,
- *     "reward": 120,          // 이번 플레이에서 적립할 포인트
- *     "reason": "GAME_CLEAR", // 또는 "MISSION_BONUS" 등
- *     "meta": { ... }         // 난이도, 레벨, 클라이언트 등 부가 정보
+ *     "action": "addGameReward",
+ *     "game": "dino-runner",        // 게임 슬러그
+ *     "score": 12340,               // 이번 판 점수
+ *     "points": 120,                // 이번 판 적립 포인트(클라 계산값)
+ *     "meta": {
+ *       "level": 12,
+ *       "mode": "beginner",
+ *       "timeLeft": 5,
+ *       "manualEnd": false,
+ *       "clientTs": "2025-11-17T12:34:56.789Z",
+ *       "page": "retro-running.html"
+ *     }
  *   }
  *
- *   응답(200):
+ *   [RESPONSE] 200 OK
  *   {
  *     "ok": true,
- *     "balance": 5320,        // 전체 누적 포인트
- *     "delta": 120,           // 이번에 실제로 반영된 포인트
- *     "tickets": 3,           // 서버 기준 전체 티켓 수 (선택)
- *     "playCount": 18,        // 서버 기준 전체 플레이 수 (선택)
- *     "message": "보상 +120P 적립!" // UI 토스트 등에 사용할 수 있는 문구 (선택)
+ *     "wallet": {
+ *       "points": 3120,            // 서버 기준 통합 포인트
+ *       "tickets": 4,              // 서버 기준 통합 티켓
+ *       "playCount": 18            // (선택) 전체 플레이 수
+ *     },
+ *     "reward": {
+ *       "pointsDelta": 120,        // 이번에 적립된 포인트
+ *       "ticketsDelta": 1          // 이번에 적립된 티켓 수 (없으면 0)
+ *     },
+ *     "error": null
  *   }
  *
- * 2) 동기화(SYNC)
+ * 2) 허브 동기화(로그인된 유저 기준 통합 월렛 조회)
  *   POST /api/wallet
- *   { "action": "SYNC", "gameId": "dino-runner" }
+ *   { "action": "syncWallet", "game": "dino-runner" }
  *
- *   응답(예시):
+ *   [RESPONSE] 200 OK
  *   {
  *     "ok": true,
- *     "balance": 5320,
- *     "tickets": 3,
- *     "playCount": 18
+ *     "wallet": { "points": 3120, "tickets": 4, "playCount": 18 }
  *   }
+ *
+ * - 실패하더라도 게임 진행/로컬 포인트는 유지하고 조용히 무시
+ * - 성공 시 wallet 스냅샷으로 HUD를 갱신
  */
+
 const RG_WALLET_ENDPOINT = '/api/wallet';
 const RG_GAME_ID = 'dino-runner';
 
-async function RG_safeFetch(url, options){
+/** 서버 wallet 스냅샷을 HUD/로컬에 반영 */
+function applyWalletSnapshot(wallet){
+  if(!wallet) return;
   try{
-    const res = await fetch(url, {
-      method: (options && options.method) || 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        ...(options && options.headers || {})
-      },
-      body: options && options.body || undefined,
-      credentials: 'include'
+    // ✅ 통합 포인트 (경험치 개념)
+    if(typeof wallet.points === 'number'){
+      const cap = 5000;
+      $('#pointsAmt').textContent = wallet.points.toLocaleString('ko-KR');
+      $('#pointsBar').style.width = Math.min(100,(wallet.points/cap*100)).toFixed(1)+'%';
+    }
+
+    // ✅ 통합 티켓 (계정 기준)
+    if(typeof wallet.tickets === 'number'){
+      localStorage.setItem(LS_KEYS.tickets, String(wallet.tickets));
+      $('#ticketsAmt').textContent = wallet.tickets;
+      updateTicketUI();
+    }
+
+    // ✅ 통합 플레이 수 → 진행도(0~10)로 변환
+    if(typeof wallet.playCount === 'number'){
+      const m = wallet.playCount % 10;
+      $('#ticketsCap').textContent = m + ' / 10';
+      $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
+    }
+  }catch(e){
+    console.warn('applyWalletSnapshot error', e);
+  }
+}
+
+/** 안전 래퍼 */
+async function RG_safeFetch(body){
+  try{
+    const res = await fetch(RG_WALLET_ENDPOINT, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      credentials:'include',
+      body: JSON.stringify(body)
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json().catch(()=>null);
@@ -512,71 +568,54 @@ async function RG_safeFetch(url, options){
   }
 }
 
-/** 서버 기준 월렛 상태로 HUD 동기화 */
+/** 허브 진입 시, 로그인된 계정 기준 통합 월렛 동기화 */
 async function RG_syncWalletHUD(){
-  try{
-    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
-      method:'POST',
-      body: JSON.stringify({ action:'SYNC', gameId: RG_GAME_ID })
-    });
-    if(!result.ok || !result.data) return;
-    const res = result.data;
-    if(res.ok === false) return;
-
-    const cap = 5000;
-    if(typeof res.balance === 'number'){
-      $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
-      $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
-    }
-    if(typeof res.tickets === 'number'){
-      $('#ticketsAmt').textContent = res.tickets;
-    }
-    if(typeof res.playCount === 'number'){
-      const m = res.playCount % 10;
-      $('#ticketsCap').textContent = m + ' / 10';
-      $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
-    }
-  }catch(e){
-    console.warn('RG_syncWalletHUD failed:', e);
-  }
+  const result = await RG_safeFetch({ action:'syncWallet', game: RG_GAME_ID });
+  if(!result.ok || !result.data) return;
+  const data = result.data;
+  if(data.ok === false) return;
+  if(data.wallet) applyWalletSnapshot(data.wallet);
 }
 
-/** 보상 적립 헬퍼 (게임 오버 시 호출) */
-async function RG_addReward(payload){
+/**
+ * RG_addReward(payload)
+ * - payload: { score, points, level, timeLeft, manualEnd, mode }
+ * - 게임 종료 시 통합 월렛에 리워드 적립
+ */
+window.RG_addReward = async function RG_addReward(payload){
   try{
-    const base = {
-      action: 'ADD_REWARD',
-      gameId: RG_GAME_ID
+    const body = {
+      action: 'addGameReward',
+      game: RG_GAME_ID,
+      score: (payload.score|0),
+      points: (payload.points|0),
+      meta: {
+        level: payload.level|0,
+        mode: payload.mode || ($('#tier')?.value || 'beginner'),
+        timeLeft: payload.timeLeft ?? null,
+        manualEnd: !!payload.manualEnd,
+        clientTs: new Date().toISOString(),
+        page: 'retro-running.html'
+      }
     };
-    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
-      method:'POST',
-      body: JSON.stringify({ ...base, ...(payload || {}) })
-    });
-    if(result.ok && result.data){
-      const res = result.data;
-      const cap = 5000;
-      if(typeof res.balance === 'number'){
-        $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
-        $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
-      }
-      if(typeof res.tickets === 'number'){
-        $('#ticketsAmt').textContent = res.tickets;
-      }
-      if(typeof res.playCount === 'number'){
-        const m = res.playCount % 10;
-        $('#ticketsCap').textContent = m + ' / 10';
-        $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
-      }
-      if(res.message){
-        showToast(res.message, 2200);
+
+    const result = await RG_safeFetch(body);
+    if(!result.ok || !result.data) return;
+    const data = result.data;
+    if(data.ok === false) return;
+
+    if(data.wallet) applyWalletSnapshot(data.wallet);
+
+    if(data.reward && typeof data.reward.pointsDelta === 'number'){
+      const delta = data.reward.pointsDelta;
+      if(delta > 0){
+        showToast(`+${delta.toLocaleString('ko-KR')}P 적립!`, 2200);
       }
     }
-    return result;
   }catch(e){
     console.warn('RG_addReward failed:', e);
-    return { ok:false, error:e };
   }
-}
+};
 
 /***** Dino Runner (게임) *****/
 (function(){
@@ -657,8 +696,9 @@ async function RG_addReward(payload){
       $('#undoBtn').addEventListener('click',()=>{ if(this.running&&!this.gameover){ this.paused=!this.paused; }});
       $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.doGameOver(true)));
 
+      // ✅ HOME: 광고 후, 로그인 허브(user-retro-games.html)로 이동
       $('#homeBtn').addEventListener('click',()=> 
-        showAdThen(()=> window.location.href = 'user-retro-games.html')
+        showAdThen(()=> window.location.href = '/user-retro-games.html')
       );
 
       const tier=$('#tier'), lvl=$('#lvlRange');
@@ -903,7 +943,7 @@ async function RG_addReward(payload){
       }
     }
 
-    doGameOver(){
+    doGameOver(manual){
       const leftover = (this.inv?.length||0) + (this.revive||0);
       if(leftover>0) this.awardPoints(leftover*5);
 
@@ -918,18 +958,18 @@ async function RG_addReward(payload){
       this.renderInvUI();
       this._tryMissionBonus();
 
-      /* ✅ 서버 월렛에 보상 적립 (비동기, 실패해도 게임 진행에는 영향 없음) */
+      /* ✅ 서버 월렛에 보상 적립 (실패해도 게임 흐름에는 영향 없음) */
       try{
-        RG_addReward({
-          score: finalScore,
-          reward: earnedPoints,
-          reason: 'GAME_CLEAR',
-          meta: {
-            mode: $('#tier')?.value || 'beginner',
-            level: this.level,
-            client: 'retro-dino-runner'
-          }
-        });
+        if(typeof window.RG_addReward === 'function'){
+          window.RG_addReward({
+            score: finalScore,
+            points: earnedPoints,
+            level: this.level|0,
+            timeLeft: Math.round(0), // 러너는 남은 시간 개념이 없어서 0으로 전송
+            manualEnd: !!manual,
+            mode: $('#tier')?.value || 'beginner'
+          });
+        }
       }catch(e){
         console.warn('RG_addReward call error:', e);
       }
@@ -1064,7 +1104,7 @@ async function RG_addReward(payload){
     applyTier(tier.value);
     lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
     updateTicketUI();
-    // 최초 진입 시 서버 월렛 상태 동기화
+    // ✅ 최초 진입 시, 로그인된 유저 기준 통합 월렛 상태를 허브 HUD에 반영
     RG_syncWalletHUD();
   })();
 })();
@@ -1084,7 +1124,7 @@ window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passiv
 window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
 setTimeout(fitCabinet, 0);
 
-/***** ✅ 세션 훅(안전 래퍼): ESM/await 없이 앱 훅 호출 *****/
+/***** ✅ 세션 훅(안전 래퍼): 허브 분석용 앱 훅 호출 *****/
 function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('dino'); }catch(e){} }
 function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('dino', finalScore|0); }catch(e){} }
 

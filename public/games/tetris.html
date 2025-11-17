@@ -265,8 +265,8 @@
 
 <script>
 /***** AdSense 연동 *****/
-const AD_CLIENT = 'ca-pub-6713974263597310';
-const AD_SLOT   = '';
+const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 메타/스니펫과 동일하게 정정
+const AD_SLOT   = ''; // TODO: 실제 애드센스 광고 유닛 slot ID로 교체하면 개별 광고 노출 가능
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
 }
@@ -317,10 +317,12 @@ const DPR=()=>Math.min(2, window.devicePixelRatio||1);
 const clamp=(n,a,b)=>Math.max(a, Math.min(b,n));
 const fmt=n=>n.toLocaleString('ko-KR');
 
-/* ✅ Tetris 전용 키로 통일 */
+/* ✅ Tetris 전용 키 */
 const LS_KEYS={plays:'plays_tetris',tickets:'tickets_tetris',records:'records_tetris',best:'best_tetris'};
+
 function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch(e){ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
+
 function updateTicketUI(){
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
   const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
@@ -368,82 +370,116 @@ function difficultyMult(){
   return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
 }
 
-/***** 💰 RG_addReward + /api/wallet 연동 브릿지 *****/
+/***** 🔗 RG Wallet 공통 허브 연동 (통합 티켓/포인트/플레이 수) *****/
 /**
- * /api/wallet POST 요청 스펙 (게임 보상용)
+ * /api/wallet 스펙 (게임 공통 허브)
+ * 1) SYNC
+ *   POST /api/wallet
+ *   { "action": "SYNC", "gameId": "tetris" }
+ *   -> { ok, balance, tickets, playCount }
  *
- * 1) Request (JSON Body)
- *  {
- *    "game": "tetris",
- *    "action": "reward",
- *    "score": number,           // 이번 플레이 최종 점수
- *    "pointsEarned": number,    // 이번 플레이에서 획득한 게임 포인트(내부 계산값)
- *    "ticketsEarned": number,   // 이번 플레이로 증가한 티켓 수 (보통 0 또는 1)
- *    "playsIncrement": number,  // 이번 호출로 증가한 플레이 수 (보통 1)
- *    "meta": {
- *      "tier": "beginner" | "intermediate" | "advanced" | "hell" | "doom" | "insane",
- *      "level": number          // 레벨 슬라이더 값
- *    }
- *  }
- *
- * 2) Response (예시)
- *  {
- *    "ok": true,
- *    "wallet": {
- *      "points": number,        // 서버 기준 최신 누적 포인트
- *      "tickets": number,       // 서버 기준 최신 누적 티켓
- *      "updatedAt": "ISO-8601"
- *    },
- *    "reward": {
- *      "addedPoints": number,   // 이번 호출로 실제 반영된 포인트
- *      "addedTickets": number   // 이번 호출로 실제 반영된 티켓
- *    }
- *  }
- *
- * 3) RG_addReward 연동 규약 (프론트 공통 훅)
- *   - window.RG_addReward(gameId, payload) 형태로 존재할 경우 호출
- *   - gameId: "tetris"
- *   - payload: 위 Request body에서 "game" 필드만 제거한 객체
+ * 2) ADD_REWARD
+ *   POST /api/wallet
+ *   {
+ *     "action": "ADD_REWARD",
+ *     "gameId": "tetris",
+ *     "score": number,
+ *     "reward": number,       // 이번 게임에서 적립할 포인트
+ *     "reason": "GAME_CLEAR", // 혹은 "MISSION_BONUS" 등
+ *     "meta": { ... }         // tier/level/클라이언트 등
+ *   }
+ *   -> { ok, balance, tickets, playCount, message? }
  */
-async function sendGameReward(gameId, payload){
-  // 1단계: 전역 RG_addReward 훅 연동 (있을 때만)
+const RG_WALLET_ENDPOINT = '/api/wallet';
+const RG_GAME_ID         = 'tetris';
+
+async function RG_safeFetch(url, options){
   try{
-    if (typeof window.RG_addReward === 'function') {
-      // RG_addReward는 백오피스/분석/지갑 통합 훅으로 사용 가능
-      window.RG_addReward(gameId, payload);
+    const res = await fetch(url, {
+      method: (options && options.method) || 'POST',
+      headers: {
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+        ...(options && options.headers || {})
+      },
+      body: options && options.body || undefined,
+      credentials: 'include' // 세션 로그인 기반
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json().catch(()=>null);
+    return { ok:true, data };
+  }catch(err){
+    console.warn('[RG][wallet] fetch error:', err);
+    return { ok:false, error:err };
+  }
+}
+
+/** 서버 기준 월렛 상태로 HUD 동기화 (포인트/티켓/플레이 수) */
+async function RG_syncWalletHUD(){
+  try{
+    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
+      method:'POST',
+      body: JSON.stringify({ action:'SYNC', gameId: RG_GAME_ID })
+    });
+    if(!result.ok || !result.data) return;
+    const res = result.data;
+    if(res.ok === false) return;
+
+    const cap = 5000;
+    if(typeof res.balance === 'number'){
+      $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
+      $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
+    }
+    if(typeof res.tickets === 'number'){
+      $('#ticketsAmt').textContent = res.tickets;
+    }
+    if(typeof res.playCount === 'number'){
+      const m = res.playCount % 10;
+      $('#ticketsCap').textContent = m + ' / 10';
+      $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
+      // 필요하다면 '이동' 칩 등에 플레이 수를 매핑하는 것도 가능
+      // $('#moves').textContent = res.playCount;
     }
   }catch(e){
-    console.warn('[RG][reward] RG_addReward hook error:', e);
+    console.warn('[RG][wallet] sync HUD failed:', e);
   }
+}
 
-  // 2단계: /api/wallet 엔드포인트로 직접 POST (지갑/보상 서버 연동)
+/** 게임 종료 시 보상 적립 Helper */
+async function RG_addReward(payload){
   try{
-    const body = {
-      game: gameId,
-      action: 'reward',
-      score: payload.score|0,
-      pointsEarned: payload.pointsEarned|0,
-      ticketsEarned: payload.ticketsEarned|0,
-      playsIncrement: payload.playsIncrement|0,
-      meta: payload.meta || {}
+    const base = {
+      action: 'ADD_REWARD',
+      gameId: RG_GAME_ID
     };
-
-    const res = await fetch('/api/wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // 세션/쿠키 기반 인증을 사용하는 경우
-      body: JSON.stringify(body)
+    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
+      method:'POST',
+      body: JSON.stringify({ ...base, ...(payload || {}) })
     });
-
-    if(!res.ok){
-      throw new Error('HTTP '+res.status);
+    if(result.ok && result.data){
+      const res = result.data;
+      const cap = 5000;
+      if(typeof res.balance === 'number'){
+        $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
+        $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
+      }
+      if(typeof res.tickets === 'number'){
+        $('#ticketsAmt').textContent = res.tickets;
+      }
+      if(typeof res.playCount === 'number'){
+        const m = res.playCount % 10;
+        $('#ticketsCap').textContent = m + ' / 10';
+        $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
+      }
+      if(res.message){
+        // 필요하면 토스트 등으로 노출 가능
+        console.log('[RG][wallet] reward message:', res.message);
+      }
     }
-    const data = await res.json().catch(()=>null);
-    console.log('[RG][wallet] reward synced:', data);
-    return data;
-  }catch(err){
-    console.warn('[RG][wallet] reward sync failed:', err);
-    return null;
+    return result;
+  }catch(e){
+    console.warn('[RG][wallet] addReward failed:', e);
+    return { ok:false, error:e };
   }
 }
 
@@ -490,7 +526,7 @@ async function sendGameReward(gameId, payload){
       this.points=0; this.combo=0; this.lastB2BEligible=false; this.lastRotate=false; this.usedKick=false;
 
       /* ✅ 소프트드롭 상태 */
-      this.softDrop=false; this.softAcc=0; this.softInterval=0.02; // 50fps 정도로 쭉 내려감
+      this.softDrop=false; this.softAcc=0; this.softInterval=0.02;
 
       this.resize(); this.bindDeck(); this.bindKeys();
       this.spawn(); this.uiSync(); this.updatePointsUI();
@@ -521,7 +557,7 @@ async function sendGameReward(gameId, payload){
       $('#undoBtn').addEventListener('click',()=>{ if(this.running) this.paused=!this.paused; });
       $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver()));
 
-      /* HOME: 광고 후 메인 이동 */
+      /* HOME: 광고 후 메인 허브(로그인 이후)로 이동 */
       $('#homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = 'user-retro-games.html'; }));
 
       const tier=$('#tier'), lvl=$('#lvlRange');
@@ -547,8 +583,8 @@ async function sendGameReward(gameId, payload){
           case 'ArrowLeft': heldKey='ArrowLeft'; startDas(-1); break;
           case 'ArrowRight': heldKey='ArrowRight'; startDas(1); break;
           case 'ArrowDown': 
-            this.softDrop = true;            // ✅ 꾹 누르면 지속 하강
-            this.move(0,1);                  // 즉시 한 칸
+            this.softDrop = true;
+            this.move(0,1);
             break;
           case 'ArrowUp': this.hardDrop(); break;
           case 'KeyZ': this.rotate(0); break;
@@ -715,29 +751,28 @@ async function sendGameReward(gameId, payload){
     gameOver(){
       this.running=false; this.paused=false;
 
-      // 🔢 보상 계산용 사전 스냅샷 (플레이/티켓)
-      const prevTickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-      const prevPlays   = +localStorage.getItem(LS_KEYS.plays)||0;
-
+      // 기록/티켓 로컬 처리
       addRecord(this.score, this.points);
       addPlay();
 
-      const nextTickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-      const nextPlays   = +localStorage.getItem(LS_KEYS.plays)||0;
+      // 🔗 서버 통합 지갑에 보상 적립 (포인트/티켓/플레이 수)
+      const finalScore = this.score|0;
+      const earnedPoints = this.points|0;
 
-      const rewardPayload = {
-        score: this.score|0,
-        pointsEarned: this.points|0,
-        ticketsEarned: Math.max(0, nextTickets - prevTickets),
-        playsIncrement: Math.max(0, nextPlays - prevPlays),
-        meta: {
-          tier: $('#tier')?.value || 'beginner',
-          level: this.level|0
-        }
-      };
-
-      // 💰 RG_addReward + /api/wallet 브릿지 호출
-      sendGameReward('tetris', rewardPayload);
+      try{
+        RG_addReward({
+          score: finalScore,
+          reward: earnedPoints,
+          reason: 'GAME_CLEAR',
+          meta: {
+            tier: $('#tier')?.value || 'beginner',
+            level: this.level|0,
+            client: 'retro-tetris'
+          }
+        });
+      }catch(e){
+        console.warn('[RG][wallet] RG_addReward call error:', e);
+      }
 
       const ov=document.getElementById('gameOver'); 
       if(ov) ov.style.display='flex';
@@ -768,10 +803,9 @@ async function sendGameReward(gameId, payload){
           this.softAcc += dt;
           while(this.softAcc >= this.softInterval){
             if(!this.move(0,1)){
-              // 바닥/충돌 시 소프트드롭에서도 잠금 지연 흐름 유지
               break;
             }else{
-              this.lockAcc=0; // 움직였으면 잠금 누적 리셋
+              this.lockAcc=0;
             }
             this.softAcc -= this.softInterval;
           }
@@ -831,6 +865,8 @@ async function sendGameReward(gameId, payload){
 
   const game=new Tetris(document.getElementById('game'));
   updateTicketUI();
+  // ✅ 페이지 진입 시 서버 기준 통합 지갑 상태 동기화
+  RG_syncWalletHUD();
 })();
 
 /***** Cabinet fit (debounced) *****/
@@ -859,9 +895,6 @@ function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'functi
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     // 필요 시 추가 로깅/기록 처리
-    const ov=document.getElementById('gameOver');
-    // 진행 중이면 숨김 상태에서 일시정지
-    // (간단히 newBtn 클릭으로 재개 UX 유지)
   }
 });
 </script>

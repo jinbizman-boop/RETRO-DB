@@ -38,12 +38,13 @@
   .header{text-align:center;padding-top:14px;font-weight:900;font-size:28px;color:var(--gold1);text-shadow:0 0 10px #ffb84d}
   .stats-row{display:flex;justify-content:center;gap:60px;margin-top:10px;font-weight:700;font-size:16px;color:#fff;text-shadow:0 0 6px #000}
   canvas{position:absolute;top:130px;left:50%;transform:translateX(-50%);width:860px;height:380px;background:#071726;border:8px solid #0048ff;border-radius:16px;box-shadow:0 0 20px #0048ffbb,inset 0 0 15px #001a44}
-  .panel{position:absolute;bottom:0;width:100%;height:140px;background:linear-gradient(180deg,#0b0050,#00002a);border-top:3px solid #4a2a88;border-radius:0 0 24px 24px;display:flex;align-items:center;justify-content:center;gap:40px}
-  .panel button{border:none;border-radius:12px;font-size:20px;font-weight:900;padding:14px 48px;color:#fff;cursor:pointer;box-shadow:0 5px 10px #0008;transition:.1s}
+  .panel{position:absolute;bottom:0;width:100%;height:140px;background:linear-gradient(180deg,#0b0050,#00002a);border-top:3px solid #4a2a88;border-radius:0 0 24px 24px;display:flex;align-items:center;justify-content:center;gap:32px}
+  .panel button{border:none;border-radius:12px;font-size:20px;font-weight:900;padding:14px 42px;color:#fff;cursor:pointer;box-shadow:0 5px 10px #0008;transition:.1s}
   .panel button:active{transform:scale(.95)}
   #betBtn{background:linear-gradient(180deg,#4da8ff,#0048ff)}
   #spinBtn{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#4a2a00;box-shadow:0 0 20px #ffb84dcc}
   #stopBtn{background:linear-gradient(180deg,#2b7bff,#0048ff);box-shadow:0 0 20px #0077ffcc}
+  #homeBtn{background:linear-gradient(180deg,#4b5563,#111827);color:#f9fafb}
 
   .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
     display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
@@ -75,6 +76,7 @@
   <canvas id="slot" aria-label="슬롯 릴"></canvas>
 
   <div class="panel">
+    <button id="homeBtn" title="RETRO GAMES 홈으로 이동">HOME</button>
     <button id="betBtn" title="참여하기(티켓 5장 소모)">참여하기</button>
     <button id="spinBtn">행운의 룰렛</button>
     <button id="stopBtn">행운 확인하기</button>
@@ -95,8 +97,13 @@ function resize(){
 resize();
 addEventListener('resize', resize, {passive:true});
 
-// ================= Tickets (5장 소모) =================
-const TICKET_KEY = 'tickets2048'; // ★ 프로젝트 공용 키 유지
+// ================= Tickets (5장 소모, 공용 키) =================
+/**
+ * ❗ today-lucky는 사이트 공용 티켓 키를 그대로 사용한다.
+ *   - user-retro-games.html에서 합산해서 보여주는 값과 직접 연결되도록
+ *   - TICKET_KEY = 'tickets2048' 을 유지 (기존 로직과 호환)
+ */
+const TICKET_KEY = 'tickets2048';
 const TICKETS_PER_ENTRY = 5;
 const getTickets = ()=> +(localStorage.getItem(TICKET_KEY)||0);
 const setTickets = n => localStorage.setItem(TICKET_KEY, String(Math.max(0, n|0)));
@@ -113,6 +120,90 @@ function syncBankUI(){ bankEl.textContent = fmt(bank); localStorage.setItem(BANK
 function syncBetUI(){ betEl.textContent = fmt(bet); }
 function syncWinUI(v){ winEl.textContent = fmt(v|0); }
 syncBankUI(); syncBetUI(); syncWinUI(0);
+
+// ================= 💰 RG_addReward + /api/wallet 연동 브릿지 =================
+/**
+ * /api/wallet POST 요청 스펙 (미니게임 공통 / today-lucky 전용 설명)
+ *
+ * 1) Request (JSON Body)
+ *  {
+ *    "game": "today-lucky",        // 게임 ID
+ *    "action": "reward",           // 보상/소비 모두 동일 엔드포인트와 action 사용
+ *    "score": number,              // 이번 스핀의 최종 당첨 금액(또는 0)
+ *    "pointsEarned": number,       // 포인트 변화량 (당첨 시 +, 없으면 0)
+ *    "ticketsEarned": number,      // 티켓 변화량 (소비 시 음수, 지급 시 양수 → ex. -5)
+ *    "playsIncrement": number,     // 플레이/스핀 증가량 (스핀 1회면 1, 소비만이면 0)
+ *    "meta": {
+ *      "kind": "entry" | "spinResult",   // 호출 타입
+ *      "bankBefore": number,             // 스핀 전 보유 포인트(머신 내 bank)
+ *      "bankAfter": number,              // 스핀 후 보유 포인트
+ *      "ticketsBefore": number,          // 티켓 사용 전 (entry 시에 유효)
+ *      "ticketsAfter": number            // 티켓 사용 후
+ *    }
+ *  }
+ *
+ *   - ticketsEarned는 음수 값으로 티켓 소비를 표현할 수 있다. (예: -5 장)
+ *   - 백엔드는 ticketsEarned > 0 이면 지급, < 0 이면 차감으로 처리.
+ *
+ * 2) Response (예시)
+ *  {
+ *    "ok": true,
+ *    "wallet": {
+ *      "points": number,          // 서버 기준 최신 누적 포인트
+ *      "tickets": number,         // 서버 기준 최신 누적 티켓
+ *      "updatedAt": "ISO-8601"
+ *    },
+ *    "reward": {
+ *      "addedPoints": number,     // 이번 호출로 반영된 포인트 변화량
+ *      "addedTickets": number     // 이번 호출로 반영된 티켓 변화량 (음수면 차감)
+ *    }
+ *  }
+ *
+ * 3) RG_addReward 연동 규약 (프론트 공통 훅)
+ *   - window.RG_addReward(gameId, payload) 형태로 존재할 경우 우선 호출
+ *   - gameId: "today-lucky"
+ *   - payload: 위 Request body에서 "game" 필드만 제외한 객체
+ */
+async function sendGameReward(gameId, payload){
+  // 1단계: 전역 RG_addReward 훅 연동 (있을 때만)
+  try{
+    if (typeof window.RG_addReward === 'function') {
+      window.RG_addReward(gameId, payload);
+    }
+  }catch(e){
+    console.warn('[RG][reward] RG_addReward hook error:', e);
+  }
+
+  // 2단계: /api/wallet 엔드포인트로 직접 POST (지갑/보상 서버 연동)
+  try{
+    const body = {
+      game: gameId,
+      action: 'reward',
+      score: payload.score|0,
+      pointsEarned: payload.pointsEarned|0,
+      ticketsEarned: payload.ticketsEarned|0,
+      playsIncrement: payload.playsIncrement|0,
+      meta: payload.meta || {}
+    };
+
+    const res = await fetch('/api/wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // 세션/쿠키 기반 인증
+      body: JSON.stringify(body)
+    });
+
+    if(!res.ok){
+      throw new Error('HTTP '+res.status);
+    }
+    const data = await res.json().catch(()=>null);
+    console.log('[RG][wallet] today-lucky synced:', data);
+    return data;
+  }catch(err){
+    console.warn('[RG][wallet] today-lucky sync failed:', err);
+    return null;
+  }
+}
 
 // ================= Model (ordered strip) =================
 const REELS = 5, ROWS = 5;
@@ -318,17 +409,34 @@ function update(dt){
     }
   }
 
-  // 모든 릴 정지 → 판정/정산
+  // 모든 릴 정지 → 판정/정산 + 서버 보상 연동
   if(spinning && state.every(s=>s==='idle')){
     spinning = false;
     paidForThisRound = false;
 
+    const bankBefore = bank;
     const {payout} = evalCenterRow();
     lastWin = payout|0;
     if(lastWin>0){ bank += lastWin; }
     syncWinUI(lastWin); syncBankUI();
+    const bankAfter = bank;
 
-    // 세션 종료 알림
+    // 💰 스핀 결과 보상/지갑 연동
+    sendGameReward('today-lucky', {
+      score: lastWin|0,
+      pointsEarned: lastWin|0,
+      ticketsEarned: 0,
+      playsIncrement: 1,
+      meta: {
+        kind: 'spinResult',
+        bankBefore,
+        bankAfter,
+        ticketsBefore: getTickets(),
+        ticketsAfter: getTickets()
+      }
+    });
+
+    // 세션 종료 알림 (게임별 finish 훅)
     notifyFinish(lastWin);
   }
 }
@@ -387,9 +495,11 @@ requestAnimationFrame(loop);
 const betBtn  = document.getElementById('betBtn');
 const spinBtn = document.getElementById('spinBtn');
 const stopBtn = document.getElementById('stopBtn');
+const homeBtn = document.getElementById('homeBtn');
 
 spinBtn.onclick = () => startSpin();
 stopBtn.onclick = () => stopSpin();
+homeBtn.onclick = () => { window.location.href = 'user-retro-games.html'; };
 
 // "참여하기" = 티켓 5장 결제 (라운드당 1회)
 betBtn.onclick = () => {
@@ -397,20 +507,39 @@ betBtn.onclick = () => {
     alert('이미 이번 라운드 참여가 완료되었습니다. "행운의 룰렛"을 눌러주세요!');
     return;
   }
-  const have = getTickets();
-  if(have < TICKETS_PER_ENTRY){
-    alert(`티켓이 부족합니다.\n필요: ${TICKETS_PER_ENTRY}장, 보유: ${have}장`);
+  const beforeTickets = getTickets();
+  if(beforeTickets < TICKETS_PER_ENTRY){
+    alert(`티켓이 부족합니다.\n필요: ${TICKETS_PER_ENTRY}장, 보유: ${beforeTickets}장`);
     return;
   }
-  setTickets(have - TICKETS_PER_ENTRY);
+  const afterTickets = beforeTickets - TICKETS_PER_ENTRY;
+  setTickets(afterTickets);
   paidForThisRound = true;
-  alert(`참여 완료! 티켓 ${TICKETS_PER_ENTRY}장을 사용했습니다.\n남은 티켓: ${getTickets()}장\n이제 "행운의 룰렛"을 눌러주세요.`);
+  alert(`참여 완료! 티켓 ${TICKETS_PER_ENTRY}장을 사용했습니다.\n남은 티켓: ${afterTickets}장\n이제 "행운의 룰렛"을 눌러주세요.`);
+
+  // 💰 티켓 소비 이벤트를 지갑 서버에 반영
+  sendGameReward('today-lucky', {
+    score: 0,
+    pointsEarned: 0,
+    ticketsEarned: -TICKETS_PER_ENTRY,
+    playsIncrement: 0,
+    meta: {
+      kind: 'entry',
+      bankBefore: bank,
+      bankAfter: bank,
+      ticketsBefore: beforeTickets,
+      ticketsAfter: afterTickets
+    }
+  });
 };
 
 // 접근성: 키보드 단축
 document.addEventListener('keydown', (e)=>{
   if(e.code==='Enter'){ betBtn.click(); }
-  if(e.code==='Space'){ e.preventDefault(); if(spinning) stopBtn.click(); else spinBtn.click(); }
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(spinning) stopBtn.click(); else spinBtn.click();
+  }
 });
 
 // ================= 초기/유효성 로그 =================

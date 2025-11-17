@@ -391,6 +391,7 @@ const LS_KEYS={
 function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch(e){ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
 
+/***** 티켓/플레이 UI (로컬 기준) *****/
 function updateTicketUI(){
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
   const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
@@ -398,6 +399,8 @@ function updateTicketUI(){
   $('#ticketsCap').textContent=(plays%10)+' / 10';
   $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
 }
+
+/***** 3회당 1회 광고 노출 + 티켓 적립 *****/
 function addPlay(){
   let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
   let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
@@ -405,8 +408,11 @@ function addPlay(){
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
-  if(plays % 8 === 0){ showInterstitialAd(); }
+  // 🔁 3회 플레이마다 인터스티셜 광고
+  if(plays % 3 === 0){ showInterstitialAd(); }
 }
+
+/***** 기록 관리 *****/
 function addRecord(score, points){
   const recs=loadJSON(LS_KEYS.records,[]);
   const now=new Date(); recs.unshift({ts:now.toISOString(), score:score, points:points});
@@ -444,6 +450,132 @@ $('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#re
 function showToast(msg, ms=2000){
   const t=$('#toast'); if(!t) return; t.textContent=msg; t.style.display='block';
   clearTimeout(showToast._timer); showToast._timer=setTimeout(()=>{ t.style.display='none'; }, ms);
+}
+
+/***** RG Wallet 연동 공통 유틸 *****/
+/**
+ * /api/wallet 스펙 (예시)
+ * 1) 보상 적립
+ *   POST /api/wallet
+ *   {
+ *     "action": "ADD_REWARD",
+ *     "gameId": "dino-runner",
+ *     "score": 1234,
+ *     "reward": 120,          // 이번 플레이에서 적립할 포인트
+ *     "reason": "GAME_CLEAR", // 또는 "MISSION_BONUS" 등
+ *     "meta": { ... }         // 난이도, 레벨, 클라이언트 등 부가 정보
+ *   }
+ *
+ *   응답(200):
+ *   {
+ *     "ok": true,
+ *     "balance": 5320,        // 전체 누적 포인트
+ *     "delta": 120,           // 이번에 실제로 반영된 포인트
+ *     "tickets": 3,           // 서버 기준 전체 티켓 수 (선택)
+ *     "playCount": 18,        // 서버 기준 전체 플레이 수 (선택)
+ *     "message": "보상 +120P 적립!" // UI 토스트 등에 사용할 수 있는 문구 (선택)
+ *   }
+ *
+ * 2) 동기화(SYNC)
+ *   POST /api/wallet
+ *   { "action": "SYNC", "gameId": "dino-runner" }
+ *
+ *   응답(예시):
+ *   {
+ *     "ok": true,
+ *     "balance": 5320,
+ *     "tickets": 3,
+ *     "playCount": 18
+ *   }
+ */
+const RG_WALLET_ENDPOINT = '/api/wallet';
+const RG_GAME_ID = 'dino-runner';
+
+async function RG_safeFetch(url, options){
+  try{
+    const res = await fetch(url, {
+      method: (options && options.method) || 'POST',
+      headers: {
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+        ...(options && options.headers || {})
+      },
+      body: options && options.body || undefined,
+      credentials: 'include'
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json().catch(()=>null);
+    return { ok:true, data };
+  }catch(err){
+    console.warn('RG_safeFetch wallet error:', err);
+    return { ok:false, error:err };
+  }
+}
+
+/** 서버 기준 월렛 상태로 HUD 동기화 */
+async function RG_syncWalletHUD(){
+  try{
+    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
+      method:'POST',
+      body: JSON.stringify({ action:'SYNC', gameId: RG_GAME_ID })
+    });
+    if(!result.ok || !result.data) return;
+    const res = result.data;
+    if(res.ok === false) return;
+
+    const cap = 5000;
+    if(typeof res.balance === 'number'){
+      $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
+      $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
+    }
+    if(typeof res.tickets === 'number'){
+      $('#ticketsAmt').textContent = res.tickets;
+    }
+    if(typeof res.playCount === 'number'){
+      const m = res.playCount % 10;
+      $('#ticketsCap').textContent = m + ' / 10';
+      $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
+    }
+  }catch(e){
+    console.warn('RG_syncWalletHUD failed:', e);
+  }
+}
+
+/** 보상 적립 헬퍼 (게임 오버 시 호출) */
+async function RG_addReward(payload){
+  try{
+    const base = {
+      action: 'ADD_REWARD',
+      gameId: RG_GAME_ID
+    };
+    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
+      method:'POST',
+      body: JSON.stringify({ ...base, ...(payload || {}) })
+    });
+    if(result.ok && result.data){
+      const res = result.data;
+      const cap = 5000;
+      if(typeof res.balance === 'number'){
+        $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
+        $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
+      }
+      if(typeof res.tickets === 'number'){
+        $('#ticketsAmt').textContent = res.tickets;
+      }
+      if(typeof res.playCount === 'number'){
+        const m = res.playCount % 10;
+        $('#ticketsCap').textContent = m + ' / 10';
+        $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
+      }
+      if(res.message){
+        showToast(res.message, 2200);
+      }
+    }
+    return result;
+  }catch(e){
+    console.warn('RG_addReward failed:', e);
+    return { ok:false, error:e };
+  }
 }
 
 /***** Dino Runner (게임) *****/
@@ -681,7 +813,7 @@ function showToast(msg, ms=2000){
     collide(a,b){ return !(a.x+a.w-6 < b.x || a.x+6 > b.x+b.w || a.y < (b.y-b.h) || (a.y-a.h) > b.y); }
 
     awardPoints(base){
-      let v = Math.max(0, Math.floor(base * ({beginner:1.00, intermediate:1.15, advanced:1.35, insane:1.60, hell:1.35, doom:1.50}[$('#tier').value]||1.0)));
+      let v = Math.max(0, Math.floor(base * difficultyMult()));
       this.points = Math.min(this.pointsCap, this.points + v);
       this.updatePointsUI();
     }
@@ -774,15 +906,36 @@ function showToast(msg, ms=2000){
     doGameOver(){
       const leftover = (this.inv?.length||0) + (this.revive||0);
       if(leftover>0) this.awardPoints(leftover*5);
+
       this.gameover=true; this.running=false;
       $('#gameOver').style.display='flex';
-      addRecord(this.score|0, this.points|0);
+
+      const finalScore = this.score|0;
+      const earnedPoints = this.points|0;
+
+      addRecord(finalScore, earnedPoints);
       addPlay();
       this.renderInvUI();
       this._tryMissionBonus();
 
+      /* ✅ 서버 월렛에 보상 적립 (비동기, 실패해도 게임 진행에는 영향 없음) */
+      try{
+        RG_addReward({
+          score: finalScore,
+          reward: earnedPoints,
+          reason: 'GAME_CLEAR',
+          meta: {
+            mode: $('#tier')?.value || 'beginner',
+            level: this.level,
+            client: 'retro-dino-runner'
+          }
+        });
+      }catch(e){
+        console.warn('RG_addReward call error:', e);
+      }
+
       /* ✅ 세션 종료 알림 */
-      notifyFinish(this.score|0);
+      notifyFinish(finalScore);
     }
 
     drawCharacter(ctx,x,y,duck,phase,night){
@@ -911,6 +1064,8 @@ function showToast(msg, ms=2000){
     applyTier(tier.value);
     lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
     updateTicketUI();
+    // 최초 진입 시 서버 월렛 상태 동기화
+    RG_syncWalletHUD();
   })();
 })();
 

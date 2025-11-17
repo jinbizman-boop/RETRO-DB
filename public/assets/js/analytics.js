@@ -1,17 +1,26 @@
 /**
- * RETRO GAMES – analytics.js (Unified RC)
+ * RETRO GAMES – analytics.js (Unified RC + Account-aware)
  * Path: public/assets/js/analytics.js
  *
  * 정책
  * - 자동 초기화 없음(Consent 후 외부에서 window.Analytics.init(opts) 호출)
  * - collectEndpoint 기본: '/analytics/collect'  (서버 라우트 필요)
  * - <html data-env="production"> 또는 "prod" → debug=false
- * - 전역 API: window.Analytics = { init, event, flush, trackGameStart, trackGameFinish, trackLuckySpin, version }
+ * - 전역 API: window.Analytics = {
+ *     init, event, flush,
+ *     trackGameStart, trackGameFinish, trackLuckySpin,
+ *     version
+ *   }
  *
- * 기존 기능은 유지하고, 모듈/전역 혼용·동의배너 핸들러를 제거하여 충돌을 방지.
+ * 확장
+ * - 계정별 인식:
+ *   - window.RG.getSession() / window.RG.getStats()와 느슨하게 연동
+ *   - _middleware 의 X-User-* 헤더를 읽어 유저별 경험치/포인트/티켓/레벨을 업데이트
+ *   - 모든 이벤트 payload에 userContext(요약) 포함
+ * - UI/UX나 DOM 구조, 버튼/게임 동작은 건드리지 않음
  */
 (() => {
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
   const STORAGE_KEY = 'retro.analytics.queue';
   const SESSION_KEY_PREFIX = 'retro.game.session.';
   const UTM_KEY = 'retro.utm';
@@ -29,6 +38,95 @@
     collectEndpoint: '/analytics/collect',
     debug: !isProd,
     credentials: 'include',
+  };
+
+  /** ── 계정 컨텍스트(경험치/포인트/티켓/레벨) ─────────────────────────── */
+  const userContext = {
+    id: null,       // 문자열(유저 ID)
+    points: 0,      // 지갑 포인트/코인
+    exp: 0,         // 경험치
+    level: 1,       // 레벨
+    tickets: 0,     // 티켓
+  };
+
+  const toInt = (v, def = 0) => {
+    if (v === null || v === undefined) return def;
+    const n = parseInt(String(v), 10);
+    return Number.isFinite(n) ? n : def;
+  };
+
+  const updateUserStats = (stats) => {
+    if (!stats || typeof stats !== 'object') return;
+    if (stats.points !== undefined) userContext.points = toInt(stats.points, userContext.points);
+    if (stats.exp    !== undefined) userContext.exp    = toInt(stats.exp,    userContext.exp);
+    if (stats.level  !== undefined) userContext.level  = toInt(stats.level,  userContext.level || 1) || 1;
+    if (stats.tickets!== undefined) userContext.tickets= toInt(stats.tickets,userContext.tickets);
+  };
+
+  const updateUserFromMePayload = (rawMe) => {
+    if (!rawMe) return;
+    let me = rawMe;
+    // /auth/me 가 { ok:true, user:{...} } 형태인 경우
+    if (rawMe.user) me = rawMe.user;
+
+    const id =
+      me.id ??
+      me.user_id ??
+      me.userId ??
+      me.sub ??
+      null;
+
+    if (id !== null && id !== undefined && String(id).trim() !== '') {
+      userContext.id = String(id);
+    }
+
+    const stats =
+      me.stats ||
+      rawMe.stats ||
+      null;
+
+    if (stats) updateUserStats(stats);
+  };
+
+  const updateUserFromHeaders = (headers) => {
+    if (!headers || typeof headers.get !== 'function') return;
+    const uid = headers.get('X-User-Id');
+    const sp  = headers.get('X-User-Points');
+    const se  = headers.get('X-User-Exp');
+    const sl  = headers.get('X-User-Level');
+    const st  = headers.get('X-User-Tickets');
+
+    if (uid && String(uid).trim() !== '') {
+      userContext.id = String(uid);
+    }
+    if (sp !== null && sp !== undefined) userContext.points = toInt(sp, userContext.points);
+    if (se !== null && se !== undefined) userContext.exp    = toInt(se, userContext.exp);
+    if (sl !== null && sl !== undefined) userContext.level  = toInt(sl, userContext.level || 1) || 1;
+    if (st !== null && st !== undefined) userContext.tickets= toInt(st, userContext.tickets);
+  };
+
+  const bootstrapUserContextFromRG = () => {
+    try {
+      if (window.RG && typeof window.RG.getSession === 'function') {
+        // getSession()은 Promise를 반환 (app.js 기준)
+        window.RG.getSession().then((me) => {
+          if (!me) return;
+          updateUserFromMePayload(me);
+          // RG.getStats()가 있으면 추가로 한 번 더 맞춰줌
+          if (typeof window.RG.getStats === 'function') {
+            const s = window.RG.getStats();
+            updateUserStats(s);
+          }
+          if (config.debug) console.debug('[analytics] userContext from RG.getSession', userContext);
+        }).catch(() => {});
+      } else if (window.RG && typeof window.RG.getStats === 'function') {
+        const s = window.RG.getStats();
+        updateUserStats(s);
+        if (config.debug) console.debug('[analytics] userContext from RG.getStats', userContext);
+      }
+    } catch (e) {
+      if (config.debug) console.warn('[analytics] bootstrapUserContextFromRG failed', e);
+    }
   };
 
   /** ── 유틸 ─────────────────────────────────────────────────────────── */
@@ -99,6 +197,7 @@
 
   /** ── enqueue ─────────────────────────────────────────────────────── */
   const enqueue = (type, payload = {}) => {
+    const basePayload = payload && typeof payload === 'object' ? payload : { value: payload };
     const item = {
       id: uuid(),
       t: now(),
@@ -107,7 +206,15 @@
       ref: getRef(),
       utm: safeParse(localStorage.getItem(UTM_KEY), null),
       device: getDevice(),
-      payload,
+      // 계정 컨텍스트(유저별 경험치/포인트/티켓/레벨 요약) 포함
+      user: userContext.id ? {
+        id: userContext.id,
+        points: userContext.points,
+        exp: userContext.exp,
+        level: userContext.level,
+        tickets: userContext.tickets,
+      } : null,
+      payload: basePayload,
       v: VERSION,
     };
     const q = loadQueue();
@@ -174,6 +281,19 @@
       headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
       body: JSON.stringify(data || {}),
     });
+
+    // 미들웨어에서 계정 헤더(X-User-*)를 내려줄 수 있으므로 바로 반영
+    try {
+      updateUserFromHeaders(res.headers);
+      // RG가 있으면, app.js 쪽 계정 진행도와도 자연스럽게 맞춰짐
+      if (window.RG && typeof window.RG.getStats === 'function') {
+        const s = window.RG.getStats();
+        updateUserStats(s);
+      }
+    } catch (e) {
+      if (config.debug) console.warn('[analytics] header-based userContext update failed', e);
+    }
+
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       const err = new Error(json?.error || `HTTP_${res.status}`);
@@ -181,6 +301,14 @@
       err.body = json;
       throw err;
     }
+
+    // /games/* API가 새 stats를 반환하는 경우를 위해 한번 더 시도
+    try {
+      if (json && (json.user || json.stats)) {
+        updateUserFromMePayload(json);
+      }
+    } catch {/* no-op */}
+
     return json;
   };
 
@@ -196,7 +324,11 @@
     const session = json?.session || null;
     if (session?.id) {
       sessionStorage.setItem(keyForSlug(slug), JSON.stringify(session));
-      enqueue('game_start', { slug, sessionId: session.id, started_at: session.started_at });
+      enqueue('game_start', {
+        slug,
+        sessionId: session.id,
+        started_at: session.started_at,
+      });
       if (config.debug) console.info(`[analytics] game start: ${slug} -> ${session.id}`);
     }
     return session;
@@ -211,7 +343,23 @@
       return { ok: false, error: 'NO_SESSION' };
     }
     const json = await postJSON(`/games/${encodeURIComponent(slug)}/finish`, { sessionId, score });
-    enqueue('game_finish', { slug, sessionId, score, payout: json?.payout ?? null });
+
+    // 게임 종료 후, 계정별 진행도 변화(경험치/포인트)를 기록
+    enqueue('game_finish', {
+      slug,
+      sessionId,
+      score,
+      payout: json?.payout ?? null,
+      // 이벤트 시점의 계정 요약을 그대로 남겨둠
+      userSnapshot: {
+        id: userContext.id,
+        points: userContext.points,
+        exp: userContext.exp,
+        level: userContext.level,
+        tickets: userContext.tickets,
+      },
+    });
+
     sessionStorage.removeItem(keyForSlug(slug));
     if (config.debug) console.info(`[analytics] game finish: ${slug} (${sessionId}) score=${score}`, json);
     return json;
@@ -219,7 +367,16 @@
 
   const trackLuckySpin = async () => {
     const json = await postJSON('/games/lucky-spin', {});
-    enqueue('lucky_spin', { result: json?.result ?? null });
+    enqueue('lucky_spin', {
+      result: json?.result ?? null,
+      userSnapshot: {
+        id: userContext.id,
+        points: userContext.points,
+        exp: userContext.exp,
+        level: userContext.level,
+        tickets: userContext.tickets,
+      },
+    });
     return json;
   };
 
@@ -230,6 +387,7 @@
 
     Object.assign(config, opts || {});
     captureUTM();
+    bootstrapUserContextFromRG();
     startTimer();
 
     if (config.autoClick) {
@@ -246,7 +404,12 @@
     window.addEventListener('pagehide', flush);
     window.addEventListener('beforeunload', flush);
 
-    if (config.debug) console.log('[analytics] initialized', { VERSION, config, envRaw });
+    if (config.debug) console.log('[analytics] initialized', {
+      VERSION,
+      config,
+      envRaw,
+      userContext: { ...userContext },
+    });
   };
 
   /** ── 공개 API ───────────────────────────────────────────────────── */

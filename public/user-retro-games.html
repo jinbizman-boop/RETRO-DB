@@ -819,17 +819,31 @@
     <header>
       <!-- 좌측: HUD -->
       <div class="hudTop" aria-label="보상 현황">
-        <div class="pill coins" title="보유 코인">
+        <div class="pill coins" title="보유 코인(포인트)">
           <div class="icon">🪙</div>
-          <div id="coinVal" class="amount">0</div>
+          <!-- 계정 포인트/코인: app.js 에서 data-user-points로도 갱신 -->
+          <div id="coinVal" class="amount" data-user-points>0</div>
           <div class="unit">COINS</div>
         </div>
         <div class="pill xp" title="경험치">
           <div class="icon">🏆</div>
-          <div id="xpVal" class="amount">0</div>
+          <!-- 계정 경험치: app.js 에서 data-user-exp로도 갱신 -->
+          <div id="xpVal" class="amount" data-user-exp>0</div>
           <div class="unit">XP</div>
           <span id="xpCap" class="sr-only">/ 20K</span>
           <span class="sr-only" aria-hidden="true"><span id="xpBar"></span></span>
+        </div>
+        <!-- 계정 보유 티켓 -->
+        <div class="pill tickets" title="보유 티켓">
+          <div class="icon">🎟️</div>
+          <div id="ticketVal" class="amount" data-user-tickets>0</div>
+          <div class="unit">TICKETS</div>
+        </div>
+        <!-- 계정 기준 총 플레이 수 (프론트 합산 또는 백엔드 stats 기반) -->
+        <div class="pill plays" title="총 플레이 수">
+          <div class="icon">🎮</div>
+          <div id="playVal" class="amount" data-user-plays>0</div>
+          <div class="unit">PLAYS</div>
         </div>
         <!-- SHOP 이동 버튼(디자인 유지) -->
         <button class="pill shop" onclick="goShop()" title="상점">
@@ -1007,7 +1021,7 @@
     const AUTH_API_BASE = "/api/auth";
     const LEADERBOARD_API_BASE = "/api/leaderboard";
 
-    /* 경로 매핑 */
+    /* 경로 매핑 (각 게임에서 홈 버튼으로 돌아올 때 이 페이지가 로그인된 메인 허브 역할을 하도록 유지) */
     const GAME = {
       "2048":           BASE + "games/2048.html",
       "brick-breaker":  BASE + "games/brick-breaker.html",
@@ -1028,10 +1042,20 @@
       window.location.href = BASE + "shop.html";
     }
 
-    /* 보상 집계 (coins/tickets/xp) */
+    /* 보상 집계 (coins/tickets/xp) – 계정 기반 + 로컬 fallback */
     const NUM = n => Number.isFinite(+n) ? +n : 0;
 
-    function readTotals(){
+    // 계정별 통합 통계(허브 기준 단일 소스)
+    const ACCOUNT_TOTALS = {
+      coins:   null,
+      tickets: null,
+      xp:      null,
+      xpCap:   null,
+      plays:   null,
+      userId:  null,
+    };
+
+    function readTotalsFromLocal(){
       return {
         coins:   NUM(localStorage.getItem('rg_coins')   || 0),
         tickets: NUM(localStorage.getItem('rg_tickets') || 0),
@@ -1040,31 +1064,52 @@
       };
     }
 
-    function writeTotals(t){
+    function writeTotalsToLocal(t){
       localStorage.setItem('rg_coins',   t.coins);
       localStorage.setItem('rg_tickets', t.tickets);
       localStorage.setItem('rg_xp',      t.xp);
       localStorage.setItem('rg_xp_cap',  t.xpCap);
     }
 
+    // 허브에서 사용하는 최종 합산값(계정값 우선, 없으면 로컬)
+    function readTotals(){
+      const local = readTotalsFromLocal();
+      return {
+        coins:   ACCOUNT_TOTALS.coins   != null ? ACCOUNT_TOTALS.coins   : local.coins,
+        tickets: ACCOUNT_TOTALS.tickets != null ? ACCOUNT_TOTALS.tickets : local.tickets,
+        xp:      ACCOUNT_TOTALS.xp      != null ? ACCOUNT_TOTALS.xp      : local.xp,
+        xpCap:   ACCOUNT_TOTALS.xpCap   != null ? ACCOUNT_TOTALS.xpCap   : local.xpCap,
+      };
+    }
+
+    // 프론트 전용 임시 보상(비로그인일 때만 의미, 로그인 계정 보상은 서버/DB가 기준)
     function addReward({coins=0,tickets=0,xp=0}={}){
-      const t = readTotals();
-      t.coins   += NUM(coins);
-      t.tickets += NUM(tickets);
-      t.xp      += NUM(xp);
-      writeTotals(t);
+      const base = readTotalsFromLocal();
+      base.coins   += NUM(coins);
+      base.tickets += NUM(tickets);
+      base.xp      += NUM(xp);
+      writeTotalsToLocal(base);
       renderHUD();
     }
 
     /* HUD 렌더링 */
-    function fmt(n){ return Number(n).toLocaleString('en-US'); }
+    function fmt(n){ return Number(n||0).toLocaleString('en-US'); }
 
     function renderHUD(){
       const t = readTotals();
-      const coinEl = document.getElementById('coinVal');
-      const xpEl   = document.getElementById('xpVal');
-      if (coinEl) coinEl.textContent = fmt(t.coins);
-      if (xpEl)   xpEl.textContent   = fmt(t.xp);
+      const coinEl   = document.getElementById('coinVal');
+      const xpEl     = document.getElementById('xpVal');
+      const ticketEl = document.getElementById('ticketVal');
+      const playEl   = document.getElementById('playVal');
+
+      if (coinEl)   coinEl.textContent   = fmt(t.coins);
+      if (xpEl)     xpEl.textContent     = fmt(t.xp);
+      if (ticketEl) ticketEl.textContent = fmt(t.tickets);
+
+      // 플레이 수는 계정 값이 있으면 그 값을, 없으면 로컬 누적값(rg_plays_total)을 사용
+      const localPlays = NUM(localStorage.getItem('rg_plays_total') || 0);
+      const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
+      if (playEl) playEl.textContent = fmt(plays);
 
       const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1,t.xpCap)) * 100));
       const xpBar = document.getElementById('xpBar');
@@ -1075,10 +1120,10 @@
 
     renderHUD();
     window.addEventListener('storage', e=>{
-      if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)) renderHUD();
+      if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap','rg_plays_total'].includes(e.key)) renderHUD();
     });
 
-    /* 로그인 상태 / 사용자 정보 확인 (자동 리다이렉트 제거 버전) */
+    /* 로그인 상태 / 사용자 정보 확인 (허브 기준 계정 인식 + 통합 스탯 반영) */
     function redirectToLogin(){
       // 현재는 자동으로 호출하지 않음 (필요 시 다른 버튼/링크에서 수동 호출용)
       try{
@@ -1112,7 +1157,70 @@
       }
     }
 
-    // 로그인 체크는 하지만 실패해도 로그인 페이지로 보내지 않고 조용히 무시
+    // /api/auth/me 응답에서 계정 스탯 통합
+    function applyAccountStatsFromUser(user){
+      if(!user) return;
+      const stats = user.stats || {};
+      const coins   = NUM(
+        stats.points ??
+        stats.coins ??
+        stats.balance ??
+        0
+      );
+      const xp      = NUM(
+        stats.exp ??
+        stats.xp ??
+        0
+      );
+      const tickets = NUM(
+        stats.tickets ??
+        stats.ticket ??
+        0
+      );
+      const plays   = NUM(
+        stats.plays ??
+        stats.play_count ??
+        stats.totalPlays ??
+        0
+      );
+      const xpCap   = stats.xpCap != null ? NUM(stats.xpCap) : null;
+
+      ACCOUNT_TOTALS.userId  = (user.id != null) ? String(user.id) : (user.user_id != null ? String(user.user_id) : ACCOUNT_TOTALS.userId);
+      ACCOUNT_TOTALS.coins   = coins;
+      ACCOUNT_TOTALS.xp      = xp;
+      ACCOUNT_TOTALS.tickets = tickets;
+      ACCOUNT_TOTALS.plays   = plays;
+      if (xpCap != null) ACCOUNT_TOTALS.xpCap = xpCap;
+
+      // 각 게임 진입 시 계정 티켓을 기준으로 사용할 수 있도록 로컬에도 미러링
+      const localBase = readTotalsFromLocal();
+      writeTotalsToLocal({
+        coins:   coins,
+        tickets: tickets,
+        xp:      xp,
+        xpCap:   xpCap != null ? xpCap : localBase.xpCap,
+      });
+
+      // HUD 갱신 (코인/XP/티켓/플레이 수)
+      renderHUD();
+
+      // app.js가 로딩되어 있다면, RG.getStats()와도 자연스럽게 일치하도록 전역 허브 상태 제공
+      try{
+        window.RG_HUB = window.RG_HUB || {};
+        window.RG_HUB.getAccountTotals = function(){
+          return {
+            userId:  ACCOUNT_TOTALS.userId,
+            coins:   ACCOUNT_TOTALS.coins,
+            xp:      ACCOUNT_TOTALS.xp,
+            tickets: ACCOUNT_TOTALS.tickets,
+            xpCap:   ACCOUNT_TOTALS.xpCap,
+            plays:   ACCOUNT_TOTALS.plays,
+          };
+        };
+      }catch(e){}
+    }
+
+    // 로그인 체크: 허브에서는 자동 리다이렉트 없이 "로그인된 계정의 허브" 역할만 수행
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
         const res = await fetch(AUTH_API_BASE + "/me", {
@@ -1125,8 +1233,10 @@
         });
 
         if(!res.ok){
-          // 비로그인/오류 → 게임은 그대로, 환영 문구만 비움
+          // 비로그인/오류 → 게임은 그대로, 환영 문구/계정 HUD만 초기화
           updateUserGreeting(null);
+          ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
+          renderHUD();
           return;
         }
 
@@ -1137,15 +1247,26 @@
 
         if(!data || !data.ok || !data.user){
           updateUserGreeting(null);
+          ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
+          renderHUD();
           return;
         }
 
         // 전역에 보관 (필요시 다른 스크립트에서 활용 가능)
         window.__RG_CURRENT_USER__ = data.user;
         updateUserGreeting(data.user);
+        applyAccountStatsFromUser(data.user);
+
+        // app.js (window.RG)가 이미 초기화되어 있다면, 거기서도 계정 정보를 새로고침
+        if (window.RG && typeof window.RG.getSession === "function") {
+          // 계정 단위 허브이기 때문에, 게임 → 홈으로 돌아온 직후에도 최신 스탯을 강제로 반영
+          window.RG.getSession({ refresh: true }).catch(()=>{});
+        }
       }catch(err){
         console.error("auth check error", err);
         updateUserGreeting(null);
+        ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
+        renderHUD();
       }
     };
 
@@ -1172,7 +1293,7 @@
       localStorage.removeItem('rg_reward');
     })();
 
-    // 페이지 진입 시: 로그인 정보만 확인해서 환영 문구 업데이트 (리다이렉트 없음)
+    // 페이지 진입 시: 로그인 정보만 확인해서 환영 문구 + 계정 스탯 업데이트 (리다이렉트 없음)
     (function(){
       const params = new URLSearchParams(location.search);
       if (params.get("code")) {
@@ -1523,7 +1644,7 @@
           }
           // 쿼리 스트립
           history.replaceState({}, "", location.pathname);
-          // 유저 정보 반영
+          // 유저 정보 반영: 허브 기준 계정 스탯 + 헤더/상단 HUD 갱신
           if (typeof window.ensureLoggedIn === "function") {
             window.ensureLoggedIn();
           }

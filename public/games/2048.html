@@ -40,8 +40,9 @@
           crossorigin="anonymous"></script>
 
   <!-- 전역 유틸 (모듈 아님, defer 로딩) -->
-  <script defer src="assets/js/app.js"></script>
-  <script defer src="assets/js/analytics.js"></script>
+  <!-- ✅ games/ 경로에서도 공통 스크립트가 로드되도록 루트 기준 경로로 수정 -->
+  <script defer src="/assets/js/app.js"></script>
+  <script defer src="/assets/js/analytics.js"></script>
 
   <style>
     :root{
@@ -259,13 +260,8 @@
 
   <script>
   /* ====== AdSense (연동) ====== */
-  /**
-   * NOTE:
-   *  - AD_CLIENT는 메타 태그와 동일한 ID로 교정됨.
-   *  - 실제 광고 노출을 위해서는 AdSense에서 발급받은 data-ad-slot 값을 AD_SLOT에 넣어야 함.
-   */
   const AD_CLIENT = 'ca-pub-6713974265397310';
-  const AD_SLOT   = ''; // TODO: 여기 AdSense 광고 단위 ID (예: '1234567890')를 설정해야 실제 광고가 노출됩니다.
+  const AD_SLOT   = ''; // 필요 시 AdSense 광고 단위 ID 입력
 
   function fallbackAdHTML(){
     return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
@@ -310,29 +306,6 @@
   const fmt=n=> Number(n).toLocaleString('ko-KR');
 
   /* ===== WALLET API (spec & helpers) ===== */
-  /**
-   * WALLET API 스펙 (Cloudflare Pages Functions 기준 예시)
-   *
-   * 1) GET /api/wallet/me
-   *    - 응답: {
-   *        ok: boolean,
-   *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number }
-   *      }
-   *
-   * 2) POST /api/wallet/reward
-   *    - 요청 JSON:
-   *      {
-   *        game: "2048",
-   *        delta: { coins: number, xp: number, tickets: number },
-   *        meta:  { score: number, points: number, level: number, maxTile: number }
-   *      }
-   *    - 응답:
-   *      {
-   *        ok: boolean,
-   *        wallet?: { coins: number, xp: number, tickets: number, xpCap?: number },
-   *        error?: string
-   *      }
-   */
   const WALLET_API_BASE = '/api/wallet';
 
   async function postWalletReward(payload){
@@ -375,7 +348,6 @@
     let xpCap   = NUM(localStorage.getItem('rg_xp_cap') || 20000);
 
     const inited = localStorage.getItem(markKey);
-    // 완전 신규/게스트인 경우 기본 티켓 10장 지급 (허브/게임 공통)
     if(!inited && coins===0 && tickets===0 && xp===0){
       tickets = 10;
       localStorage.setItem(markKey,'1');
@@ -427,20 +399,18 @@
     }
     if(ticketsAmt) ticketsAmt.textContent = fmt(t.tickets);
     if(ticketsBar){
-      const T_CAP = 50; // 단순 시각화용 상한
+      const T_CAP = 50;
       const pct = Math.max(0, Math.min(100, (t.tickets / Math.max(1, T_CAP)) * 100));
       ticketsBar.style.width = pct.toFixed(1) + '%';
     }
   }
 
-  /* 다른 탭/게임에서 지갑이 변경될 때 HUD 동기화 */
   window.addEventListener('storage', function(e){
     if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)){
       renderGlobalWalletHUD();
     }
   });
 
-  /* 서버 월렛 → 허브/게임 동기화 */
   async function syncWalletFromServerAndRender(){
     try{
       const res = await fetch(WALLET_API_BASE + '/me', {
@@ -467,7 +437,6 @@
     }
   }
 
-  /* 게임 세션 시작 시 통합 티켓 1장 소모 */
   function consumeTicketForSession(){
     const totals = getOrInitGlobalTotals();
     if(totals.tickets <= 0){
@@ -478,7 +447,6 @@
     totals.tickets -= 1;
     setGlobalTotals(totals);
 
-    // 서버 지갑에도 티켓 차감 반영 (에러는 무시)
     postWalletReward({
       game: '2048',
       delta: { coins:0, xp:0, tickets:-1 },
@@ -488,7 +456,6 @@
     return true;
   }
 
-  /* 게임 세션 보상 → 글로벌 HUD(RG_addReward) + 서버 지갑 동시 업데이트 */
   function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
     if(!delta) return;
     const coins   = Number(delta.coins)   || 0;
@@ -496,12 +463,10 @@
     const tickets = Number(delta.tickets) || 0;
     if(!(coins || xp || tickets)) return;
 
-    // 1) 홈(user-retro-games.html)의 HUD와 localStorage 갱신
     try{
       if(typeof window.RG_addReward === 'function'){
         window.RG_addReward({ coins, tickets, xp });
       }else{
-        // RG_addReward가 없더라도 통합 지갑 로컬 값은 유지
         const t = getOrInitGlobalTotals();
         t.coins   += coins;
         t.tickets += tickets;
@@ -512,7 +477,6 @@
       console.warn('RG_addReward error', e);
     }
 
-    // 2) 서버 지갑 API 호출
     postWalletReward({
       game: gameCode,
       delta: { coins, xp, tickets },
@@ -525,34 +489,28 @@
     }).catch(()=>{});
   }
 
-  /* 점수/포인트를 RETRO GAMES 지갑 보상으로 변환하는 규칙 */
   function calcReward(score, points, maxTile, level){
     const s  = Math.max(0, score|0);
     const p  = Math.max(0, points|0);
     const lv = Math.max(1, level|0);
 
-    // 150점당 1코인, 난이도 계수 약간 반영
     const diffMult = 1 + ((lv-1) * 0.002);
     const coinsBase = s / 150 * diffMult;
     const coins = Math.floor(coinsBase);
 
-    // 포인트는 XP로 1:5 비율, 상한 2,000
     const xp = Math.min(2000, p * 5);
 
-    // 세션 안에서 별도 티켓 보너스: 2048 이상 달성 시 +1
     let bonusTickets = 0;
     if(maxTile >= 2048) bonusTickets = 1;
 
     return { coins, xp, tickets: bonusTickets };
   }
 
-  /* ===== Difficulty Multiplier ===== */
   function difficultyMult(){
     const val=$('#tier')?.value||'beginner';
     return {beginner:1.00, intermediate:1.12, advanced:1.28, hell:1.45, doom:1.60, insane:1.80}[val]||1.0;
   }
 
-  /* ===== Params per level ===== */
   function paramsForLevel(lv){
     const p4 = clamp(0.10 + lv*0.01, 0.10, 0.45);
     const p8 = lv<12? 0 : clamp((lv-10)*0.006, 0, 0.25);
@@ -563,14 +521,11 @@
     return {p4,p8,p16,evil,doubleSpawn:dbl,undos};
   }
 
-  /* ===== Storage (tickets & records) ===== */
   const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',best:'best2048'};
   function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
   function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
   function updateTicketUI(){
-    // 통합 지갑 정보 (티켓/XP) 기반 HUD 갱신
     renderGlobalWalletHUD();
-    // 추가로 이 게임에서의 누적 플레이 횟수를 서브 캡에 노출
     const plays= +localStorage.getItem(LS_KEYS.plays)||0;
     const capLabel = $('#ticketsCap');
     if(capLabel){
@@ -584,7 +539,6 @@
     localStorage.setItem(LS_KEYS.plays, String(plays));
     localStorage.setItem(LS_KEYS.tickets, String(tickets));
     updateTicketUI();
-    /* ✅ 3회 플레이마다 광고 노출 */
     if(plays % 3 === 0){ showInterstitialAd(); }
   }
   function addRecord(score, points){
@@ -608,23 +562,19 @@
   $('#recClose').addEventListener('click',()=> $('#recModal').style.display='none');
   $('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
 
-  /* ===== 서버 세션 연동 (gameStart/gameFinish) — 안전 래퍼 ===== */
   function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
   function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      // 필요시: 일시정지/로깅 등
-    }
-  });
+  document.addEventListener('visibilitychange', () => {});
 
-  /* ===== Game ===== */
   class G2048{
     constructor(canvas){
       this.c=canvas;
       this.ctx=canvas.getContext('2d');
       this.size=4;
 
-      // 기본 값 초기화
+      // ✅ 그리드를 가장 먼저 초기화해서 resize() → draw()에서 undefined 에러가 나지 않게 수정
+      this.grid = this.makeGrid(this.size);
+
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
       this.score=0;
       this.moves=0;
@@ -635,10 +585,7 @@
       this._initResizeObserver();
       this.resize();
 
-      // 통합 티켓 소모 후 세션 시작
       if(!consumeTicketForSession()){
-        // 티켓이 없으면 보드만 초기화하고 입력은 막음
-        this.grid = this.makeGrid(this.size);
         this.syncHUD();
         this.draw();
         return;
@@ -646,7 +593,6 @@
 
       this.reset(1);
       this.draw();
-      // 페이지 로드시 세션 시작 알림
       notifyStart();
     }
 
@@ -673,7 +619,6 @@
     makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
 
     bind(){
-      /* HOME: 광고 이후 허브(user-retro-games.html, 로그인 후 메인)로 이동 */
       $('#homeBtn').onclick = () => showAdThen(()=> {
         window.location.href = '/user-retro-games.html';
       });
@@ -701,7 +646,6 @@
         if(e.code==='KeyU'){ this.undo(); }
         const d=keyMap[e.code]; if(d){ this.move(d); e.preventDefault(); }
       });
-      // Touch
       let sx=0, sy=0; this.c.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
       this.c.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy; const ax=Math.abs(dx), ay=Math.abs(dy); if(Math.max(ax,ay)<20) return; this.move( ax>ay? (dx<0?'L':'R') : (dy<0?'U':'D') ); });
     }
@@ -736,8 +680,6 @@
       $('#score').textContent=this.score|0;
       $('#best').textContent=this.best|0;
       $('#moves').textContent=this.moves|0;
-
-      // 포인트/티켓은 통합 지갑 기준으로 렌더링
       renderGlobalWalletHUD();
       updateTicketUI();
     }
@@ -773,7 +715,6 @@
     storeHistory(){ if(this.undosLeft<=0) return; const snapshot={grid:this.grid.map(r=>r.slice()), score:this.score, moves:this.moves, points:this.points, scoreMilestone:this._scoreMilestone, tileBonusGiven:this._tileBonusGiven}; this.history.push(snapshot); if(this.history.length>50) this.history.shift(); }
     undo(){ if(this.history.length===0||this.undosLeft<=0) return; const s=this.history.pop(); this.grid=s.grid; this.score=s.score; this.moves=s.moves; this.points=s.points||0; this._scoreMilestone=s.scoreMilestone||0; this._tileBonusGiven=s.tileBonusGiven||this._tileBonusGiven; this.undosLeft--; this.syncHUD(); this.draw(); }
 
-    /* ===== 포인트 모델 ===== */
     awardPoints(base){
       const mult = difficultyMult();
       const add = Math.max(0, Math.floor(base * mult));
@@ -844,9 +785,8 @@
       this.syncHUD();
       addRecord(this.score, this.points||0);
       addPlay();
-      notifyFinish(this.score|0);   /* ✅ 서버로 최종 점수 알림 */
+      notifyFinish(this.score|0);
 
-      /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
       try{
         const delta = calcReward(this.score||0, this.points||0, maxT, this.level||1);
         applyGlobalRewardAndSyncWallet('2048', delta, {
@@ -876,6 +816,9 @@
     }
 
     draw(){
+      // ✅ grid가 준비되기 전에 호출되면 그냥 반환 (안전가드)
+      if(!this.grid) return;
+
       const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.clearRect(0,0,W,H);
       const pad=16*DPR(); const n=this.size; const gap=10*DPR(); const cell=(W - pad*2 - gap*(n-1))/n; const radius=12*DPR();
       ctx.fillStyle=getCSS('--tile0'); roundRect(ctx,pad,pad,W-pad*2,H-pad*2,18*DPR()); ctx.fill();
@@ -900,7 +843,6 @@
     }
   }
 
-  /* Keep cabinet fully visible on screen */
   function fitCabinet(){
     const cab = document.querySelector('.cabinet'); if(!cab) return;
     const margin = 16; cab.style.transform='none'; const w=cab.offsetWidth, h=cab.offsetHeight;
@@ -913,7 +855,6 @@
   window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
   setTimeout(fitCabinet, 0);
 
-  /* ===== Tests ===== */
   (function runTests(){
     const c=document.createElement('canvas'); const g=new G2048(c);
     g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
@@ -922,7 +863,6 @@
     console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
   })();
 
-  /* ===== Bootstrap ===== */
   const game=new G2048(document.getElementById('game'));
   (function(){
     const tier=$('#tier'), lvl=$('#lvlRange');
@@ -930,7 +870,6 @@
     applyTier(tier.value);
     lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
     updateTicketUI();
-    // 서버 지갑 기준으로 통합 HUD 최신 상태 맞추기
     syncWalletFromServerAndRender();
   })();
   </script>
@@ -950,7 +889,7 @@
       var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
       var el=document.getElementById('cookieBanner');
       if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
-      if(!el){ return; } // no banner -> do not init
+      if(!el){ return; }
       el.style.display='flex';
       var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
       if(agree) agree.addEventListener('click', function(){
@@ -961,7 +900,7 @@
         try{ localStorage.setItem(KEY,'no'); }catch(e){}
         el.style.display='none';
       });
-    }catch(e){ /* no-op */ }
+    }catch(e){ }
   })();
   </script>
 

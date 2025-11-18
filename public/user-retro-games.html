@@ -1969,6 +1969,9 @@
       gameHints:     true,
     };
 
+    // 설정에서 제어하는 애니메이션 on/off 플래그 (기본값 true)
+    let fxEnabled = true;
+
     function loadSettings(){
       try{
         const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -2153,9 +2156,7 @@
       });
     }
 
-    // 설정에서 제어하는 애니메이션 on/off 플래그
-    let fxEnabled = (currentSettings && currentSettings.backgroundFx !== false);
-
+    // 설정에서 제어하는 애니메이션 on/off 플래그 (값은 applySettingsToPage에서 갱신)
     function loop(){
       g.clearRect(0,0,c.width,c.height);
       if(fxEnabled){

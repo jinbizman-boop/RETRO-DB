@@ -35,12 +35,11 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense 글로벌 스크립트 (요청 스니펫 그대로, 모든 페이지 공통 사용) -->
+  <!-- AdSense 글로벌 스크립트 -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
           crossorigin="anonymous"></script>
 
-  <!-- 전역 유틸 (모듈 아님, defer 로딩) -->
-  <!-- ✅ games/ 경로에서도 공통 스크립트가 로드되도록 루트 기준 경로로 수정 -->
+  <!-- 전역 유틸 -->
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
 
@@ -59,17 +58,83 @@
       overflow:hidden
     }
     #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
-    .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
+    }
+
+    /* === 좌우 세로형 광고 배너 레이아웃 === */
+    .cabinetLayout{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      align-items:stretch;
+      gap:16px;
+      width:min(1400px,100%);
+    }
+    .sideAd{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .sideAdInner{
+      width:160px;
+      max-width:100%;
+      height:600px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .sideAdInner .adsbygoogle{
+      display:block;
+      width:100%;
+      height:100%;
+    }
+    /* 화면이 좁아지면 광고는 자동 숨김, 캐비닛만 100% 사용 */
+    @media (max-width:1200px){
+      .cabinetLayout{
+        grid-template-columns:minmax(0,1fr);
+      }
+      .sideAd{
+        display:none;
+      }
+    }
 
     /* Cabinet */
-    .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
-    .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);filter:drop-shadow(0 0 12px rgba(255,190,0,.55));}
+    .cabinet{
+      position:relative;
+      width:min(1200px,96vw);
+      background:#0e1b34;
+      border-radius:18px;
+      box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
+      transform-origin:top center
+    }
+    .cabinet:before,.cabinet:after{
+      content:"";
+      position:absolute;top:12px;bottom:12px;width:18px;
+      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
+      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
+    }
     .cabinet:before{left:12px;border-radius:9px}
     .cabinet:after{right:12px;border-radius:9px}
 
-    .marquee{padding:18px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,#173763,#0b2548);border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)}
+    .marquee{
+      padding:18px;
+      border-radius:18px 18px 0 0;
+      background:linear-gradient(180deg,#173763,#0b2548);
+      border-bottom:1px solid #0c2b59;
+      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)
+    }
     .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-    .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
+    .title h1{
+      margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;
+      text-shadow:0 0 12px rgba(62,142,255,.55);
+      font-size:clamp(18px,4.4vw,28px)
+    }
     .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
 
     /* HUD unified (button-like) */
@@ -82,9 +147,21 @@
     }
     .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
     .pill{min-width:260px;gap:12px}
-    .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)}
-    .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
-    .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#b86cff,#6af0ff);box-shadow:0 0 10px #8ad7ff}
+    .pill .icon{
+      width:28px;height:28px;display:grid;place-items:center;border-radius:50%;
+      background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);
+      color:#0b2a57;
+      box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)
+    }
+    .points .bar,.tickets .bar{
+      height:8px;border-radius:999px;background:#1a2548;
+      overflow:hidden;border:1px solid #2b3f8f;width:120px
+    }
+    .points .bar>span,.tickets .bar>span{
+      display:block;height:100%;width:0%;
+      background:linear-gradient(90deg,#b86cff,#6af0ff);
+      box-shadow:0 0 10px #8ad7ff
+    }
     .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
     .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
     .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
@@ -93,25 +170,70 @@
     /* Screen */
     .play{position:relative;margin:10px 18px;border-radius:16px;background:linear-gradient(180deg,#0a1530,#031125);box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)}
     .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
-    .bezel{width:100%;height:100%;border-radius:14px;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;overflow:hidden}
+    .bezel{
+      width:100%;height:100%;border-radius:14px;
+      background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);
+      box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
+      display:grid;place-items:center;overflow:hidden
+    }
     .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
-    canvas#game{width:100%;height:auto;aspect-ratio:1/1;background:var(--tile0);border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
+    canvas#game{
+      width:100%;height:auto;aspect-ratio:1/1;
+      background:var(--tile0);
+      border-radius:18px;border:1px solid #1b2b45;
+      box-shadow:inset 0 0 40px rgba(0,0,0,.25)
+    }
 
     /* Deck */
-    .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
-    .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;background:linear-gradient(180deg,#1b3a7a,#102a66);border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;touch-action:manipulation}
+    .deck{
+      display:flex;gap:12px;flex-wrap:wrap;justify-content:center;
+      padding:14px 18px 22px;
+      border-top:1px solid #0a2b57;
+      background:linear-gradient(180deg,#0b1f40,#0a1730)
+    }
+    .deck .btn,.deck select,.deck input[type=range]{
+      font-weight:900;color:#dff1ff;
+      background:linear-gradient(180deg,#1b3a7a,#102a66);
+      border:1px solid #224aa8;border-radius:12px;
+      padding:10px 14px;
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      cursor:pointer;touch-action:manipulation
+    }
     .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
     .deck label{display:flex;align-items:center;gap:8px}
     .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
 
     /* Records Modal */
-    #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
+    #recModal{
+      display:none;position:fixed;inset:0;
+      background:rgba(5,0,20,.55);
+      backdrop-filter:blur(4px);
+      align-items:center;justify-content:center;
+      z-index:999
+    }
     /* Ad Modal */
-    #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
-    #adBox{width:min(680px,92vw);min-height:280px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px}
+    #adModal{
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,.65);
+      backdrop-filter:blur(2px);
+      align-items:center;justify-content:center;
+      z-index:1000
+    }
+    #adBox{
+      width:min(680px,92vw);min-height:280px;
+      background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);
+      border:2px solid #3e2b7b;border-radius:20px;
+      box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
+      padding:18px;display:flex;flex-direction:column;gap:10px
+    }
     #adHead{display:flex;justify-content:space-between;align-items:center}
     #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-    .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;background:linear-gradient(135deg,#18224a,#0e1636);border:1px dashed #3952c3}
+    .adPlaceholder{
+      display:grid;place-items:center;height:220px;
+      border-radius:14px;
+      background:linear-gradient(135deg,#18224a,#0e1636);
+      border:1px dashed #3952c3
+    }
 
     /* ===== Mobile Responsive ===== */
     @media (max-width: 980px){
@@ -135,14 +257,18 @@
       .deck > *{flex:0 0 auto}
     }
 
-    .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
+    .cookie-banner{
+      position:fixed;left:12px;right:12px;bottom:12px;
       display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
       border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
       box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-      z-index:10000;font-size:12px}
+      z-index:10000;font-size:12px
+    }
     .cookie-banner .spacer{flex:1}
-    .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
+    .cookie-banner button{
+      padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer
+    }
     .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
   </style>
 </head>
@@ -150,85 +276,113 @@
 <body>
   <div id="site-header"></div>
   <canvas id="fx"></canvas>
+
   <div class="shell">
-    <section class="cabinet" aria-label="retro arcade cabinet">
-      <header class="marquee">
-        <div class="title">
-          <h1>RETRO 2048</h1>
-          <div class="subtitle">SWIPE · ARROWS · WASD</div>
+    <div class="cabinetLayout">
+      <!-- 좌측 세로 광고 배너 -->
+      <aside class="sideAd sideAd-left" aria-label="left vertical ad">
+        <div class="sideAdInner">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot=""
+               data-ad-format="auto"
+               data-full-width-responsive="false"></ins>
         </div>
-      </header>
+      </aside>
 
-      <!-- HUD -->
-      <div class="hud">
-        <div class="chip">점수 <b id="score">0</b></div>
-        <div class="chip">최고 <b id="best">0</b></div>
-        <div class="chip">이동 <b id="moves">0</b></div>
-
-        <!-- Points (통합 XP 기반) -->
-        <div class="pill points" aria-label="사용자 포인트">
-          <div class="icon">🏅</div>
-          <div>
-            <div class="nums">
-              <span class="big" id="pointsAmt">0</span>
-              <span class="cap">/ <span id="pointsCap">20,000</span></span>
-            </div>
-            <div class="bar"><span id="pointsBar"></span></div>
+      <!-- 아케이드 캐비닛 -->
+      <section class="cabinet" aria-label="retro arcade cabinet">
+        <header class="marquee">
+          <div class="title">
+            <h1>RETRO 2048</h1>
+            <div class="subtitle">SWIPE · ARROWS · WASD</div>
           </div>
-        </div>
+        </header>
 
-        <!-- Tickets (통합 티켓 기반) -->
-        <div class="pill tickets" aria-label="티켓 진행">
-          <div class="icon">🎟️</div>
-          <div>
-            <div class="nums">
-              <span class="big" id="ticketsAmt">0</span>
-              <span class="cap">티켓</span>
-            </div>
-            <div class="bar"><span id="ticketsBar"></span></div>
-          </div>
-          <div class="playCount" id="ticketsCap">0 / 10</div>
-        </div>
+        <!-- HUD -->
+        <div class="hud">
+          <div class="chip">점수 <b id="score">0</b></div>
+          <div class="chip">최고 <b id="best">0</b></div>
+          <div class="chip">이동 <b id="moves">0</b></div>
 
-        <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
-      </div>
-
-      <main class="play">
-        <div class="screen">
-          <div class="bezel">
-            <div class="canvasWrap" id="canvasWrap">
-              <canvas id="game"></canvas>
+          <!-- Points (통합 XP 기반) -->
+          <div class="pill points" aria-label="사용자 포인트">
+            <div class="icon">🏅</div>
+            <div>
+              <div class="nums">
+                <span class="big" id="pointsAmt">0</span>
+                <span class="cap">/ <span id="pointsCap">20,000</span></span>
+              </div>
+              <div class="bar"><span id="pointsBar"></span></div>
             </div>
           </div>
-        </div>
-      </main>
 
-      <!-- Control deck -->
-      <div class="deck">
-        <button class="btn" id="homeBtn">HOME</button>
-        <button class="btn" id="newBtn">새 게임 (N)</button>
-        <button class="btn" id="undoBtn">되돌리기 (U)</button>
-        <label>모드
-          <select id="tier">
-            <option value="beginner">초급 (1–10)</option>
-            <option value="intermediate">중급 (11–20)</option>
-            <option value="advanced">고급 (21–30)</option>
-            <option value="hell">지옥 (40)</option>
-            <option value="doom">파멸 (50)</option>
-            <option value="insane">극악무도 (100)</option>
-          </select>
-        </label>
-        <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
-        <label>보드
-          <select id="sizeSel">
-            <option value="4">4×4</option>
-            <option value="5">5×5</option>
-            <option value="6">6×6</option>
-          </select>
-        </label>
-        <button class="btn" id="endBtn">게임 종료</button>
-      </div>
-    </section>
+          <!-- Tickets (통합 티켓 기반) -->
+          <div class="pill tickets" aria-label="티켓 진행">
+            <div class="icon">🎟️</div>
+            <div>
+              <div class="nums">
+                <span class="big" id="ticketsAmt">0</span>
+                <span class="cap">티켓</span>
+              </div>
+              <div class="bar"><span id="ticketsBar"></span></div>
+            </div>
+            <div class="playCount" id="ticketsCap">0 / 10</div>
+          </div>
+
+          <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+        </div>
+
+        <main class="play">
+          <div class="screen">
+            <div class="bezel">
+              <div class="canvasWrap" id="canvasWrap">
+                <canvas id="game"></canvas>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- Control deck -->
+        <div class="deck">
+          <button class="btn" id="homeBtn">HOME</button>
+          <button class="btn" id="newBtn">새 게임 (N)</button>
+          <button class="btn" id="undoBtn">되돌리기 (U)</button>
+          <label>모드
+            <select id="tier">
+              <option value="beginner">초급 (1–10)</option>
+              <option value="intermediate">중급 (11–20)</option>
+              <option value="advanced">고급 (21–30)</option>
+              <option value="hell">지옥 (40)</option>
+              <option value="doom">파멸 (50)</option>
+              <option value="insane">극악무도 (100)</option>
+            </select>
+          </label>
+          <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
+          <label>보드
+            <select id="sizeSel">
+              <option value="4">4×4</option>
+              <option value="5">5×5</option>
+              <option value="6">6×6</option>
+            </select>
+          </label>
+          <button class="btn" id="endBtn">게임 종료</button>
+        </div>
+      </section>
+
+      <!-- 우측 세로 광고 배너 -->
+      <aside class="sideAd sideAd-right" aria-label="right vertical ad">
+        <div class="sideAdInner">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot=""
+               data-ad-format="auto"
+               data-full-width-responsive="false"></ins>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <!-- Records Modal -->
@@ -290,6 +444,18 @@
     document.getElementById('adModal').style.display='none';
     const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
   });
+
+  /* 좌우 세로 배너 초기화 */
+  function initSideBanners(){
+    try{
+      const insList=document.querySelectorAll('.sideAdInner ins.adsbygoogle');
+      if(!insList.length) return;
+      (window.adsbygoogle = window.adsbygoogle || []);
+      insList.forEach(()=>{ window.adsbygoogle.push({}); });
+    }catch(e){
+      console.warn('side banner init error', e);
+    }
+  }
 
   /* ===== Neon background (stars) ===== */
   (function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
@@ -567,12 +733,13 @@
   document.addEventListener('visibilitychange', () => {});
 
   class G2048{
-    constructor(canvas){
+    constructor(canvas, opts={}){
       this.c=canvas;
       this.ctx=canvas.getContext('2d');
       this.size=4;
+      this.testMode = !!opts.testMode;
 
-      // ✅ 그리드를 가장 먼저 초기화해서 resize() → draw()에서 undefined 에러가 나지 않게 수정
+      // grid 먼저 초기화해서 draw() 안전 보장
       this.grid = this.makeGrid(this.size);
 
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
@@ -585,6 +752,14 @@
       this._initResizeObserver();
       this.resize();
 
+      // ✅ 테스트 모드에서는 티켓/지갑/알림 모두 건드리지 않고 단순 초기화만 수행
+      if(this.testMode){
+        this.reset(1);
+        this.draw();
+        return;
+      }
+
+      // 실제 게임만 티켓 소비
       if(!consumeTicketForSession()){
         this.syncHUD();
         this.draw();
@@ -626,7 +801,7 @@
       $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
       $('#newBtn').onclick=()=>{
         if(this.moves>0){ addRecord(this.score,this.points||0);}
-        if(!consumeTicketForSession()) return;
+        if(!this.testMode && !consumeTicketForSession()) return;
         this.reset(this.level);
       };
       $('#undoBtn').onclick=()=> this.undo();
@@ -640,7 +815,7 @@
       document.addEventListener('keydown',(e)=>{
         if(e.code==='KeyN'){
           if(this.moves>0){ addRecord(this.score,this.points||0);}
-          if(!consumeTicketForSession()) return;
+          if(!this.testMode && !consumeTicketForSession()) return;
           this.reset(this.level);
         }
         if(e.code==='KeyU'){ this.undo(); }
@@ -787,6 +962,9 @@
       addPlay();
       notifyFinish(this.score|0);
 
+      // 테스트 모드에서는 보상/지갑 연동 생략
+      if(this.testMode) return;
+
       try{
         const delta = calcReward(this.score||0, this.points||0, maxT, this.level||1);
         applyGlobalRewardAndSyncWallet('2048', delta, {
@@ -816,7 +994,7 @@
     }
 
     draw(){
-      // ✅ grid가 준비되기 전에 호출되면 그냥 반환 (안전가드)
+      // grid가 준비되지 않은 경우 방어
       if(!this.grid) return;
 
       const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.clearRect(0,0,W,H);
@@ -856,7 +1034,9 @@
   setTimeout(fitCabinet, 0);
 
   (function runTests(){
-    const c=document.createElement('canvas'); const g=new G2048(c);
+    // ✅ 테스트 인스턴스는 testMode:true 로 생성 → 티켓/지갑/광고와 완전히 분리
+    const c=document.createElement('canvas');
+    const g=new G2048(c,{testMode:true});
     g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
     g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
     g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
@@ -871,6 +1051,7 @@
     lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
     updateTicketUI();
     syncWalletFromServerAndRender();
+    initSideBanners(); // 좌우 배너 로딩
   })();
   </script>
 

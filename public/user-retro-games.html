@@ -355,23 +355,41 @@
     }
     .btn:hover{filter:brightness(1.06);}
 
-    /* ✅ 광고 배너 (높이만 약 150px로 줄인 버전) */
-    .adBanner{
-      width:100%;
+    /* ✅ 좌/우 세로형 광고 배너 */
+    .sideAd{
+      position:fixed;
+      top:50%;
+      transform:translateY(-50%);
+      width:160px;      /* 세로 배너 폭 (예: 160x600) */
+      height:600px;
       display:flex;
+      align-items:center;
       justify-content:center;
-      margin-top:8px;
+      z-index:5000;
+      pointer-events:auto;
     }
-    .adBanner-inner{
-      width:min(100%,468px);            /* 약 1212px 최대 폭 유지 */
-      height:min(100%,60px);             /* ▶ 약 150px 높이 */
+    .sideAd-inner{
+      width:100%;
+      height:100%;
+      border-radius:18px;
       border:1px solid #3250c2;
-      background:linear-gradient(90deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
+      background:linear-gradient(180deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
       box-shadow:0 8px 20px rgba(0,0,0,.65),0 0 22px rgba(40,120,255,.55);
       box-sizing:border-box;
       display:flex;
       align-items:center;
       justify-content:center;
+      overflow:hidden;
+    }
+    .sideAd-left{
+      left:8px;
+    }
+    .sideAd-right{
+      right:8px;
+    }
+    /* 좁은 화면에서는 세로 배너 숨김 처리 */
+    @media (max-width:1280px){
+      .sideAd{display:none;}
     }
 
     footer{
@@ -483,9 +501,6 @@
       }
       .amount{
         font-size:16px;
-      }
-      .adBanner-inner{
-        padding:8px 12px; /* 모바일에서는 살짝 줄인 패딩 */
       }
     }
 
@@ -986,6 +1001,44 @@
   <!--#include file="/partials/header.html" -->
   <canvas id="fx"></canvas>
 
+  <!-- ✅ 좌측 세로형 광고 배너 -->
+  <div class="sideAd sideAd-left" aria-label="광고 배너(좌측)">
+    <div class="sideAd-inner">
+      <ins class="adsbygoogle"
+           style="display:block;width:100%;height:100%;"
+           data-ad-client="ca-pub-6713974265397310"
+           data-ad-slot=""
+           data-ad-format="auto"
+           data-full-width-responsive="false"></ins>
+      <script>
+        try{
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        }catch(e){
+          console.warn("AdSense left vertical render error:", e);
+        }
+      </script>
+    </div>
+  </div>
+
+  <!-- ✅ 우측 세로형 광고 배너 -->
+  <div class="sideAd sideAd-right" aria-label="광고 배너(우측)">
+    <div class="sideAd-inner">
+      <ins class="adsbygoogle"
+           style="display:block;width:100%;height:100%;"
+           data-ad-client="ca-pub-6713974265397310"
+           data-ad-slot=""
+           data-ad-format="auto"
+           data-full-width-responsive="false"></ins>
+      <script>
+        try{
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        }catch(e){
+          console.warn("AdSense right vertical render error:", e);
+        }
+      </script>
+    </div>
+  </div>
+
   <div class="wrap">
     <header>
       <!-- 좌측: HUD -->
@@ -1130,25 +1183,7 @@
             </div>
           </div>
 
-          <!-- ✅ 가로형 광고 배너 (높이만 약 150px로 줄인 버전) -->
-          <div class="adBanner" aria-label="광고 배너">
-            <div class="adBanner-inner">
-              <!-- AdSense display ad unit (반응형 / 리더보드 자리) -->
-              <ins class="adsbygoogle"
-                   style="display:block;width:100%;height:100%;"
-                   data-ad-client="ca-pub-6713974265397310"
-                   data-ad-slot=""
-                   data-ad-format="auto"
-                   data-full-width-responsive="true"></ins>
-              <script>
-                try{
-                  (adsbygoogle = window.adsbygoogle || []).push({});
-                }catch(e){
-                  console.warn("AdSense render error:", e);
-                }
-              </script>
-            </div>
-          </div>
+          <!-- ⛔ 기존 하단 가로형 광고 배너는 제거됨 -->
         </div>
       </main>
     </section>

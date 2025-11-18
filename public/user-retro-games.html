@@ -355,7 +355,7 @@
     }
     .btn:hover{filter:brightness(1.06);}
 
-    /* ✅ 광고 배너 (1212x212 근사값, 303:53 비율 유지) */
+    /* ✅ 광고 배너 (높이만 줄인 버전) */
     .adBanner{
       width:100%;
       display:flex;
@@ -363,9 +363,10 @@
       margin-top:8px;
     }
     .adBanner-inner{
-      width:min(100%,1212px);            /* 약 1212px 최대 폭 */
-      aspect-ratio:303/53;               /* 정확한 303:53 비율 */
-      padding:12px 18px;
+      width:min(100%,1212px);            /* 약 1212px 최대 폭 유지 */
+      height:160px;                      /* ▶ 기존 ~212px보다 낮은 높이로 조정 */
+      max-height:160px;
+      padding:10px 18px;
       border-radius:18px;
       border:1px solid #3250c2;
       background:linear-gradient(90deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
@@ -487,7 +488,7 @@
         font-size:16px;
       }
       .adBanner-inner{
-        padding:10px 12px;
+        padding:8px 12px; /* 모바일에서는 살짝 줄인 패딩 */
       }
     }
 
@@ -1132,7 +1133,7 @@
             </div>
           </div>
 
-          <!-- ✅ 가로형 광고 배너 (약 1212x212, 303:53 비율) -->
+          <!-- ✅ 가로형 광고 배너 (높이만 줄인 버전) -->
           <div class="adBanner" aria-label="광고 배너">
             <div class="adBanner-inner">
               <!-- AdSense display ad unit (반응형 / 리더보드 자리) -->

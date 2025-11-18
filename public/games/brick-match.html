@@ -35,7 +35,7 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense 스니펫: 요청값 그대로 (클라이언트 ID 일치, head 안에 위치) -->
+  <!-- ✅ Google AdSense (요청한 실제 코드, head 안에 위치) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
           crossorigin="anonymous"></script>
 
@@ -443,13 +443,14 @@
   </style>
 </head>
 
-<!-- 공통 JS: /public/games/ 이하에서도 항상 동작하도록 절대경로 사용 -->
-<script defer src="/assets/js/app.js"></script>
+<!-- ✅ 공통 Analytics JS만 남기고, index를 주입하는 app.js는 제거 -->
 <script defer src="/assets/js/analytics.js"></script>
 
 <body>
-  <div id="site-header"></div>
+  <!-- 🔻 index(허브) 화면을 끌어오던 site-header DOM 제거
+       → 이 페이지에서는 순수 게임 화면만 표시 -->
   <canvas id="fx"></canvas>
+
   <div class="shell">
     <section class="cabinet" aria-label="retro arcade cabinet">
       <header class="marquee">
@@ -1652,7 +1653,5 @@
       }
     })();
   </script>
-
-  <div id="site-footer"></div>
 </body>
 </html>

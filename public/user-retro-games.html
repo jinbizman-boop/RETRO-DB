@@ -355,7 +355,7 @@
     }
     .btn:hover{filter:brightness(1.06);}
 
-    /* ✅ 광고 배너 (432x87 규격) */
+    /* ✅ 광고 배너 (1212x212 근사값, 303:53 비율 유지) */
     .adBanner{
       width:100%;
       display:flex;
@@ -363,10 +363,9 @@
       margin-top:8px;
     }
     .adBanner-inner{
-      width:432px;
-      height:87px;
-      max-width:100%;
-      padding:8px 12px;
+      width:min(100%,1212px);            /* 약 1212px 최대 폭 */
+      aspect-ratio:303/53;               /* 정확한 303:53 비율 */
+      padding:12px 18px;
       border-radius:18px;
       border:1px solid #3250c2;
       background:linear-gradient(90deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
@@ -488,7 +487,7 @@
         font-size:16px;
       }
       .adBanner-inner{
-        padding:8px 10px;
+        padding:10px 12px;
       }
     }
 
@@ -753,6 +752,227 @@
       }
     }
 
+    /* ===== 설정 모달 스타일 (팝업) ===== */
+    .settings-modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.7);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9500;
+    }
+    .settings-modal-backdrop.open{
+      display:flex;
+    }
+    .settings-modal{
+      width:min(720px,94vw);
+      max-height:80vh;
+      border-radius:22px;
+      background:radial-gradient(circle at 0% -40%,#403090,#050015 70%);
+      box-shadow:0 0 40px rgba(0,0,0,.85),0 0 34px rgba(80,140,255,.75);
+      border:2px solid #3e2b7b;
+      padding:18px 20px 18px;
+      display:flex;
+      flex-direction:column;
+      color:#e4e7ff;
+    }
+    .settings-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .settings-title-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .settings-title{
+      font-size:18px;
+      font-weight:900;
+      color:var(--gold1);
+      text-shadow:0 0 12px #ffdc7a;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .settings-sub{
+      font-size:12px;
+      opacity:.82;
+    }
+    .settings-close-btn{
+      border-radius:999px;
+      border:1px solid #3040a8;
+      background:linear-gradient(180deg,#1b2b7f,#0b164f);
+      color:#e9f0ff;
+      font-size:13px;
+      font-weight:800;
+      padding:6px 10px;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 4px 10px rgba(0,0,0,.5);
+    }
+    .settings-close-btn:hover{
+      filter:brightness(1.05);
+    }
+
+    .settings-body{
+      flex:1;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      padding-right:2px;
+    }
+    .settings-section{
+      border-radius:14px;
+      border:1px solid #283474;
+      background:linear-gradient(180deg,#070b1f,#060518);
+      box-shadow:inset 0 0 18px rgba(0,0,0,.6);
+      padding:10px 12px;
+      margin-bottom:10px;
+    }
+    .settings-section-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:6px;
+    }
+    .settings-section-title{
+      font-size:13px;
+      font-weight:800;
+      color:#ffdf6e;
+      text-shadow:0 0 8px rgba(255,220,120,.8);
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+    .settings-section-desc{
+      font-size:11px;
+      opacity:.8;
+    }
+    .settings-item-list{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-top:4px;
+    }
+    .settings-item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      font-size:12px;
+    }
+    .settings-item-label{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .settings-item-label-main{
+      font-weight:700;
+    }
+    .settings-item-label-sub{
+      font-size:11px;
+      opacity:.78;
+    }
+
+    /* 토글 스위치 */
+    .settings-toggle{
+      position:relative;
+      width:44px;
+      height:22px;
+      border-radius:999px;
+      border:1px solid #3240a8;
+      background:linear-gradient(180deg,#0b1435,#060917);
+      box-shadow:inset 0 0 10px rgba(0,0,0,.7);
+      cursor:pointer;
+      flex-shrink:0;
+    }
+    .settings-toggle input{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      cursor:pointer;
+      margin:0;
+    }
+    .settings-toggle-knob{
+      position:absolute;
+      top:2px;
+      left:2px;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:radial-gradient(circle at 30% 30%,#fff8c8,#ffdf6e);
+      box-shadow:0 0 10px rgba(255,220,120,.9);
+      transition:transform .16s ease;
+    }
+    .settings-toggle[data-on="true"]{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      border-color:#7a5600;
+      box-shadow:0 0 10px rgba(255,220,120,.9);
+    }
+    .settings-toggle[data-on="true"] .settings-toggle-knob{
+      transform:translateX(20px);
+      background:radial-gradient(circle at 30% 30%,#fffdf0,#fff1a8);
+    }
+
+    .settings-footer{
+      margin-top:10px;
+      font-size:11px;
+      opacity:.76;
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .settings-footer .badge{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid #3240a8;
+      background:linear-gradient(180deg,#0b1337,#05091f);
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.2px;
+      opacity:.9;
+    }
+
+    .settings-actions-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:6px;
+    }
+    .settings-action-btn{
+      border-radius:999px;
+      border:1px solid #3040a8;
+      background:linear-gradient(180deg,#1b2b7f,#0b164f);
+      color:#e9f0ff;
+      font-size:12px;
+      font-weight:700;
+      padding:6px 12px;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 4px 10px rgba(0,0,0,.5);
+    }
+    .settings-action-btn.primary{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#3a2400;
+      border-color:#7a5600;
+      text-shadow:0 0 6px rgba(255,240,170,.85);
+    }
+    .settings-action-btn:hover{
+      filter:brightness(1.05);
+    }
+
+    @media (max-width:640px){
+      .settings-modal{
+        padding:14px 12px 14px;
+        max-height:86vh;
+      }
+    }
+
     /* layout notes:
        - flex 기반 모바일/태블릿 유지
        - 데스크톱에서 grid로 5등분 정렬, 카드 이탈 방지
@@ -817,7 +1037,7 @@
 
       <!-- 우측: 설정 -->
       <div class="auth">
-        <button class="authbtn" type="button" onclick="alert('설정 열기(작업예정)')">⚙️ 설정</button>
+        <button class="authbtn" type="button" onclick="openSettingsModal()">⚙️ 설정</button>
       </div>
     </header>
 
@@ -874,6 +1094,8 @@
                   <rect x="18" y="22" width="28" height="28" rx="6" fill="#ff9aa6"/>
                   <rect x="46" y="22" width="28" height="28" rx="6" fill="#92ff9a"/>
                   <rect x="74" y="22" width="28" height="28" rx="6" fill="#7ad7ff"/>
+                  <rect x="18" y="50" width="28" height="28" rx="6" fill="#ffd17a"/>
+                  <rect x="46" y="50" width="28" height="28" rx="6" fill="#caa5ff"/>
                 </svg>
               </div>
               <h3>Retro Match</h3>
@@ -886,6 +1108,7 @@
                 <svg width="80" height="80" viewBox="0 0 120 120">
                   <rect x="16" y="84" width="88" height="8" fill="#6ec36e"/>
                   <circle cx="52" cy="46" r="10" fill="#ffddea"/>
+                  <rect x="40" y="58" width="20" height="18" rx="4" fill="#ffc57a"/>
                 </svg>
               </div>
               <h3>Retro Runner</h3>
@@ -900,6 +1123,7 @@
                   <rect x="42" y="60" width="24" height="24" fill="#ffe17a"/>
                   <rect x="66" y="60" width="24" height="24" fill="#caa5ff"/>
                   <rect x="42" y="36" width="24" height="24" fill="#92ff9a"/>
+                  <rect x="66" y="36" width="24" height="24" fill="#ff9aa6"/>
                 </svg>
               </div>
               <h3>Tetris</h3>
@@ -908,7 +1132,7 @@
             </div>
           </div>
 
-          <!-- ✅ 가로형 광고 배너 (432x87, 실제 AdSense 단위 자리) -->
+          <!-- ✅ 가로형 광고 배너 (약 1212x212, 303:53 비율) -->
           <div class="adBanner" aria-label="광고 배너">
             <div class="adBanner-inner">
               <!-- AdSense display ad unit (반응형 / 리더보드 자리) -->
@@ -974,6 +1198,164 @@
       <div class="rank-modal-footer">
         <span class="badge">Top 100</span>
         <span>※ 데이터 제공: RETRO GAMES 리더보드 API · 새로고침 시 최신 정보로 갱신됩니다.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 설정 모달 -->
+  <div id="settingsModalBackdrop" class="settings-modal-backdrop" aria-hidden="true">
+    <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+      <div class="settings-header">
+        <div class="settings-title-wrap">
+          <div id="settingsModalTitle" class="settings-title">
+            <span>⚙️ 기본 설정</span>
+          </div>
+          <div class="settings-sub">
+            소리, 애니메이션, 게임 및 계정 관련 기본 설정을 변경할 수 있습니다.
+          </div>
+        </div>
+        <button type="button" class="settings-close-btn" onclick="closeSettingsModal()">닫기 ✕</button>
+      </div>
+
+      <div class="settings-body">
+        <!-- 소리 설정 -->
+        <section class="settings-section" aria-label="소리 설정">
+          <div class="settings-section-header">
+            <div class="settings-section-title">
+              🔊 소리 설정
+            </div>
+          </div>
+          <div class="settings-section-desc">
+            효과음 및 배경 음악 사용 여부를 선택합니다. 일부 게임의 세부 볼륨 조절은 각 게임 내 옵션을 따릅니다.
+          </div>
+          <div class="settings-item-list">
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">전체 사운드 사용</span>
+                <span class="settings-item-label-sub">효과음과 BGM을 포함한 전체 소리를 켜거나 끕니다.</span>
+              </div>
+              <label class="settings-toggle" data-setting-key="soundMaster" data-on="true">
+                <input type="checkbox" id="settingSoundMaster" />
+                <span class="settings-toggle-knob"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">배경 음악 사용</span>
+                <span class="settings-item-label-sub">배경 음악만 별도로 켜거나 끌 수 있습니다.</span>
+              </div>
+              <label class="settings-toggle" data-setting-key="bgm" data-on="true">
+                <input type="checkbox" id="settingBgm" />
+                <span class="settings-toggle-knob"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- 애니메이션 설정 -->
+        <section class="settings-section" aria-label="애니메이션 설정">
+          <div class="settings-section-header">
+            <div class="settings-section-title">
+              ✨ 애니메이션 설정
+            </div>
+          </div>
+          <div class="settings-section-desc">
+            배경 이펙트 및 일부 인터랙션 애니메이션을 줄여 눈의 피로를 줄일 수 있습니다.
+          </div>
+          <div class="settings-item-list">
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">배경 이펙트 사용</span>
+                <span class="settings-item-label-sub">네온 파티클 등 시각 효과를 표시합니다.</span>
+              </div>
+              <label class="settings-toggle" data-setting-key="backgroundFx" data-on="true">
+                <input type="checkbox" id="settingBackgroundFx" />
+                <span class="settings-toggle-knob"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">애니메이션 최소화</span>
+                <span class="settings-item-label-sub">가능한 경우 전환 및 모션을 줄입니다.</span>
+              </div>
+              <label class="settings-toggle" data-setting-key="reducedMotion" data-on="false">
+                <input type="checkbox" id="settingReducedMotion" />
+                <span class="settings-toggle-knob"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- 게임 설정 -->
+        <section class="settings-section" aria-label="게임 설정">
+          <div class="settings-section-header">
+            <div class="settings-section-title">
+              🎮 게임 설정
+            </div>
+          </div>
+          <div class="settings-section-desc">
+            게임 시작 전 안내 및 힌트 표시 여부를 선택합니다. 각 게임별 고급 옵션은 추후 업데이트됩니다.
+          </div>
+          <div class="settings-item-list">
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">게임 시작 카운트다운</span>
+                <span class="settings-item-label-sub">게임 시작 시 3·2·1 카운트다운을 표시합니다.</span>
+              </div>
+              <label class="settings-toggle" data-setting-key="gameCountdown" data-on="true">
+                <input type="checkbox" id="settingGameCountdown" />
+                <span class="settings-toggle-knob"></span>
+              </label>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">기본 조작 힌트 표시</span>
+                <span class="settings-item-label-sub">게임 입장 시 조작 방법을 간단히 안내합니다.</span>
+              </div>
+              <label class="settings-toggle" data-setting-key="gameHints" data-on="true">
+                <input type="checkbox" id="settingGameHints" />
+                <span class="settings-toggle-knob"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- 계정 관련 -->
+        <section class="settings-section" aria-label="계정 설정">
+          <div class="settings-section-header">
+            <div class="settings-section-title">
+              👤 계정 관련
+            </div>
+          </div>
+          <div class="settings-section-desc">
+            내 정보 및 로그아웃, 계정 전환 등의 작업으로 이동합니다.
+          </div>
+          <div class="settings-item-list">
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">마이페이지 열기</span>
+                <span class="settings-item-label-sub">프로필, 보유 자산, 플레이 기록을 확인합니다.</span>
+              </div>
+              <button type="button" class="settings-action-btn primary" onclick="openMyPageFromSettings()">
+                마이페이지 이동
+              </button>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-label">
+                <span class="settings-item-label-main">로그아웃</span>
+                <span class="settings-item-label-sub">현재 계정에서 로그아웃합니다. (게임 진행 상황은 서버 기준으로 유지됩니다.)</span>
+              </div>
+              <button type="button" class="settings-action-btn" onclick="logoutFromSettings()">
+                로그아웃
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="settings-footer">
+        <span class="badge">Local Only</span>
+        <span>※ 모든 설정은 브라우저에만 저장되며, 다른 기기에서는 다시 설정해야 합니다.</span>
       </div>
     </div>
   </div>
@@ -1541,6 +1923,180 @@
       }
     })();
 
+    /* ===== 설정 모달 로직 ===== */
+
+    const SETTINGS_STORAGE_KEY = "rg_user_settings";
+
+    const DEFAULT_SETTINGS = {
+      soundMaster:   true,
+      bgm:           true,
+      backgroundFx:  true,
+      reducedMotion: false,
+      gameCountdown: true,
+      gameHints:     true,
+    };
+
+    function loadSettings(){
+      try{
+        const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if(!raw) return { ...DEFAULT_SETTINGS };
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_SETTINGS, ...(parsed || {}) };
+      }catch(e){
+        console.warn("[RG][settings] load failed:", e);
+        return { ...DEFAULT_SETTINGS };
+      }
+    }
+
+    function saveSettings(settings){
+      try{
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings || {}));
+      }catch(e){
+        console.warn("[RG][settings] save failed:", e);
+      }
+    }
+
+    function syncSettingsUI(settings){
+      const mapping = [
+        ["soundMaster","settingSoundMaster"],
+        ["bgm","settingBgm"],
+        ["backgroundFx","settingBackgroundFx"],
+        ["reducedMotion","settingReducedMotion"],
+        ["gameCountdown","settingGameCountdown"],
+        ["gameHints","settingGameHints"],
+      ];
+      mapping.forEach(([key,id])=>{
+        const input = document.getElementById(id);
+        const toggle = input && input.closest(".settings-toggle");
+        if(!input || !toggle) return;
+        const val = settings[key] !== false;
+        input.checked = val;
+        toggle.setAttribute("data-on", val ? "true" : "false");
+      });
+    }
+
+    function applySettingsToPage(settings){
+      // 배경 이펙트 on/off
+      fxEnabled = settings.backgroundFx !== false;
+
+      // reduced motion은 추후 게임/애니메이션에서 참고할 수 있도록 class로만 표시
+      try{
+        if(settings.reducedMotion){
+          document.documentElement.classList.add("rg-reduced-motion");
+        }else{
+          document.documentElement.classList.remove("rg-reduced-motion");
+        }
+      }catch(e){}
+
+      // 소리 관련 값은 전역 상태로만 넘겨둔다 (개별 게임에서 활용)
+      try{
+        window.RG_HUB = window.RG_HUB || {};
+        window.RG_HUB.getSettings = function(){
+          return { ...settings };
+        };
+      }catch(e){}
+    }
+
+    let currentSettings = loadSettings();
+    applySettingsToPage(currentSettings);
+
+    function openSettingsModal(){
+      try{
+        const backdrop = document.getElementById("settingsModalBackdrop");
+        if(!backdrop) return;
+        // 최신 settings 다시 로드 (다른 탭에서 변경했을 수도 있음)
+        currentSettings = loadSettings();
+        syncSettingsUI(currentSettings);
+        applySettingsToPage(currentSettings);
+
+        backdrop.classList.add("open");
+        backdrop.setAttribute("aria-hidden","false");
+
+        document.addEventListener("keydown", handleSettingsKeydown);
+      }catch(e){
+        console.error("[RG][settings] open error:", e);
+      }
+    }
+
+    function closeSettingsModal(){
+      try{
+        const backdrop = document.getElementById("settingsModalBackdrop");
+        if(!backdrop) return;
+        backdrop.classList.remove("open");
+        backdrop.setAttribute("aria-hidden","true");
+        document.removeEventListener("keydown", handleSettingsKeydown);
+      }catch(e){
+        console.error("[RG][settings] close error:", e);
+      }
+    }
+
+    function handleSettingsKeydown(e){
+      if(e.key === "Escape"){
+        closeSettingsModal();
+      }
+    }
+
+    function handleSettingsBackdropClick(e){
+      const backdrop = document.getElementById("settingsModalBackdrop");
+      if(!backdrop) return;
+      if(e.target === backdrop){
+        closeSettingsModal();
+      }
+    }
+
+    (function attachSettingsHandlers(){
+      const backdrop = document.getElementById("settingsModalBackdrop");
+      if(backdrop){
+        backdrop.addEventListener("click", handleSettingsBackdropClick);
+      }
+
+      // 토글 공통 핸들러
+      const toggles = document.querySelectorAll(".settings-toggle");
+      toggles.forEach(function(toggle){
+        const input = toggle.querySelector("input[type='checkbox']");
+        const key = toggle.getAttribute("data-setting-key");
+        if(!input || !key) return;
+
+        const onChange = function(){
+          const checked = !!input.checked;
+          toggle.setAttribute("data-on", checked ? "true" : "false");
+          currentSettings[key] = checked;
+          saveSettings(currentSettings);
+          applySettingsToPage(currentSettings);
+        };
+
+        input.addEventListener("change", onChange);
+        toggle.addEventListener("click", function(evt){
+          // label 클릭 시 중복으로 두 번 토글되는 것 방지
+          if(evt.target === input) return;
+          input.checked = !input.checked;
+          onChange();
+        });
+      });
+    })();
+
+    function openMyPageFromSettings(){
+      try{
+        window.location.href = BASE + "mypage.html";
+      }catch(e){}
+    }
+
+    function logoutFromSettings(){
+      try{
+        if(window.RG && typeof window.RG.logout === "function"){
+          window.RG.logout().catch(function(){});
+        }
+      }catch(e){}
+      try{
+        // 서버가 /logout 을 제공하는 경우를 대비해 시도
+        window.location.href = BASE + "logout.html";
+      }catch(e){}
+    }
+
+    // 다른 스크립트에서도 사용 가능하도록 export
+    window.openSettingsModal = openSettingsModal;
+    window.closeSettingsModal = closeSettingsModal;
+
     /* 배경 파티클 */
     const c=document.getElementById('fx');
     const g=c.getContext('2d');
@@ -1564,17 +2120,22 @@
       });
     }
 
+    // 설정에서 제어하는 애니메이션 on/off 플래그
+    let fxEnabled = (currentSettings && currentSettings.backgroundFx !== false);
+
     function loop(){
       g.clearRect(0,0,c.width,c.height);
-      for(const p of pts){
-        g.beginPath();
-        g.arc(p.x,p.y,p.r,0,Math.PI*2);
-        g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;
-        g.fill();
-        p.y+=p.s;
-        if(p.y>innerHeight){
-          p.y=-10;
-          p.x=Math.random()*innerWidth;
+      if(fxEnabled){
+        for(const p of pts){
+          g.beginPath();
+          g.arc(p.x,p.y,p.r,0,Math.PI*2);
+          g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;
+          g.fill();
+          p.y+=p.s;
+          if(p.y>innerHeight){
+            p.y=-10;
+            p.x=Math.random()*innerWidth;
+          }
         }
       }
       requestAnimationFrame(loop);

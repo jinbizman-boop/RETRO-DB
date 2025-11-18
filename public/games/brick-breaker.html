@@ -54,7 +54,56 @@
     background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
   }
   #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
-  .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
+  .shell{
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    padding:20px;
+    position:relative;
+    z-index:1;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
+  }
+
+  /* ===== 게임 레이아웃 + 세로형 광고 배너 ===== */
+  .gameLayout{
+    display:grid;
+    grid-template-columns:160px minmax(0,1fr) 160px;
+    align-items:stretch;
+    gap:16px;
+    width:100%;
+    max-width:1500px;
+  }
+  .sideAd{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ad-vertical{
+    width:160px;
+    min-height:600px;
+    border-radius:16px;
+    border:1px solid #2b3f8f;
+    background:linear-gradient(180deg,#0b1f40,#050814);
+    box-shadow:0 10px 24px rgba(0,0,0,.65),inset 0 0 18px rgba(62,142,255,.35);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:10px;
+    text-align:center;
+    font-size:11px;
+    opacity:.95;
+  }
+  .ad-vertical .label{
+    font-weight:900;
+    margin-bottom:6px;
+    color:#ffdf6e;
+    letter-spacing:.12em;
+  }
+  .ad-vertical .hint{
+    opacity:.8;
+    line-height:1.4;
+  }
 
   /* Cabinet */
   .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
@@ -115,6 +164,15 @@
   .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;background:linear-gradient(135deg,#18224a,#0e1636);border:1px dashed #3952c3}
 
   /* ===== Mobile Responsive ===== */
+  @media (max-width: 1100px){
+    .gameLayout{
+      grid-template-columns:minmax(0,1fr);
+    }
+    .sideAd{
+      display:none;
+    }
+  }
+
   @media (max-width: 980px){
     .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
     .cabinet{width:100vw;border-radius:0}
@@ -149,92 +207,110 @@
 </style>
 </head>
 
-<!-- 전역 스크립트(모듈 아님) -->
-<script defer src="assets/js/app.js"></script>
-<script defer src="assets/js/analytics.js"></script>
+<!-- 전역 스크립트(모듈 아님) – games/ 경로에서도 동작하도록 루트 기준 경로 사용 -->
+<script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
 
 <body>
   <div id="site-header"></div>
   <canvas id="fx"></canvas>
   <div class="shell">
-    <section class="cabinet" aria-label="retro arcade cabinet">
-      <header class="marquee">
-        <div class="title">
-          <h1>RETRO 2048</h1>
-          <div class="subtitle">ARROWS · SWIPE</div>
+    <div class="gameLayout">
+      <!-- 좌측 세로형 광고 배너 -->
+      <aside class="sideAd sideAd-left" aria-label="왼쪽 광고 영역">
+        <div class="ad-vertical">
+          <span class="label">AD</span>
+          <span class="hint">세로형 광고 배너 영역입니다.</span>
         </div>
-      </header>
+      </aside>
 
-      <!-- HUD -->
-      <div class="hud">
-        <div class="chip">점수 <b id="score">0</b></div>
-        <div class="chip">최고 <b id="best">0</b></div>
-        <div class="chip">이동 <b id="moves">0</b></div>
-
-        <!-- Points -->
-        <div class="pill points" aria-label="사용자 포인트">
-          <div class="icon">🏅</div>
-          <div>
-            <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
-            <div class="bar"><span id="pointsBar"></span></div>
+      <section class="cabinet" aria-label="retro arcade cabinet">
+        <header class="marquee">
+          <div class="title">
+            <h1>RETRO 2048</h1>
+            <div class="subtitle">ARROWS · SWIPE</div>
           </div>
-        </div>
+        </header>
 
-        <!-- Tickets -->
-        <div class="pill tickets" aria-label="티켓 진행">
-          <div class="icon">🎟️</div>
-          <div>
-            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
-            <div class="bar"><span id="ticketsBar"></span></div>
-          </div>
-          <div class="playCount" id="ticketsCap">0 / 10</div>
-        </div>
+        <!-- HUD -->
+        <div class="hud">
+          <div class="chip">점수 <b id="score">0</b></div>
+          <div class="chip">최고 <b id="best">0</b></div>
+          <div class="chip">이동 <b id="moves">0</b></div>
 
-        <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
-      </div>
-
-      <main class="play">
-        <div class="screen">
-          <div class="bezel">
-            <div class="canvasWrap" id="canvasWrap">
-              <canvas id="game"></canvas>
+          <!-- Points -->
+          <div class="pill points" aria-label="사용자 포인트">
+            <div class="icon">🏅</div>
+            <div>
+              <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
+              <div class="bar"><span id="pointsBar"></span></div>
             </div>
-            <div id="gameOver" class="overlay" aria-live="polite" role="alert">
-              <div>
-                <div class="msg">GAME OVER</div>
-                <div class="sub">N: 새 게임 · Enter: 다시 시작</div>
+          </div>
+
+          <!-- Tickets -->
+          <div class="pill tickets" aria-label="티켓 진행">
+            <div class="icon">🎟️</div>
+            <div>
+              <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+              <div class="bar"><span id="ticketsBar"></span></div>
+            </div>
+            <div class="playCount" id="ticketsCap">0 / 10</div>
+          </div>
+
+          <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+        </div>
+
+        <main class="play">
+          <div class="screen">
+            <div class="bezel">
+              <div class="canvasWrap" id="canvasWrap">
+                <canvas id="game"></canvas>
+              </div>
+              <div id="gameOver" class="overlay" aria-live="polite" role="alert">
+                <div>
+                  <div class="msg">GAME OVER</div>
+                  <div class="sub">N: 새 게임 · Enter: 다시 시작</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <!-- Control deck -->
-      <div class="deck">
-        <button class="btn" id="homeBtn">HOME</button>
-        <button class="btn" id="newBtn">새 게임 (N)</button>
-        <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
-        <label>모드
-          <select id="tier">
-            <option value="beginner">초급 (1–10)</option>
-            <option value="intermediate">중급 (11–20)</option>
-            <option value="advanced">고급 (21–30)</option>
-            <option value="hell">지옥 (40)</option>
-            <option value="doom">파멸 (50)</option>
-            <option value="insane">극악무도 (100)</option>
-          </select>
-        </label>
-        <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
-        <label>보드
-          <select id="sizeSel">
-            <option value="12">보통</option>
-            <option value="14">넓음</option>
-            <option value="10">좁음</option>
-          </select>
-        </label>
-        <button class="btn" id="endBtn">게임 종료</button>
-      </div>
-    </section>
+        <!-- Control deck -->
+        <div class="deck">
+          <button class="btn" id="homeBtn">HOME</button>
+          <button class="btn" id="newBtn">새 게임 (N)</button>
+          <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
+          <label>모드
+            <select id="tier">
+              <option value="beginner">초급 (1–10)</option>
+              <option value="intermediate">중급 (11–20)</option>
+              <option value="advanced">고급 (21–30)</option>
+              <option value="hell">지옥 (40)</option>
+              <option value="doom">파멸 (50)</option>
+              <option value="insane">극악무도 (100)</option>
+            </select>
+          </label>
+          <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
+          <label>보드
+            <select id="sizeSel">
+              <option value="12">보통</option>
+              <option value="14">넓음</option>
+              <option value="10">좁음</option>
+            </select>
+          </label>
+          <button class="btn" id="endBtn">게임 종료</button>
+        </div>
+      </section>
+
+      <!-- 우측 세로형 광고 배너 -->
+      <aside class="sideAd sideAd-right" aria-label="오른쪽 광고 영역">
+        <div class="ad-vertical">
+          <span class="label">AD</span>
+          <span class="hint">세로형 광고 배너 영역입니다.</span>
+        </div>
+      </aside>
+    </div>
   </div>
 
   <!-- Records Modal -->
@@ -301,22 +377,26 @@ document.getElementById('adClose').addEventListener('click',()=>{
 })();
 
 /* ================= Helpers & Storage ================= */
+const GAME_CODE = 'brick-breaker';
 const $=sel=>document.querySelector(sel);
 const DPR=()=> Math.min(2, window.devicePixelRatio||1);
 const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
 const fmt=n=> n.toLocaleString('ko-KR');
 
-/* ★ 2048 전용 키(다른 게임과 기록 분리) */
-const LS_KEYS={plays:'plays_2048',tickets:'tickets_2048',records:'records_2048',best:'best_2048'};
+/* ★ Brick Breaker 전용 키(다른 게임과 기록 분리) */
+const LS_KEYS={plays:'plays_brick',tickets:'tickets_brick',records:'records_brick',best:'best_brick'};
 
 function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
 function updateTicketUI(){
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
   const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  $('#ticketsAmt').textContent=tickets;
-  $('#ticketsCap').textContent=`${plays%10} / 10`;
-  $('#ticketsBar').style.width = ((plays%10)/10*100).toFixed(1)+'%';
+  const tAmt=document.getElementById('ticketsAmt');
+  const tCap=document.getElementById('ticketsCap');
+  const tBar=document.getElementById('ticketsBar');
+  if(tAmt) tAmt.textContent=tickets;
+  if(tCap) tCap.textContent=`${plays%10} / 10`;
+  if(tBar) tBar.style.width = ((plays%10)/10*100).toFixed(1)+'%';
 }
 function addPlay(){
   let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
@@ -353,24 +433,7 @@ $('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#re
  * WALLET API 스펙 (Cloudflare Pages Functions 기준 예시)
  *
  * 1) GET /api/wallet/me
- *    - 응답: {
- *        ok: boolean,
- *        wallet?: { coins: number, xp: number, tickets: number }
- *      }
- *
  * 2) POST /api/wallet/reward
- *    - 요청 JSON:
- *      {
- *        game: "2048",
- *        delta: { coins: number, xp: number, tickets: number },
- *        meta:  { score: number, points: number, level: number }
- *      }
- *    - 응답:
- *      {
- *        ok: boolean,
- *        wallet?: { coins: number, xp: number, tickets: number },
- *        error?: string
- *      }
  */
 const WALLET_API_BASE = '/api/wallet';
 
@@ -419,7 +482,7 @@ function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
     console.warn('RG_addReward error', e);
   }
 
-  // 2) 서버 지갑 API 호출
+  // 2) 서버 지갑 API 호출 (로그인 안 되어 있어도 조용히 실패 처리)
   postWalletReward({
     game: gameCode,
     delta: { coins, xp, tickets },
@@ -445,7 +508,7 @@ function calcReward(score, points, level){
   // 포인트는 XP로 1:4 비율, 상한 2,000
   const xp = Math.min(2000, p * 4);
 
-  // 2048은 티켓은 별도(플레이 카운트)에서 관리, 여기서는 0
+  // 티켓은 여기서 주지 않고, addPlay에서 관리
   const tickets = 0;
 
   return { coins, xp, tickets };
@@ -489,7 +552,7 @@ class BrickBreaker{
     this.resize();
     this.last=0; requestAnimationFrame(t=>this.loop(t));
 
-    /* ✅ 서버 세션 시작 알림 (slug: '2048') */
+    /* ✅ 서버 세션 시작 알림 (별도 로그인/오버레이 없이 조용히 호출) */
     notifyStart();
   }
   _initResizeObserver(){
@@ -532,7 +595,7 @@ class BrickBreaker{
     $('#newBtn').addEventListener('click',()=> this.reset(this.level));
     $('#undoBtn').addEventListener('click',()=>{ this.paused=!this.paused; });
 
-    /* HOME: 광고 후 로그인 상태 홈(user-retro-games.html)으로 이동 (절대경로) */
+    /* HOME: 광고 후 로그인 상태 홈(user-retro-games.html)으로 이동 (절대경로, 별도 로그인 전 화면 없이 바로 이동) */
     $('#homeBtn').addEventListener('click',()=> 
       showAdThen(()=> window.location.href = '/user-retro-games.html')
     );
@@ -585,13 +648,14 @@ class BrickBreaker{
     addRecord(this.score, this.points||0);
     addPlay();
     document.getElementById('gameOver').style.display='flex';
+
     /* ✅ 서버 세션 종료(최종 점수 보고) */
     notifyFinish(this.score|0);
 
     /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
     try{
       const delta = calcReward(this.score||0, this.points||0, this.level||1);
-      applyGlobalRewardAndSyncWallet('2048', delta, {
+      applyGlobalRewardAndSyncWallet(GAME_CODE, delta, {
         score:  this.score||0,
         points: this.points||0,
         level:  this.level||1
@@ -790,13 +854,14 @@ class BrickBreaker{
     if(this.score>this.best){ this.best=this.score|0; localStorage.setItem(LS_KEYS.best, String(this.best)); }
     addRecord(this.score, this.points||0); addPlay();
     document.getElementById('gameOver').style.display='flex';
+
     /* ✅ 서버 세션 종료(최종 점수 보고) */
     notifyFinish(this.score|0);
 
     /* ✅ 세션 종료 시 RETRO GAMES 지갑/홈 HUD에 보상 반영 */
     try{
       const delta = calcReward(this.score||0, this.points||0, this.level||1);
-      applyGlobalRewardAndSyncWallet('2048', delta, {
+      applyGlobalRewardAndSyncWallet(GAME_CODE, delta, {
         score:  this.score||0,
         points: this.points||0,
         level:  this.level||1
@@ -869,13 +934,13 @@ setTimeout(fitCabinet, 0);
 /* ================= 서버 세션 연동 (안전 래퍼) =================
    - assets/js/app.js 내부에서 window.gameStart / window.gameFinish 를 export 하지 않는 경우도
      있으므로, 존재 여부를 검사해서 조용히 동작하도록 처리합니다. */
-function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
-function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
+function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart(GAME_CODE); }catch(e){} }
+function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish(GAME_CODE, finalScore|0); }catch(e){} }
 
 /* 가시성 이벤트 훅 (필요 시 일시정지/로깅 처리) */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    // 예: this.paused = true; 등 (현재는 디자인/동작 보존 위해 표시만)
+    // 현재는 동작 유지
   }
 });
 

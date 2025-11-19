@@ -1,302 +1,405 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<!-- Google AdSense 소유권 확인 메타 태그 -->
-<meta name="google-adsense-account" content="ca-pub-6713974265397310" />
-<title>RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- Google AdSense 소유권 확인 메타 태그 -->
+  <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
+  <title>RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)</title>
 
-<!-- === Common SEO/A11y (auto-inserted) === -->
-<link rel="icon" href="/assets/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1b34">
-<meta name="description" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="robots" content="index,follow">
-<meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)">
-<meta property="og:description" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta property="og:type" content="website">
-<meta property="og:image" content="/assets/og/retro-games-card.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)">
-<meta name="twitter:description" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="twitter:image" content="/assets/og/retro-games-card.png">
-<script>
-  // fixed environment flags for analytics/runtime
-  (function(d){
-    d.documentElement.dataset.env = 'production';
-    d.documentElement.dataset.analytics = 'on';
-    window.__ENV__ = 'production';
-    window.__ANALYTICS_ON__ = true;
-  })(document);
-</script>
-<!-- === /Common SEO/A11y === -->
+  <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0e1b34">
+  <meta name="description" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="robots" content="index,follow">
+  <meta property="og:site_name" content="RETRO GAMES">
+  <meta property="og:title" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)">
+  <meta property="og:description" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og/retro-games-card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)">
+  <meta name="twitter:description" content="RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 
-<!-- AdSense 스니펫(요청 그대로) -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-     crossorigin="anonymous"></script>
+  <script>
+    // fixed environment flags for analytics/runtime
+    (function(d){
+      d.documentElement.dataset.env = 'production';
+      d.documentElement.dataset.analytics = 'on';
+      window.__ENV__ = 'production';
+      window.__ANALYTICS_ON__ = true;
+    })(document);
+  </script>
+  <!-- === /Common SEO/A11y === -->
 
-<style>
-  :root{
-    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
-    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
-    --board:#121a2f; --tile0:#e9eef6; --ink:#111;
-    --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
-    --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
-    --touchMin:44px;
-  }
-  *{box-sizing:border-box}
-  html,body{
-    height:100%;margin:0;color:#fff;
-    font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
-    overflow:hidden;
-    background-color:#0b001e;
-    background-image:radial-gradient(circle at 40% -10%, #320076, #0b001e 70%);
-    background-repeat:no-repeat; background-size:cover;
-  }
-  #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
-  .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
-  /* Cabinet */
-  .cabinet{
-    position:relative;width:min(1200px,96vw);
-    background-color:#0e1b34;border-radius:18px;
-    box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
-    transform-origin:top center
-  }
-  .cabinet:before,.cabinet:after{
-    content:"";position:absolute;top:12px;bottom:12px;width:18px;
-    filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
-    background-image:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
-  }
-  .cabinet:before{left:12px;border-radius:9px}
-  .cabinet:after{right:12px;border-radius:9px}
+  <!-- AdSense 스니펫 -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+          crossorigin="anonymous"></script>
 
-  .marquee{
-    padding:18px;border-radius:18px 18px 0 0;border-bottom:1px solid #0c2b59;
-    box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
-    background-image:linear-gradient(180deg,#173763,#0b2548)
-  }
-  .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-  .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
-  .subtitle{opacity:.75;letter-spacing:.15em;font-size:clamp(10px,2.7vw,12px);text-align:center}
+  <style>
+    :root{
+      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+      --board:#121a2f; --tile0:#e9eef6; --ink:#111;
+      --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
+      --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
+      --touchMin:44px;
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;margin:0;color:#fff;
+      font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+      overflow:hidden;
+      background-color:#0b001e;
+      background-image:radial-gradient(circle at 40% -10%, #320076, #0b001e 70%);
+      background-repeat:no-repeat; background-size:cover;
+    }
+    #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom,0))
+    }
 
-  /* HUD */
-  .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
-  .chip,.pill,.hud .btnMini{
-    position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;
-    display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
-    box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
-    background-image:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
-    background-repeat:no-repeat;
-    touch-action:manipulation;
-  }
-  .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
-  .pill{min-width:260px;gap:12px}
-  .pill .icon{
-    width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:#0b2a57;
-    box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);
-    background-image:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)
-  }
-  .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
-  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;box-shadow:0 0 10px #8ad7ff; background-image:linear-gradient(90deg,#b86cff,#6af0ff)}
-  .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
-  .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
-  .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
-  .playCount{font-size:12px;opacity:.85;margin-left:6px}
+    /* === 좌/우 세로형 광고 레이아웃 추가 === */
+    .pageLayout{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      align-items:stretch;
+      gap:16px;
+      width:100%;
+      max-width:1500px;
+      margin:0 auto;
+    }
+    .adColumn{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    .adSkyscraper{
+      width:120px;
+      height:600px;
+      max-width:100%;
+      border-radius:14px;
+      border:1px dashed #3952c3;
+      background-image:linear-gradient(180deg,#151b3a,#080d24);
+      box-shadow:0 10px 30px rgba(0,0,0,.65);
+      display:grid;
+      place-items:center;
+      font-size:11px;
+      text-align:center;
+      opacity:.9;
+      padding:8px;
+    }
+    .adSkyscraper strong{
+      display:block;
+      margin-bottom:4px;
+      font-weight:800;
+      color:#ffdf6e;
+    }
 
-  /* Screen */
-  .play{position:relative;margin:10px 18px;border-radius:16px;box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);
-    background-image:linear-gradient(180deg,#0a1530,#031125)}
-  .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
-  .bezel{
-    width:100%;height:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
-    display:grid;place-items:center;position:relative;overflow:hidden;
-    background-image:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)
-  }
-  .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
-  canvas#game{
-    display:block;max-width:100%;max-height:100%;width:100%;height:100%;
-    background:#000;border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)
-  }
+    @media(max-width: 1200px){
+      .adSkyscraper{height:480px;}
+    }
+    @media(max-width: 980px){
+      .pageLayout{
+        grid-template-columns:minmax(0,1fr);
+        gap:8px;
+      }
+      .adColumn.adLeft{display:none;} /* 모바일에서는 좌측 광고 숨김 */
+      .adColumn.adRight{
+        order:2;
+        margin-top:8px;
+      }
+      .adSkyscraper{
+        width:100%;
+        height:140px; /* 모바일에서는 가로형에 가깝게 축소 */
+      }
+    }
 
-  /* Overlay */
-  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background-color:rgba(5,0,20,.55);backdrop-filter:blur(2px);z-index:5}
-  .overlay .msg{font-weight:900;letter-spacing:.2em;text-align:center;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));
-    font-size:clamp(28px,5vw,68px);color:#ffe166;text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)}
-  .overlay .sub{margin-top:10px;font-size:clamp(12px,2.2vw,16px);opacity:.9;color:#dfe9ff;text-align:center}
+    /* Cabinet */
+    .cabinet{
+      position:relative;width:min(1200px,96vw);
+      background-color:#0e1b34;border-radius:18px;
+      box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
+      transform-origin:top center
+    }
+    .cabinet:before,.cabinet:after{
+      content:"";position:absolute;top:12px;bottom:12px;width:18px;
+      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
+      background-image:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
+    }
+    .cabinet:before{left:12px;border-radius:9px}
+    .cabinet:after{right:12px;border-radius:9px}
 
-  /* Deck */
-  .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;
-    background-image:linear-gradient(180deg,#0b1f40,#0a1730)}
-  .deck .btn,.deck select,.deck input[type=range]{
-    font-weight:900;color:#dff1ff;border:1px solid #224aa8;border-radius:12px;padding:10px 14px;
-    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;
-    background-image:linear-gradient(180deg,#1b3a7a,#102a66); touch-action:manipulation;
-  }
-  .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
-  .deck label{display:flex;align-items:center;gap:8px}
-  .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
+    .marquee{
+      padding:18px;border-radius:18px 18px 0 0;border-bottom:1px solid #0c2b59;
+      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
+      background-image:linear-gradient(180deg,#173763,#0b2548)
+    }
+    .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+    .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
+    .subtitle{opacity:.75;letter-spacing:.15em;font-size:clamp(10px,2.7vw,12px);text-align:center}
 
-  /* Records Modal */
-  #recModal{display:none;position:fixed;inset:0;background-color:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
-  /* Ad Modal */
-  #adModal{display:none;position:fixed;inset:0;background-color:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
-  #adBox{width:min(680px,92vw);min-height:280px;border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px;
-    background-image:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)}
-  #adHead{display:flex;justify-content:space-between;align-items:center}
-  #adClose{border:0;background-color:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;border:1px dashed #3952c3;
-    background-image:linear-gradient(135deg,#18224a,#0e1636)}
-  /* In-game Inventory HUD */
-  .invHud{position:absolute; left:12px; top:12px; z-index:4; display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:12px; border:1px solid #224aa8;
-    background-image:linear-gradient(180deg,#1b3a7a,#102a66); box-shadow:0 10px 18px rgba(0,0,0,.45), inset 0 0 18px rgba(255,255,255,.05); pointer-events:none;}
-  .invHud .tag{font-weight:900; letter-spacing:.03em; opacity:.95}
-  .invHud .list{display:flex; align-items:center; gap:6px; font-size:18px}
-  .invHud .slot{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px}
-  .invHud .rev{font-size:14px; opacity:.9}
+    /* HUD */
+    .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
+    .chip,.pill,.hud .btnMini{
+      position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;
+      display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
+      box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
+      background-image:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+      background-repeat:no-repeat;
+      touch-action:manipulation;
+    }
+    .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+    .pill{min-width:260px;gap:12px}
+    .pill .icon{
+      width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:#0b2a57;
+      box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);
+      background-image:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)
+    }
+    .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
+    .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;box-shadow:0 0 10px #8ad7ff; background-image:linear-gradient(90deg,#b86cff,#6af0ff)}
+    .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
+    .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
+    .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
+    .playCount{font-size:12px;opacity:.85;margin-left:6px}
 
-  .toast{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:#0f1d48;border:1px solid #224aa8;border-radius:12px;padding:8px 12px;font-weight:700;box-shadow:0 10px 20px #0008;display:none;z-index:6}
+    /* Screen */
+    .play{position:relative;margin:10px 18px;border-radius:16px;box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);
+      background-image:linear-gradient(180deg,#0a1530,#031125)}
+    .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
+    .bezel{
+      width:100%;height:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
+      display:grid;place-items:center;position:relative;overflow:hidden;
+      background-image:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)
+    }
+    .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
+    canvas#game{
+      display:block;max-width:100%;max-height:100%;width:100%;height:100%;
+      background:#000;border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)
+    }
 
-  @media (max-width: 980px){
-    .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
-    .cabinet{width:100vw;border-radius:0}
-    .marquee{padding:12px;border-radius:0}
-    .play{margin:8px 12px}
-    .screen{padding:10px}
-    .hud{gap:8px;padding:10px}
-    .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
-    .pill{min-width:220px}
-    .deck{gap:8px;padding:10px 12px 16px}
-    .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
-    .invHud{left:8px;top:8px;transform:scale(.95);transform-origin:top left}
-  }
-  @media (max-width: 640px){
-    .subtitle{letter-spacing:.08em}
-    .hud{padding:8px}
-    .chip,.pill,.hud .btnMini{height:40px}
-    .points .nums .big,.tickets .nums .big{font-size:16px}
-    .points .bar,.tickets .bar{width:96px}
-    .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
-    .deck > *{flex:0 0 auto}
-    .invHud{transform:scale(.9)}
-  }
+    /* Overlay */
+    .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background-color:rgba(5,0,20,.55);backdrop-filter:blur(2px);z-index:5}
+    .overlay .msg{font-weight:900;letter-spacing:.2em;text-align:center;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));
+      font-size:clamp(28px,5vw,68px);color:#ffe166;text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)}
+    .overlay .sub{margin-top:10px;font-size:clamp(12px,2.2vw,16px);opacity:.9;color:#dfe9ff;text-align:center}
 
-  .touchLayer{position:absolute; inset:0; display:none; z-index:3;}
-  .touchZone{position:absolute; top:0; bottom:0; width:50%; touch-action:none;}
-  .tzLeft{left:0;} .tzRight{right:0;}
-  .touchHint{position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:12px; opacity:.6; background:#0007; padding:6px 10px; border-radius:10px;}
-  @media (hover:none){ .touchLayer{display:block;} }
+    /* Deck */
+    .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;
+      background-image:linear-gradient(180deg,#0b1f40,#0a1730)}
+    .deck .btn,.deck select,.deck input[type=range]{
+      font-weight:900;color:#dff1ff;border:1px solid #224aa8;border-radius:12px;padding:10px 14px;
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;
+      background-image:linear-gradient(180deg,#1b3a7a,#102a66); touch-action:manipulation;
+    }
+    .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
+    .deck label{display:flex;align-items:center;gap:8px}
+    .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
 
-  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
-    display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-    border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
-    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-    z-index:10000;font-size:12px}
-  .cookie-banner .spacer{flex:1}
-  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+    /* Records Modal */
+    #recModal{display:none;position:fixed;inset:0;background-color:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
+    /* Ad Modal */
+    #adModal{display:none;position:fixed;inset:0;background-color:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
+    #adBox{width:min(680px,92vw);min-height:280px;border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px;
+      background-image:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)}
+    #adHead{display:flex;justify-content:space-between;align-items:center}
+    #adClose{border:0;background-color:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
+    .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;border:1px dashed #3952c3;
+      background-image:linear-gradient(135deg,#18224a,#0e1636)}
 
-</style>
+    /* In-game Inventory HUD */
+    .invHud{
+      position:absolute; left:12px; top:12px; z-index:4;
+      display:flex; align-items:center; gap:8px; padding:6px 10px;
+      border-radius:12px; border:1px solid #224aa8;
+      background-image:linear-gradient(180deg,#1b3a7a,#102a66);
+      box-shadow:0 10px 18px rgba(0,0,0,.45), inset 0 0 18px rgba(255,255,255,.05);
+      pointer-events:none;
+    }
+    .invHud .tag{font-weight:900; letter-spacing:.03em; opacity:.95}
+    .invHud .list{display:flex; align-items:center; gap:6px; font-size:18px}
+    .invHud .slot{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px}
+    .invHud .rev{font-size:14px; opacity:.9}
+
+    .toast{
+      position:absolute;left:50%;top:16px;transform:translateX(-50%);
+      background:#0f1d48;border:1px solid #224aa8;border-radius:12px;
+      padding:8px 12px;font-weight:700;box-shadow:0 10px 20px #0008;
+      display:none;z-index:6
+    }
+
+    @media (max-width: 980px){
+      .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
+      .cabinet{width:100vw;border-radius:0}
+      .marquee{padding:12px;border-radius:0}
+      .play{margin:8px 12px}
+      .screen{padding:10px}
+      .hud{gap:8px;padding:10px}
+      .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
+      .pill{min-width:220px}
+      .deck{gap:8px;padding:10px 12px 16px}
+      .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
+      .invHud{left:8px;top:8px;transform:scale(.95);transform-origin:top left}
+    }
+    @media (max-width: 640px){
+      .subtitle{letter-spacing:.08em}
+      .hud{padding:8px}
+      .chip,.pill,.hud .btnMini{height:40px}
+      .points .nums .big,.tickets .nums .big{font-size:16px}
+      .points .bar,.tickets .bar{width:96px}
+      .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
+      .deck > *{flex:0 0 auto}
+      .invHud{transform:scale(.9)}
+    }
+
+    .touchLayer{position:absolute; inset:0; display:none; z-index:3;}
+    .touchZone{position:absolute; top:0; bottom:0; width:50%; touch-action:none;}
+    .tzLeft{left:0;} .tzRight{right:0;}
+    .touchHint{position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:12px; opacity:.6; background:#0007; padding:6px 10px; border-radius:10px;}
+    @media (hover:none){ .touchLayer{display:block;} }
+
+    .cookie-banner{
+      position:fixed;left:12px;right:12px;bottom:12px;
+      display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+      border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      z-index:10000;font-size:12px
+    }
+    .cookie-banner .spacer{flex:1}
+    .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
+    .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+  </style>
 </head>
 
-<!-- 경로를 절대경로로 고정해서 /public/games/에서도 공통 JS가 안전하게 로드되도록 수정 -->
-<script defer src="/assets/js/app.js"></script>
+<!-- ✅ 공통 Analytics JS만 남기고, hub index를 주입하던 app.js 제거 → 로그인 전 화면 문제 해결 -->
 <script defer src="/assets/js/analytics.js"></script>
 
 <body>
-  <div id="site-header"></div>
   <canvas id="fx"></canvas>
+
   <div class="shell">
-    <section class="cabinet" aria-label="retro arcade cabinet">
-      <header class="marquee">
-        <div class="title">
-          <h1>RETRO DINO</h1>
-          <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
-        </div>
-      </header>
-
-      <!-- HUD -->
-      <div class="hud">
-        <div class="chip">점수 <b id="score">0</b></div>
-        <div class="chip">최고 <b id="best">0</b></div>
-        <div class="chip">이동 <b id="moves">0</b></div>
-
-        <div class="pill points" aria-label="사용자 포인트">
-          <div class="icon">🏅</div>
+    <div class="pageLayout">
+      <!-- 좌측 세로형 광고 배너 -->
+      <aside class="adColumn adLeft">
+        <div class="adSkyscraper">
+          <!-- 필요 시 실제 AdSense 코드로 교체 -->
           <div>
-            <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
-            <div class="bar"><span id="pointsBar"></span></div>
+            <strong>AD</strong>
+            <div>세로형<br>광고 영역(좌측)</div>
           </div>
         </div>
+      </aside>
 
-        <div class="pill tickets" aria-label="티켓 진행">
-          <div class="icon">🎟️</div>
-          <div>
-            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
-            <div class="bar"><span id="ticketsBar"></span></div>
+      <!-- 중앙 아케이드 캐비닛(기존 게임 UI 그대로) -->
+      <section class="cabinet" aria-label="retro arcade cabinet">
+        <header class="marquee">
+          <div class="title">
+            <h1>RETRO DINO</h1>
+            <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
           </div>
-          <div class="playCount" id="ticketsCap">0 / 10</div>
-        </div>
+        </header>
 
-        <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
-      </div>
+        <!-- HUD -->
+        <div class="hud">
+          <div class="chip">점수 <b id="score">0</b></div>
+          <div class="chip">최고 <b id="best">0</b></div>
+          <div class="chip">이동 <b id="moves">0</b></div>
 
-      <main class="play">
-        <div class="screen">
-          <div class="bezel">
-            <div class="invHud" aria-label="인게임 아이템">
-              <div class="tag">🎒 ITEMS</div>
-              <div id="invHudList" class="list" aria-live="polite"></div>
+          <div class="pill points" aria-label="사용자 포인트">
+            <div class="icon">🏅</div>
+            <div>
+              <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
+              <div class="bar"><span id="pointsBar"></span></div>
             </div>
+          </div>
 
-            <div id="toast" class="toast" role="status" aria-live="polite"></div>
+          <div class="pill tickets" aria-label="티켓 진행">
+            <div class="icon">🎟️</div>
+            <div>
+              <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+              <div class="bar"><span id="ticketsBar"></span></div>
+            </div>
+            <div class="playCount" id="ticketsCap">0 / 10</div>
+          </div>
 
-            <div class="canvasWrap" id="canvasWrap">
-              <canvas id="game"></canvas>
-              <div class="touchLayer" id="touchLayer" aria-hidden="true">
-                <div class="touchZone tzLeft" id="tzLeft"></div>
-                <div class="touchZone tzRight" id="tzRight"></div>
-                <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
+          <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+        </div>
+
+        <main class="play">
+          <div class="screen">
+            <div class="bezel">
+              <div class="invHud" aria-label="인게임 아이템">
+                <div class="tag">🎒 ITEMS</div>
+                <div id="invHudList" class="list" aria-live="polite"></div>
+              </div>
+
+              <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+              <div class="canvasWrap" id="canvasWrap">
+                <canvas id="game"></canvas>
+                <div class="touchLayer" id="touchLayer" aria-hidden="true">
+                  <div class="touchZone tzLeft" id="tzLeft"></div>
+                  <div class="touchZone tzRight" id="tzRight"></div>
+                  <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
+                </div>
+              </div>
+
+              <div id="gameOver" class="overlay" aria-live="polite" role="alert">
+                <div>
+                  <div class="msg">GAME OVER</div>
+                  <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
+                </div>
               </div>
             </div>
+          </div>
+        </main>
 
-            <div id="gameOver" class="overlay" aria-live="polite" role="alert">
-              <div>
-                <div class="msg">GAME OVER</div>
-                <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
-              </div>
-            </div>
+        <!-- Control deck -->
+        <div class="deck">
+          <button class="btn" id="homeBtn">HOME</button>
+          <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
+          <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
+          <label>모드
+            <select id="tier">
+              <option value="beginner">초급 (1–10)</option>
+              <option value="intermediate">중급 (11–20)</option>
+              <option value="advanced">고급 (21–30)</option>
+              <option value="hell">지옥 (40)</option>
+              <option value="doom">파멸 (50)</option>
+              <option value="insane">극악무도 (100)</option>
+            </select>
+          </label>
+          <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
+          <label>보드
+            <select id="sizeSel" disabled>
+              <option value="12" selected>고정</option>
+            </select>
+          </label>
+          <button class="btn" id="endBtn">게임 종료</button>
+        </div>
+      </section>
+
+      <!-- 우측 세로형 광고 배너 -->
+      <aside class="adColumn adRight">
+        <div class="adSkyscraper">
+          <!-- 필요 시 실제 AdSense 코드로 교체 -->
+          <div>
+            <strong>AD</strong>
+            <div>세로형<br>광고 영역(우측)</div>
           </div>
         </div>
-      </main>
-
-      <!-- Control deck -->
-      <div class="deck">
-        <button class="btn" id="homeBtn">HOME</button>
-        <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
-        <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
-        <label>모드
-          <select id="tier">
-            <option value="beginner">초급 (1–10)</option>
-            <option value="intermediate">중급 (11–20)</option>
-            <option value="advanced">고급 (21–30)</option>
-            <option value="hell">지옥 (40)</option>
-            <option value="doom">파멸 (50)</option>
-            <option value="insane">극악무도 (100)</option>
-          </select>
-        </label>
-        <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
-        <label>보드
-          <select id="sizeSel" disabled>
-            <option value="12" selected>고정</option>
-          </select>
-        </label>
-        <button class="btn" id="endBtn">게임 종료</button>
-      </div>
-    </section>
+      </aside>
+    </div>
   </div>
 
   <!-- Records Modal -->
@@ -741,7 +844,8 @@ window.RG_addReward = async function RG_addReward(payload){
         tzL.addEventListener('touchend',   onLEnd,   {passive:false});
         tzL.addEventListener('touchcancel',onLEnd,   {passive:false});
 
-        const onRStart=(e)=>{ e.preventDefault();
+        const onRStart=(e)=>{
+          e.preventDefault();
           const now=Date.now();
           if(now-lastTap<300){
             if(!this.running || this.gameover){ this.startOrRestart(); }
@@ -971,7 +1075,7 @@ window.RG_addReward = async function RG_addReward(payload){
           });
         }
       }catch(e){
-        console.warn('RG_addReward call error:', e);
+        console.warn('RG_addReward call error', e);
       }
 
       /* ✅ 세션 종료 알림 */
@@ -1143,7 +1247,6 @@ document.addEventListener('visibilitychange', () => {
     <button class="agree" type="button">동의</button>
   </div>
 
-
   <script>
   (function(){
     try{
@@ -1166,8 +1269,5 @@ document.addEventListener('visibilitychange', () => {
     }catch(e){ /* no-op */ }
   })();
   </script>
-
-  
-  <div id="site-footer"></div>
 </body>
 </html>

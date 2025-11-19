@@ -729,9 +729,14 @@
     </table>`;
     $('#recModal').style.display='flex';
   }
-  $('#recordsBtn').addEventListener('click',showRecords);
-  $('#recClose').addEventListener('click',()=> $('#recModal').style.display='none');
-  $('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
+  (function bindRecordModal(){
+    const btn = $('#recordsBtn');
+    if(btn) btn.addEventListener('click', showRecords);
+    const close = $('#recClose');
+    if(close) close.addEventListener('click',()=> $('#recModal').style.display='none');
+    const modal = $('#recModal');
+    if(modal) modal.addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
+  })();
 
   function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
   function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
@@ -833,10 +838,26 @@
     setLevel(lv){ this.level=lv; this.p=paramsForLevel(lv); this.syncHUD(); }
 
     _initResizeObserver(){
-      const wrap = this.c.parentElement || this.c; let lastW = 0;
-      const ro = new ResizeObserver((entries)=>{ const cr = entries[0].contentRect; const w = Math.floor(cr.width);
-        if(w !== lastW){ lastW = w; cancelAnimationFrame(this._rafId); this._rafId = requestAnimationFrame(()=> this.resize()); } });
-      ro.observe(wrap); this._ro = ro;
+      const wrap = this.c.parentElement || this.c;
+      let lastW = 0;
+
+      // ✅ ResizeObserver 미지원 브라우저에서 에러 방지 (게임 오류 방지용)
+      if (typeof ResizeObserver === 'undefined') {
+        this.resize();
+        return;
+      }
+
+      const ro = new ResizeObserver((entries)=>{
+        const cr = entries[0].contentRect;
+        const w = Math.floor(cr.width);
+        if(w !== lastW){
+          lastW = w;
+          cancelAnimationFrame(this._rafId);
+          this._rafId = requestAnimationFrame(()=> this.resize());
+        }
+      });
+      ro.observe(wrap);
+      this._ro = ro;
       window.addEventListener('orientationchange', ()=> this.resize(), {passive:true});
       window.addEventListener('resize', ()=> this.resize(), {passive:true});
     }
@@ -1040,12 +1061,16 @@
 
   (function runTests(){
     // ✅ 테스트 인스턴스는 testMode:true 로 생성 → 티켓/지갑/광고와 완전히 분리
-    const c=document.createElement('canvas');
-    const g=new G2048(c,{testMode:true});
-    g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
-    g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
-    g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
-    console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
+    try{
+      const c=document.createElement('canvas');
+      const g=new G2048(c,{testMode:true});
+      g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
+      g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
+      g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
+      console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
+    }catch(e){
+      console.warn('2048 self-test skipped', e);
+    }
   })();
 
   const game=new G2048(document.getElementById('game'));

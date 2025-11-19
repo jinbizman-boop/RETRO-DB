@@ -1,34 +1,75 @@
 <!-- public/partials/header.html -->
-<!-- Use this INSIDE. Contains only markup/scripts that are valid in the body. --><nav class="container">
-    <a class="brand" href="/index.html">RETRO GAMES</a>
-    <ul class="nav" id="site-nav">
-      <li><a href="/index.html#games">Games</a></li>
-      <li><a href="/shop.html">Shop</a></li>
-      <li><a href="/user-retro-games.html">My Page</a></li>
-      <li><a href="/features/today-lucky.html">Lucky Spin</a></li>
-    </ul>
-    <div id="auth-slot"><!-- app.js에서 세션상태로 버튼/아바타 바인딩 --></div>
-  </nav><!-- Active link highlight (unchanged behavior) -->
+<!--
+  ✅ 이 파일은 "전역 상단 네비게이션"만 담당하는 nav-only 헤더입니다.
+  ✅ 어떤 페이지에 include 되더라도 유저 허브(게임 카드 그리드 등) 본문은 절대 들어있지 않습니다.
+  ✅ app.js 가 #site-header 위치에 이 partial을 그대로 주입합니다.
+-->
+
+<nav class="container" aria-label="RETRO GAMES global navigation">
+  <!-- 브랜드 / 홈 -->
+  <a class="brand" href="/index.html">
+    RETRO GAMES
+  </a>
+
+  <!-- 메인 내비게이션 -->
+  <ul class="nav" id="site-nav">
+    <li>
+      <!-- 메인 허브의 게임 섹션으로 이동 -->
+      <a href="/index.html#games">Games</a>
+    </li>
+    <li>
+      <a href="/shop.html">Shop</a>
+    </li>
+    <li>
+      <!-- 로그인 상태에 따라 My Page / 로그인 유도 등은 app.js 에서 data-action 기반으로 바인딩 -->
+      <a href="/user-retro-games.html">My Page</a>
+    </li>
+    <li>
+      <a href="/features/today-lucky.html">Lucky Spin</a>
+    </li>
+  </ul>
+
+  <!--
+    세션 상태에 따라 로그인/회원가입/마이페이지/로그아웃 버튼 등을
+    app.js 가 여기 안에 주입해서 사용합니다.
+  -->
+  <div id="auth-slot"><!-- app.js에서 세션상태로 버튼/아바타 바인딩 --></div>
+</nav>
+
+<!-- Active link highlight (unchanged behavior) -->
 <script>
-  (function(){
-    try{
+  (function () {
+    try {
       var here = location.pathname + (location.hash || "");
       var nav = document.getElementById("site-nav");
-      if(!nav) return;
+      if (!nav) return;
+
       var links = nav.querySelectorAll("a[href]");
-      links.forEach(function(a){
+      links.forEach(function (a) {
         var href = a.getAttribute("href");
-        var isActive = (href === here) ||
-                       (href === location.pathname) ||
-                       (href === "/index.html#games" && here.indexOf("/index.html#games") === 0);
-        if(isActive){
-          a.setAttribute("aria-current","page");
-          a.classList && a.classList.add("is-active");
+
+        var isActive =
+          (href === here) ||
+          (href === location.pathname) ||
+          (href === "/index.html#games" &&
+            here.indexOf("/index.html#games") === 0);
+
+        if (isActive) {
+          a.setAttribute("aria-current", "page");
+          if (a.classList) a.classList.add("is-active");
         }
       });
-    }catch(e){}
+    } catch (e) {
+      // fail silently – 헤더 하이라이트는 필수 기능이 아니라서,
+      // 에러가 나도 전체 페이지 동작에는 영향이 없도록 둡니다.
+    }
   })();
 </script>
 
-<!-- Consent banner logic is body-safe; keep here to preserve original behavior -->
+<!--
+  ✅ 쿠키/분석 동의 배너 스크립트
+  - body 안에서 실행해도 안전한 consent.js 만 로드합니다.
+  - 실제 배너 DOM(#cookieBanner)은 각 페이지(예: 2048.html, tetris.html) 안에 존재합니다.
+  - 여기서는 중복된 마크업을 만들지 않고, 스크립트만 한 번 로드합니다.
+-->
 <script defer src="/assets/js/consent.js"></script>

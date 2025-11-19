@@ -57,6 +57,11 @@
       color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
       overflow:hidden
     }
+    /* ✅ 혹시 app.js가 유저 허브(.wrap)를 잘못 주입하더라도
+       이 게임 페이지에서는 허브 전체를 숨겨서
+       인덱스(유저 허브)가 통째로 뜨는 현상을 막는다. */
+    .wrap{display:none !important;}
+
     #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
     .shell{
       min-height:100vh;

@@ -13,6 +13,10 @@
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
     crossorigin="anonymous"></script>
 
+  <!-- 프로젝트 전역 스크립트 (헤더/푸터 partial 주입, 세션/HUD 등) -->
+  <script defer src="/assets/js/app.js"></script>
+  <script defer src="/assets/js/analytics.js"></script>
+
   <style>
     :root{
       --gold1:#ffdf6e;
@@ -993,12 +997,10 @@
   </style>
 </head>
 
-<!-- 프로젝트 전역 API (모듈 아님) -->
-<script defer src="assets/js/app.js"></script>
-<script defer src="assets/js/analytics.js"></script>
-
 <body>
-  <!--#include file="/partials/header.html" -->
+  <!-- ✅ 전역 네비게이션: nav-only header partial 이 여기로만 주입됨 -->
+  <div id="site-header"></div>
+
   <canvas id="fx"></canvas>
 
   <!-- ✅ 좌측 세로형 광고 배너 -->
@@ -1111,7 +1113,7 @@
             </div>
           </div>
 
-          <!-- 게임 카드 -->
+          <!-- 게임 카드: 허브 메인 콘텐츠 (이 페이지에만 존재) -->
           <div class="rowTop">
             <div class="card" onclick="goGame('2048')">
               <div class="thumb">
@@ -2262,6 +2264,7 @@
     })();
   </script>
 
-  <!--#include file="/partials/footer.html" -->
+  <!-- ✅ 전역 푸터 partial 주입 위치 (페이지 본문에는 허브 카드만 존재) -->
+  <div id="site-footer"></div>
 </body>
 </html>

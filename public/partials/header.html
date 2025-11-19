@@ -5,7 +5,9 @@
   ✅ app.js 가 #site-header 위치에 이 partial을 그대로 주입합니다.
 -->
 
-<nav class="container" aria-label="RETRO GAMES global navigation">
+<nav id="global-nav"
+     class="container"
+     aria-label="RETRO GAMES global navigation">
   <!-- 브랜드 / 홈 -->
   <a class="brand" href="/index.html">
     RETRO GAMES
@@ -36,11 +38,24 @@
   <div id="auth-slot"><!-- app.js에서 세션상태로 버튼/아바타 바인딩 --></div>
 </nav>
 
-<!-- Active link highlight (unchanged behavior) -->
+<!-- Active link highlight + 유저 허브(user-retro-games.html)에서는 상단 네비게이션 비표시 -->
 <script>
   (function () {
     try {
       var here = location.pathname + (location.hash || "");
+      var path = location.pathname || "";
+
+      // ✅ 유저 허브( /user-retro-games.html )에서는 상단 사이트맵/네비게이션 전체를 숨김
+      //    - layout, UI/UX, 색상, 버튼 구성 등은 다른 페이지에서는 그대로 유지
+      //    - user-retro-games.html 에서만 display: none 처리 + 접근성 aria-hidden 설정
+      var navRoot = document.getElementById("global-nav");
+      if (path === "/user-retro-games.html" && navRoot) {
+        navRoot.style.display = "none";
+        navRoot.setAttribute("aria-hidden", "true");
+        // 유저 허브에서는 상단 네비게이션 하이라이트 로직도 수행할 필요가 없으므로 바로 종료
+        return;
+      }
+
       var nav = document.getElementById("site-nav");
       if (!nav) return;
 
@@ -69,7 +84,7 @@
 <!--
   ✅ 쿠키/분석 동의 배너 스크립트
   - body 안에서 실행해도 안전한 consent.js 만 로드합니다.
-  - 실제 배너 DOM(#cookieBanner)은 각 페이지(예: 2048.html, tetris.html) 안에 존재합니다.
+  - 실제 배너 DOM(#cookieBanner)은 각 페이지(예: 2048.html, tetris.html, user-retro-games.html) 안에 존재합니다.
   - 여기서는 중복된 마크업을 만들지 않고, 스크립트만 한 번 로드합니다.
 -->
 <script defer src="/assets/js/consent.js"></script>

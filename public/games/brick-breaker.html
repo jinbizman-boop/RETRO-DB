@@ -53,6 +53,10 @@
     overflow:hidden;
     background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
   }
+
+  /* ✅ 유저 허브(.wrap)가 games/ 페이지 위에 통째로 뜨는 문제 방지용 */
+  .wrap{display:none !important;}
+
   #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
   .shell{
     min-height:100vh;
@@ -103,6 +107,12 @@
   .ad-vertical .hint{
     opacity:.8;
     line-height:1.4;
+    margin-bottom:8px;
+  }
+  .ad-vertical .adsbygoogle{
+    display:block;
+    width:100%;
+    height:100%;
   }
 
   /* Cabinet */
@@ -218,9 +228,15 @@
     <div class="gameLayout">
       <!-- 좌측 세로형 광고 배너 -->
       <aside class="sideAd sideAd-left" aria-label="왼쪽 광고 영역">
-        <div class="ad-vertical">
+        <div class="ad-vertical sideAdInner">
           <span class="label">AD</span>
           <span class="hint">세로형 광고 배너 영역입니다.</span>
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot=""
+               data-ad-format="auto"
+               data-full-width-responsive="false"></ins>
         </div>
       </aside>
 
@@ -305,9 +321,15 @@
 
       <!-- 우측 세로형 광고 배너 -->
       <aside class="sideAd sideAd-right" aria-label="오른쪽 광고 영역">
-        <div class="ad-vertical">
+        <div class="ad-vertical sideAdInner">
           <span class="label">AD</span>
           <span class="hint">세로형 광고 배너 영역입니다.</span>
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot=""
+               data-ad-format="auto"
+               data-full-width-responsive="false"></ins>
         </div>
       </aside>
     </div>
@@ -368,6 +390,18 @@ document.getElementById('adClose').addEventListener('click',()=>{
   document.getElementById('adModal').style.display='none';
   const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
 });
+
+/* 좌우 세로 배너 초기화 */
+function initSideBanners(){
+  try{
+    const insList=document.querySelectorAll('.sideAdInner ins.adsbygoogle');
+    if(!insList.length) return;
+    (window.adsbygoogle = window.adsbygoogle || []);
+    insList.forEach(()=>{ window.adsbygoogle.push({}); });
+  }catch(e){
+    console.warn('side banner init error', e);
+  }
+}
 
 /* ================= Neon FX ================= */
 (function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
@@ -962,6 +996,7 @@ const game=new BrickBreaker(document.getElementById('game'));
   applyTier(tier.value);
   lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
   updateTicketUI();
+  initSideBanners(); // 좌우 세로 배너 로딩
 })();
 </script>
 

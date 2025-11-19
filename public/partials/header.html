@@ -38,24 +38,29 @@
   <div id="auth-slot"><!-- app.js에서 세션상태로 버튼/아바타 바인딩 --></div>
 </nav>
 
-<!-- Active link highlight + 유저 허브(user-retro-games.html)에서는 상단 네비게이션 비표시 -->
+<!-- Active link highlight + 유저 허브(user-retro-games)에서는 상단 네비게이션 비표시 -->
 <script>
   (function () {
     try {
       var here = location.pathname + (location.hash || "");
-      var path = location.pathname || "";
+      var path = (location.pathname || "").toLowerCase();
 
-      // ✅ 유저 허브( /user-retro-games.html )에서는 상단 사이트맵/네비게이션 전체를 숨김
-      //    - layout, UI/UX, 색상, 버튼 구성 등은 다른 페이지에서는 그대로 유지
-      //    - user-retro-games.html 에서만 display: none 처리 + 접근성 aria-hidden 설정
+      // ✅ 유저 허브(/user-retro-games, /user-retro-games/, /user-retro-games.html) 에서는
+      //    상단 사이트맵/네비게이션 전체를 숨김
+      var isUserHub =
+        path === "/user-retro-games" ||
+        path === "/user-retro-games/" ||
+        path === "/user-retro-games.html";
+
       var navRoot = document.getElementById("global-nav");
-      if (path === "/user-retro-games.html" && navRoot) {
+      if (isUserHub && navRoot) {
         navRoot.style.display = "none";
         navRoot.setAttribute("aria-hidden", "true");
-        // 유저 허브에서는 상단 네비게이션 하이라이트 로직도 수행할 필요가 없으므로 바로 종료
+        // 이 페이지에서는 네비 하이라이트도 필요 없으므로 바로 종료
         return;
       }
 
+      // ⬇ 다른 페이지에서는 기존처럼 활성 링크 하이라이트 유지
       var nav = document.getElementById("site-nav");
       if (!nav) return;
 

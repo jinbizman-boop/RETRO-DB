@@ -304,30 +304,52 @@
   /* ========= 0) 공통 경로 & 홈 이동 ========= */
   const BASE = "/";
 
-  // ✅ 홈 버튼: 로그인 여부 확인 후, 로그인한 계정 기준 메인 허브로 이동
-  async function goHome(){
+  /**
+   * 상점 전용 홈 이동 로직
+   *
+   * - app.js 가 전역 goHome()을 index.html 로 덮어쓰기 때문에
+   *   이 페이지 로드가 끝난 뒤 다시 window.goHome 을 교체한다.
+   * - 세션 형태는 app.js 의 getSession 과 동일하게
+   *   `user` 래퍼 없이 "사용자 객체 자체"가 반환된다는 가정으로,
+   *   truthy 여부만 검사한다.
+   */
+  async function shopGoHome(){
     try{
-      // 1) RG 세션 기반으로 로그인 상태 우선 확인
+      let session = null;
+
       if (window.RG && typeof window.RG.getSession === "function"){
-        const session = await window.RG.getSession({ refresh: true }).catch(()=>null);
-        if (session && session.user){
-          // 이미 로그인 상태 → 로그인 후 메인 화면으로 이동
-          window.location.href = BASE + "user-retro-games.html";
-          return;
-        }
+        // 항상 최신 세션 상태 기준으로 확인
+        session = await window.RG.getSession({ refresh: true }).catch(() => null);
+      }
+
+      if (session){
+        // ✅ 로그인 상태 → 로그인 후 메인 허브
+        window.location.href = BASE + "user-retro-games.html";
+      }else{
+        // ✅ 비로그인 상태 → 비로그인 메인
+        window.location.href = BASE + "index.html";
       }
     }catch(e){
-      console.warn("[SHOP] getSession error:", e);
-    }
-
-    // 2) 로그인 안 되어 있으면, 로그인 후 메인 허브로 돌아오도록 next 파라미터 부여
-    try{
-      const next = encodeURIComponent(BASE + "user-retro-games.html");
-      window.location.href = BASE + "login.html?next=" + next;
-    }catch(e){
-      window.location.href = BASE + "login.html";
+      console.warn("[SHOP] shopGoHome error:", e);
+      // 문제가 나더라도 최소한 비로그인 메인으로는 보낸다
+      window.location.href = BASE + "index.html";
     }
   }
+
+  // ⭐ app.js 가 defer 로 로드되면서 goHome 을 덮어쓰므로,
+  //    모든 스크립트/리소스가 로드된 뒤에 다시 override 한다.
+  window.addEventListener("load", function(){
+    try{
+      // 디버깅용으로 기존 goHome 을 보관(필요 시 복구 가능)
+      if (typeof window.goHome === "function"){
+        window.__rgOriginalGoHome = window.goHome;
+      }
+    }catch(e){
+      console.warn("[SHOP] backup original goHome failed:", e);
+    }
+    // 이제부터 이 페이지에서는 항상 shopGoHome 이 호출됨
+    window.goHome = shopGoHome;
+  });
 
   /* ========= 1) 서버 연동 유틸 ========= */
   async function jfetch(url, init){

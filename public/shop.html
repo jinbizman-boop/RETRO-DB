@@ -14,7 +14,13 @@
   <style>
     :root{--gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--blue2:#0048ff;--bg:#0b001e;--gapY:24px}
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;color:#fff}
+    html,body{
+      height:100%;
+      margin:0;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;
+      color:#fff
+    }
     .wrap{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}
 
     /* Header */
@@ -27,99 +33,175 @@
       position:absolute;left:40px;top:50%;transform:translateY(-50%);
       display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-start;max-width:48vw;
     }
-    .pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:16px;background:linear-gradient(180deg,#0c1430,#0a0f26);border:1px solid #3857bd;box-shadow:0 6px 16px #0008,inset 0 0 18px #102265;white-space:nowrap}
-    .pill .icon{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);box-shadow:0 0 10px #6fb0ffaa}
+    .pill{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:16px;
+      background:linear-gradient(180deg,#0c1430,#0a0f26);
+      border:1px solid #3857bd;
+      box-shadow:0 6px 16px #0008,inset 0 0 18px #102265;
+      white-space:nowrap
+    }
+    .pill .icon{
+      width:22px;height:22px;display:grid;place-items:center;
+      border-radius:50%;
+      background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);
+      box-shadow:0 0 10px #6fb0ffaa
+    }
     .amount{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
     .unit{opacity:.8;margin-left:2px;font-size:12px}
     .label{font-weight:900;letter-spacing:.3px}
 
     /* 우측 액션 */
-    .actions{position:absolute;right:40px;top:50%;transform:translateY(-50%);display:flex;gap:10px}
-    .btn-top{padding:8px 14px;border-radius:12px;border:1px solid #3e2b7b;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer}
-    .btn-top.alt{background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#3a2400}
+    .actions{
+      position:absolute;right:40px;top:50%;transform:translateY(-50%);
+      display:flex;gap:10px
+    }
+    .btn-top{
+      padding:8px 14px;border-radius:12px;
+      border:1px solid #3e2b7b;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:900;color:#e9f0ff;
+      box-shadow:0 6px 12px #0006;
+      cursor:pointer
+    }
+    .btn-top.alt{
+      background:linear-gradient(180deg,var(--gold1),var(--gold2));
+      color:#3a2400
+    }
 
-    .divider{height:4px;width:100%;background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);filter:blur(1px);box-shadow:0 0 18px #0088ff88;margin:0}
+    .divider{
+      height:4px;width:100%;
+      background:linear-gradient(90deg,transparent,rgba(0,136,255,.8),transparent);
+      filter:blur(1px);
+      box-shadow:0 0 18px #0088ff88;
+      margin:0
+    }
 
     /* Main content */
     main{max-width:1100px;margin:0 auto;padding:18px 22px 28px}
-    .shopHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 14px}
+    .shopHeader{
+      display:flex;align-items:center;justify-content:space-between;
+      gap:12px;margin:4px 0 14px
+    }
     .shopHeader h2{margin:0;font-size:22px;color:var(--gold1);text-shadow:0 0 10px #ffd991}
     .hint{opacity:.85}
 
     /* ▶ 항상 가로 3개(넓은 화면 기준) */
-    .grid{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:14px}
-    @media (max-width:960px){ .grid{grid-template-columns:repeat(2, minmax(0,1fr))} }
-    @media (max-width:560px){ .grid{grid-template-columns:minmax(0,1fr)} }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:14px
+    }
+    @media (max-width:960px){
+      .grid{grid-template-columns:repeat(2, minmax(0,1fr))}
+    }
+    @media (max-width:560px){
+      .grid{grid-template-columns:minmax(0,1fr)}
+    }
 
     .card{
       background:linear-gradient(180deg,#0a0030,#000);
-      border:2px solid #3e2b7b;border-radius:16px;box-shadow:0 0 20px #0008,inset 0 0 16px #2a0085;
-      padding:12px;display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;
+      border:2px solid #3e2b7b;border-radius:16px;
+      box-shadow:0 0 20px #0008,inset 0 0 16px #2a0085;
+      padding:12px;
+      display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;
     }
     .card h3{margin:0;font-size:16px;color:#ffdf6e;text-shadow:0 0 8px #ffd580}
     .desc{opacity:.9;font-size:12px}
     .badgeRow{display:flex;gap:8px;flex-wrap:wrap}
-    .price{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:12px;border:1px solid #2d3690;background:linear-gradient(180deg,#1a2b7a,#0a1a64);box-shadow:0 6px 12px #0006;font-weight:800;font-size:12px}
+    .price{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 8px;border-radius:12px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      box-shadow:0 6px 12px #0006;
+      font-weight:800;font-size:12px
+    }
     .price .k{opacity:.8}
     .active{font-size:12px;color:#9efff3}
     .actOK{color:#8aff98}
     .buyRow{display:flex;gap:8px}
-    .buy{flex:1;padding:10px 12px;border-radius:12px;border:1px solid #2d3690;background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-    .buy.alt{background:linear-gradient(180deg,#ffd86e,#ffb84d);color:#3a2400;border-color:#a86b00}
+    .buy{
+      flex:1;padding:10px 12px;border-radius:12px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:800;color:#e9f0ff;
+      cursor:pointer
+    }
+    .buy.alt{
+      background:linear-gradient(180deg,#ffd86e,#ffb84d);
+      color:#3a2400;border-color:#a86b00
+    }
 
-    footer{padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px;margin-top:var(--gapY)}
+    footer{
+      padding:12px 16px;text-align:center;
+      color:#aab;opacity:.9;font-size:12px;
+      margin-top:var(--gapY)
+    }
     #fx{position:fixed;inset:0;pointer-events:none;opacity:.5}
 
     /* Toast */
-    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#04102a;border:1px solid #3857bd;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px #0008,inset 0 0 18px #102265;display:none;z-index:1000}
+    .toast{
+      position:fixed;left:50%;bottom:24px;
+      transform:translateX(-50%);
+      background:#04102a;border:1px solid #3857bd;
+      border-radius:12px;padding:10px 14px;
+      box-shadow:0 10px 18px #0008,inset 0 0 18px #102265;
+      display:none;z-index:1000
+    }
     .toast.show{display:block;animation:fade 2.2s ease}
-    @keyframes fade{0%{opacity:0;transform:translate(-50%,20px)}10%,90%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,20px)}}
+    @keyframes fade{
+      0%{opacity:0;transform:translate(-50%,20px)}
+      10%,90%{opacity:1;transform:translate(-50%,0)}
+      100%{opacity:0;transform:translate(-50%,20px)}
+    }
 
     /* Responsive header paddings */
-    @media (max-width:1200px){ .hudTop{left:16px} .actions{right:16px} }
+    @media (max-width:1200px){
+      .hudTop{left:16px}
+      .actions{right:16px}
+    }
 
-    .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
-      display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-      border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
+    .cookie-banner{
+      position:fixed;left:12px;right:12px;bottom:12px;
+      display:none;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:12px;
+      border:1px solid #2b3f8f;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
       box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-      z-index:10000;font-size:12px}
+      z-index:10000;font-size:12px
+    }
     .cookie-banner .spacer{flex:1}
-    .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
-    .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+    .cookie-banner button{
+      padding:8px 12px;border-radius:10px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:800;color:#e9f0ff;cursor:pointer
+    }
+    .cookie-banner .agree{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#3a2400;border-color:#7a5600
+    }
 
     /* ✅ 좌/우 세로형 광고 배너 */
     .sideAd{
       position:fixed;
-      top:50%;
-      transform:translateY(-50%);
-      width:160px;      /* 세로 배너 폭 (예: 160x600) */
-      height:600px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:5000;
-      pointer-events:auto;
+      top:50%;transform:translateY(-50%);
+      width:160px;height:600px;
+      display:flex;align-items:center;justify-content:center;
+      z-index:5000;pointer-events:auto;
     }
     .sideAd-inner{
-      width:100%;
-      height:100%;
-      border-radius:18px;
-      border:1px solid #3250c2;
+      width:100%;height:100%;
+      border-radius:18px;border:1px solid #3250c2;
       background:linear-gradient(180deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
       box-shadow:0 8px 20px rgba(0,0,0,.65),0 0 22px rgba(40,120,255,.55);
       box-sizing:border-box;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:flex;align-items:center;justify-content:center;
       overflow:hidden;
     }
-    .sideAd-left{
-      left:8px;
-    }
-    .sideAd-right{
-      right:8px;
-    }
+    .sideAd-left{left:8px}
+    .sideAd-right{right:8px}
     /* 좁은 화면에서는 세로 배너 숨김 처리 */
     @media (max-width:1280px){
       .sideAd{display:none;}
@@ -178,9 +260,21 @@
     <header>
       <!-- 좌측 HUD -->
       <div class="hudTop" aria-label="보상 현황">
-        <div class="pill"><div class="icon">🪙</div><div id="coinVal" class="amount">0</div><div class="unit">COINS</div></div>
-        <div class="pill"><div class="icon">🎟️</div><div id="ticketVal" class="amount">0</div><div class="unit">TICKETS</div></div>
-        <div class="pill"><div class="icon">🏆</div><div id="xpVal" class="amount">0</div><div class="unit">XP</div></div>
+        <div class="pill">
+          <div class="icon">🪙</div>
+          <div id="coinVal" class="amount">0</div>
+          <div class="unit">COINS</div>
+        </div>
+        <div class="pill">
+          <div class="icon">🎟️</div>
+          <div id="ticketVal" class="amount">0</div>
+          <div class="unit">TICKETS</div>
+        </div>
+        <div class="pill">
+          <div class="icon">🏆</div>
+          <div id="xpVal" class="amount">0</div>
+          <div class="unit">XP</div>
+        </div>
       </div>
 
       <div class="title">🎮 RETRO GAMES</div>
@@ -207,17 +301,17 @@
   </div>
 
 <script>
-  /* ========= 0) 공통 경로 ========= */
+  /* ========= 0) 공통 경로 & 홈 이동 ========= */
   const BASE = "/";
 
-  // ✅ 홈 버튼: 로그인 여부 확인 후, 해당 계정으로 메인 허브로 이동
+  // ✅ 홈 버튼: 로그인 여부 확인 후, 로그인한 계정 기준 메인 허브로 이동
   async function goHome(){
     try{
-      // RG 세션이 있으면 우선 현재 계정 확인
+      // 1) RG 세션 기반으로 로그인 상태 우선 확인
       if (window.RG && typeof window.RG.getSession === "function"){
         const session = await window.RG.getSession({ refresh: true }).catch(()=>null);
         if (session && session.user){
-          // 이미 로그인 상태 → 바로 메인 허브로 이동
+          // 이미 로그인 상태 → 로그인 후 메인 화면으로 이동
           window.location.href = BASE + "user-retro-games.html";
           return;
         }
@@ -226,7 +320,7 @@
       console.warn("[SHOP] getSession error:", e);
     }
 
-    // 로그인되지 않은 경우 → 로그인 페이지로 보내고 로그인 후 메인 허브로 리다이렉트
+    // 2) 로그인 안 되어 있으면, 로그인 후 메인 허브로 돌아오도록 next 파라미터 부여
     try{
       const next = encodeURIComponent(BASE + "user-retro-games.html");
       window.location.href = BASE + "login.html?next=" + next;
@@ -238,19 +332,36 @@
   /* ========= 1) 서버 연동 유틸 ========= */
   async function jfetch(url, init){
     try{
-      const res = await fetch(url, { credentials:'include', headers:{'Content-Type':'application/json'}, ...init });
+      const res = await fetch(url, {
+        credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        ...init
+      });
       const data = await res.json().catch(()=>null);
-      if(!res.ok) throw Object.assign(new Error((data && (data.error||data.message)) || `HTTP_${res.status}`), {status:res.status, body:data});
+      if(!res.ok){
+        throw Object.assign(
+          new Error((data && (data.error||data.message)) || `HTTP_${res.status}`),
+          {status:res.status, body:data}
+        );
+      }
       return data;
-    }catch(e){ return Promise.reject(e); }
+    }catch(e){
+      return Promise.reject(e);
+    }
   }
+
   const API = {
     list: async () => jfetch('/specials/shop'),
-    buyByItemId: async (itemId, qty=1) => jfetch('/specials/shop/buy', { method:'POST', body: JSON.stringify({ itemId, qty }) }),
+    buyByItemId: async (itemId, qty=1) =>
+      jfetch('/specials/shop/buy', {
+        method:'POST',
+        body: JSON.stringify({ itemId, qty })
+      }),
   };
 
   /* ========= 2) HUD 상태 (서버 우선, 실패 시 로컬 폴백) ========= */
   const NUM = n => Number.isFinite(+n) ? +n : 0;
+
   function readTotals(){
     return {
       coins:   NUM(localStorage.getItem('rg_coins')   || 0),
@@ -264,6 +375,7 @@
       retryTokens:NUM(localStorage.getItem('rg_retry_tokens') || 0),
     };
   }
+
   function writeTotals(t){
     localStorage.setItem('rg_coins',   t.coins);
     localStorage.setItem('rg_tickets', t.tickets);
@@ -275,28 +387,39 @@
     localStorage.setItem('rg_lucky_until',     t.luckyUntil);
     localStorage.setItem('rg_retry_tokens',    t.retryTokens);
   }
+
+  // ✅ 서버의 현재 로그인 유저 기준으로 HUD 값 동기화
   async function refreshHUDFromServer(){
     try{
-      if (window.RG?.refreshProfile){
+      if (window.RG && typeof window.RG.refreshProfile === "function"){
         const me = await window.RG.refreshProfile();
         if (me && typeof me.coins === 'number'){
           const t = readTotals();
-          t.coins = me.coins ?? t.coins;
-          t.xp    = me.xp    ?? t.xp;
+          t.coins   = me.coins   ?? t.coins;
+          t.tickets = me.tickets ?? t.tickets;
+          t.xp      = me.xp      ?? t.xp;
           writeTotals(t);
         }
       }
-    }catch{/* 폴백 유지 */}
+    }catch{
+      /* 폴백: 로컬 값 유지 */
+    }
   }
+
   function renderHUD(){
     const t = readTotals();
-    document.getElementById('coinVal').textContent   = t.coins.toLocaleString('en-US');
-    document.getElementById('ticketVal').textContent = t.tickets.toLocaleString('en-US');
-    document.getElementById('xpVal').textContent     = t.xp.toLocaleString('en-US');
+    const coinEl   = document.getElementById('coinVal');
+    const ticketEl = document.getElementById('ticketVal');
+    const xpEl     = document.getElementById('xpVal');
+
+    if (coinEl)   coinEl.textContent   = t.coins.toLocaleString('en-US');
+    if (ticketEl) ticketEl.textContent = t.tickets.toLocaleString('en-US');
+    if (xpEl)     xpEl.textContent     = t.xp.toLocaleString('en-US');
   }
 
   /* ========= 3) 카탈로그 (서버 우선, 실패 시 폴백) ========= */
   const H = 3600e3, D = 24*H;
+
   const fallbackCatalog = [
     {id:'ad_1h',  name:'광고 제거 1시간',   desc:'모든 광고 비활성화', coin:250,  dur:1*H,   kind:'ad'},
     {id:'ad_3h',  name:'광고 제거 3시간',   desc:'모든 광고 비활성화', coin:600,  dur:3*H,   kind:'ad'},
@@ -308,11 +431,12 @@
     {id:'ad_8d',  name:'광고 제거 8일',     desc:'모든 광고 비활성화', coin:9600, dur:8*D,   kind:'ad'},
     {id:'xp2x',   name:'경험치 부스터 2배', desc:'획득 XP 2배',       coin:600, ticket:1, dur:30*60*1000, kind:'xp'},
     {id:'coin2x', name:'코인 부스터 2배',   desc:'획득 코인 2배',     coin:700, ticket:1, dur:30*60*1000, kind:'coin'},
-    {id:'lucky',  name:'럭키 부스터',      desc:'행운뽑기 희귀도 ↑',  coin:1500, ticket:2, dur:1*D,       kind:'lucky'},
+    {id:'lucky',  name:'럭키 부스터',       desc:'행운뽑기 희귀도 ↑',  coin:1500, ticket:2, dur:1*D,       kind:'lucky'},
     {id:'retry',  name:'리트라이 토큰 ×1',  desc:'즉시 재도전 1회',    coin:300,             kind:'retry'}
   ];
 
   let catalog = []; // { id/name/desc/coin/ticket/dur/kind, __serverId? }
+
   function mapServerItem(row){
     // 서버 레코드 예시: { id, name, price_coins, stock, metadata }
     const m = row.metadata || {};
@@ -343,18 +467,27 @@
 
   /* ========= 4) 렌더링 ========= */
   function msLeft(until){ return Math.max(0, until - Date.now()); }
+
   function fmtTime(ms){
     if(ms<=0) return '비활성';
-    const s=Math.ceil(ms/1000); const d=Math.floor(s/86400), h=Math.floor((s%86400)/3600), m=Math.floor((s%3600)/60);
+    const s=Math.ceil(ms/1000);
+    const d=Math.floor(s/86400);
+    const h=Math.floor((s%86400)/3600);
+    const m=Math.floor((s%3600)/60);
     if(d>0) return `${d}일 ${h}시간`;
     if(h>0) return `${h}시간 ${m}분`;
     return `${m}분`;
   }
+
   function priceBadges(it){
-    let html = `<span class="price">🪙 <b>${(it.coin||0).toLocaleString()}</b> <span class="k">COINS</span></span>`;
-    if(it.ticket){ html += `<span class="price">🎟️ <b>${it.ticket}</b> <span class="k">TICKET</span></span>`; }
+    let html =
+      `<span class="price">🪙 <b>${(it.coin||0).toLocaleString()}</b> <span class="k">COINS</span></span>`;
+    if(it.ticket){
+      html += `<span class="price">🎟️ <b>${it.ticket}</b> <span class="k">TICKET</span></span>`;
+    }
     return html;
   }
+
   function activeFor(t, it){
     if(it.kind==='ad')   return msLeft(t.adsUntil);
     if(it.kind==='xp')   return msLeft(t.xpUntil);
@@ -386,12 +519,16 @@
       return `
         <article class="card" data-id="${it.id}">
           <h3>${it.name}</h3>
-          <div class="desc">${it.desc}${it.dur?` · <span style="opacity:.8">${fmtTime(it.dur)} 지속</span>`:''}</div>
+          <div class="desc">
+            ${it.desc}${it.dur?` · <span style="opacity:.8">${fmtTime(it.dur)} 지속</span>`:''}
+          </div>
           <div class="badgeRow">${priceBadges(it)}</div>
           ${activeLine}
           <div class="buyRow">
             <button class="buy" onclick="buy('${it.id}','coin')">🪙 코인 결제</button>
-            ${it.ticket?`<button class="buy alt" onclick="buy('${it.id}','ticket')">🎟️ 티켓 결제</button>`:''}
+            ${it.ticket
+              ? `<button class="buy alt" onclick="buy('${it.id}','ticket')">🎟️ 티켓 결제</button>`
+              : ''}
           </div>
         </article>`;
     }).join('');
@@ -400,30 +537,42 @@
   /* ========= 5) 구매 (서버 우선, 실패 시 로컬 폴백) ========= */
   function toast(msg){
     let el=document.getElementById('toast');
-    if(!el){el=document.createElement('div');el.id='toast';el.className='toast';document.body.appendChild(el);}
-    el.textContent=msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    if(!el){
+      el=document.createElement('div');
+      el.id='toast';
+      el.className='toast';
+      document.body.appendChild(el);
+    }
+    el.textContent=msg;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
     setTimeout(()=>el.classList.remove('show'),2200);
   }
-  function extendUntil(current, addMs){ const base = current>Date.now()? current : Date.now(); return base + addMs; }
+
+  function extendUntil(current, addMs){
+    const base = current>Date.now()? current : Date.now();
+    return base + addMs;
+  }
 
   async function buy(id, pay){
     const it = catalog.find(x=>String(x.id)===String(id));
     if(!it) return;
 
-    // 인증 가드(전역 requireAuth가 있으면 사용)
+    // ✅ 인증 가드(전역 requireAuth가 있으면 사용)
     if (window.requireAuth){
       const ok = await window.requireAuth();
       if (!ok) return;
     }
 
-    // 서버 구매 시도 (itemId 기반)
+    // ───── 1) 서버 구매 시도 (itemId 기반) ─────
     try{
       if (it.__serverId && pay==='coin'){
         const out = await API.buyByItemId(it.__serverId, 1);
         // 서버 성공 → HUD 동기화
         await refreshHUDFromServer();
         renderHUD();
-        queueRenderShop(); // ✅ 스케줄러 사용
+        queueRenderShop();
         toast(`${it.name} 구매 완료! (서버)`);
         return;
       }
@@ -431,15 +580,24 @@
       toast((e.body?.error || e.message || '구매 실패') + ' — 로컬 폴백 시도');
     }
 
-    // ───── 로컬 폴백 (기존 동작 유지) ─────
+    // ───── 2) 로컬 폴백 (기존 동작 유지) ─────
     const t = readTotals();
 
     if(pay==='coin'){
-      if(t.coins < (it.coin||0)){ toast('코인이 부족합니다.'); return; }
+      if(t.coins < (it.coin||0)){
+        toast('코인이 부족합니다.');
+        return;
+      }
       t.coins -= (it.coin||0);
     }else{
-      if(!it.ticket){ toast('이 상품은 티켓 결제가 없습니다.'); return; }
-      if(t.tickets < it.ticket){ toast('티켓이 부족합니다.'); return; }
+      if(!it.ticket){
+        toast('이 상품은 티켓 결제가 없습니다.');
+        return;
+      }
+      if(t.tickets < it.ticket){
+        toast('티켓이 부족합니다.');
+        return;
+      }
       t.tickets -= it.ticket;
     }
 
@@ -451,33 +609,77 @@
 
     writeTotals(t);
     renderHUD();
-    queueRenderShop(); // ✅ 스케줄러 사용
+    queueRenderShop();
 
-    const paid = (pay==='coin') ? `코인 ${(it.coin||0).toLocaleString()}개` : `티켓 ${it.ticket}장`;
+    const paid = (pay==='coin')
+      ? `코인 ${(it.coin||0).toLocaleString()}개`
+      : `티켓 ${it.ticket}장`;
     toast(`${it.name} 구매 완료! (${paid})`);
   }
 
   /* ========= 6) 초기 로드 & 동기화 ========= */
   async function init(){
-    await refreshHUDFromServer(); // 가능하면 서버 값 우선 반영
+    // ✅ 현재 로그인한 유저 기준으로 HUD 값 동기화
+    await refreshHUDFromServer();
     renderHUD();
+
     await loadCatalog();
-    queueRenderShop(); // ✅ 초기 1회만 스케줄
+    queueRenderShop();
   }
+
   window.addEventListener('storage', e=>{
-    if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap','rg_ads_until','rg_boost_xp_until','rg_boost_coin_until','rg_lucky_until','rg_retry_tokens'].includes(e.key)){
+    if([
+      'rg_coins','rg_tickets','rg_xp','rg_xp_cap',
+      'rg_ads_until','rg_boost_xp_until','rg_boost_coin_until',
+      'rg_lucky_until','rg_retry_tokens'
+    ].includes(e.key)){
       renderHUD();
-      queueRenderShop(); // ✅ 외부 변경도 코얼레싱
+      queueRenderShop();
     }
   });
+
   init();
 
   /* ========= 7) 배경 파티클 ========= */
-  const c=document.getElementById('fx')||(()=>{const cv=document.createElement('canvas');cv.id='fx';document.body.appendChild(cv);return cv;})();
+  const c=document.getElementById('fx')
+    || (()=>{const cv=document.createElement('canvas');cv.id='fx';document.body.appendChild(cv);return cv;})();
   const g=c.getContext('2d');
-  function fit(){const d=window.devicePixelRatio||1;c.width=innerWidth*d;c.height=innerHeight*d;g.setTransform(d,0,0,d,0,0);} fit(); addEventListener('resize',fit);
-  let pts=[]; for(let i=0;i<80;i++){ pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2}); }
-  function loop(){ g.clearRect(0,0,c.width,c.height); for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2); g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`; g.fill(); p.y+=p.s; if(p.y>innerHeight){ p.y=-10; p.x=Math.random()*innerWidth; } } requestAnimationFrame(loop); } loop();
+
+  function fit(){
+    const d=window.devicePixelRatio||1;
+    c.width=innerWidth*d;
+    c.height=innerHeight*d;
+    g.setTransform(d,0,0,d,0,0);
+  }
+  fit();
+  addEventListener('resize',fit);
+
+  let pts=[];
+  for(let i=0;i<80;i++){
+    pts.push({
+      x:Math.random()*innerWidth,
+      y:Math.random()*innerHeight*0.9,
+      r:Math.random()*2+0.5,
+      s:Math.random()*0.6+0.2
+    });
+  }
+
+  function loop(){
+    g.clearRect(0,0,c.width,c.height);
+    for(const p of pts){
+      g.beginPath();
+      g.arc(p.x,p.y,p.r,0,Math.PI*2);
+      g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;
+      g.fill();
+      p.y+=p.s;
+      if(p.y>innerHeight){
+        p.y=-10;
+        p.x=Math.random()*innerWidth;
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
 </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
@@ -494,7 +696,11 @@
       function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
       var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
       var el=document.getElementById('cookieBanner');
-      if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
+      if(v==='yes'){
+        init();
+        if(el) el.style.display='none';
+        return;
+      }
       if(!el){ return; } // no banner -> do not init
       el.style.display='flex';
       var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');

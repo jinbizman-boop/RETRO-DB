@@ -43,8 +43,6 @@
       color:#fff;
       -webkit-text-size-adjust:100%;
       text-size-adjust:100%;
-      /* ✅ 어떤 화면에서도 비율이 깨지지 않도록 최소 가로폭 고정 */
-      min-width:1360px;
     }
 
     body{
@@ -65,7 +63,7 @@
       display:block;
     }
     .title{
-      font-size:36px; /* 고정 px로 통일 */
+      font-size:clamp(28px,3.2vw,36px);
       font-weight:900;
       letter-spacing:.5px;
       color:var(--gold1);
@@ -76,12 +74,12 @@
       margin:0;
       text-align:center;
       margin-bottom:6px;
-      font-size:16px; /* 고정 px */
+      font-size:clamp(13px,1.6vw,16px);
     }
-    /* 로그인 사용자 환영 문구 */
+    /* 로그인 사용자 환영 문구 (기본 subtitle 스타일에 살짝 보조 느낌) */
     .subtitle.user-greeting{
       opacity:.85;
-      font-size:15px;
+      font-size:clamp(12px,1.4vw,15px);
       margin-top:2px;
       margin-bottom:4px;
     }
@@ -133,8 +131,8 @@
     }
 
     main{
-      max-width:1212px;        /* ✅ 허브 영역 고정폭 */
-      width:1212px;
+      max-width:1200px;
+      width:100%;
       margin:0 auto;
       padding:0 22px 12px;
       display:flex;
@@ -173,6 +171,7 @@
       display:grid;
       place-items:center;
       border-radius:50%;
+      /* 여기 수정: #3a7fff → #3a7bff */
       background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);
       box-shadow:0 0 10px #6fb0ffaa;
       font-size:14px;
@@ -181,6 +180,7 @@
       font-weight:900;
       letter-spacing:.3px;
     }
+    /* SHOP / RANKING 라벨도 COINS / XP와 동일한 골드 색상 적용 */
     .pill.shop .label,
     .pill.rank .label{
       color:#ffe9a3;
@@ -223,7 +223,7 @@
       align-items:center;
       justify-content:center;
       padding:22px 64px;
-      min-width:720px; /* 고정에 가깝게 */
+      min-width:min(72vw,720px);
       max-width:100%;
       border:none;
       border-radius:14px;
@@ -276,22 +276,25 @@
       outline-offset:2px;
     }
 
-    /* 카드 리스트 – 5개 고정 배치 */
+    /* 카드 리스트 */
     .rowTop{
       display:flex;
-      justify-content:space-between;
+      justify-content:center;
       align-items:stretch;
       gap:28px;
       flex-wrap:nowrap;
-      overflow:visible;  /* 스크롤 X */
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
       margin-top:8px;
       padding-bottom:6px;
+      scrollbar-width:none;
       width:100%;
     }
+    .rowTop::-webkit-scrollbar{display:none;}
 
     .card{
-      flex:0 0 212px;     /* ✅ 카드 폭 고정 */
-      width:212px;
+      flex:0 0 clamp(190px, 28vw, 220px);
+      width:clamp(190px, 28vw, 220px);
       height:300px;
       display:grid;
       grid-template-rows:120px 44px 1fr 54px;
@@ -361,7 +364,7 @@
       position:fixed;
       top:50%;
       transform:translateY(-50%);
-      width:160px;
+      width:160px;      /* 세로 배너 폭 (예: 160x600) */
       height:600px;
       display:flex;
       align-items:center;
@@ -388,6 +391,7 @@
     .sideAd-right{
       right:8px;
     }
+    /* 좁은 화면에서는 세로 배너 숨김 처리 */
     @media (max-width:1280px){
       .sideAd{display:none;}
     }
@@ -417,7 +421,8 @@
       margin:0;
     }
 
-    /* 기존 반응형 (폰/태블릿) – 데스크탑 고정 레이아웃 우선이라 아래에서 다시 덮어씀 */
+    /* 반응형 보완 */
+
     @media (max-width:1200px){
       .hudTop{left:18px;gap:8px;}
     }
@@ -429,6 +434,7 @@
       .goldBtn{min-width:min(84vw,720px);}
     }
 
+    /* 태블릿 / 작은 노트북: 헤더 요소가 겹치지 않도록 재배치 */
     @media (max-width:860px){
       header{
         padding-top:calc(16px + var(--safe-top));
@@ -449,7 +455,7 @@
         margin-top:6px;
       }
       .title{
-        font-size:30px;
+        font-size:clamp(24px,6vw,30px);
       }
       .subtitle{
         margin-top:4px;
@@ -502,17 +508,19 @@
       }
     }
 
+    /* 데스크톱(넓은 화면)에서 카드 5개를 컨테이너 안에 균등 정렬하기 위한 보정 */
     @media (min-width:1024px){
       .rowTop{
-        display:flex;
-        justify-content:space-between;
-        align-items:stretch;
+        display:grid;
+        grid-template-columns:repeat(5,minmax(0,1fr));
         gap:28px;
-        overflow:visible;
+        justify-content:center;
+        align-items:stretch;
+        overflow:visible; /* 데스크톱에서는 가로 스크롤 불필요 */
       }
       .rowTop .card{
-        flex:0 0 212px;
-        width:212px;
+        flex:none;
+        width:100%;
         max-width:none;
       }
     }
@@ -982,64 +990,15 @@
       }
     }
 
-    /* ✅ 상단/하단 sitemap 영역 숨기기 (header/footer partial 내 sitemap 전부 차단) */
-    #site-header .sitemap,
-    #site-header .site-map,
-    #site-header .nav-sitemap,
-    #site-header [data-role="sitemap"],
-    #site-header [data-section="sitemap"],
-    #site-footer .sitemap,
-    #site-footer .site-map,
-    #site-footer .nav-sitemap,
-    #site-footer [data-role="sitemap"],
-    #site-footer [data-section="sitemap"]{
-      display:none !important;
-    }
-
-    /* ✅ 고정 레이아웃 오버라이드 (어떤 해상도에서도 동일 배치/규격 유지) */
-    @media (min-width:0px){
-      .rowTop{
-        display:flex;
-        justify-content:space-between;
-        align-items:stretch;
-        gap:28px;
-        flex-wrap:nowrap;
-        overflow:visible;
-      }
-      .rowTop .card,
-      .card{
-        flex:0 0 212px;
-        width:212px;
-        max-width:212px;
-      }
-      main{
-        max-width:1212px;
-        width:1212px;
-        padding:0 22px 12px;
-      }
-      header{
-        padding:22px 18px;
-      }
-      .hudTop{
-        position:absolute;
-        left:40px;
-        top:50%;
-        transform:translateY(-50%);
-        max-width:60vw;
-      }
-      .auth{
-        position:absolute;
-        right:40px;
-        top:50%;
-        transform:translateY(-50%);
-      }
-    }
+    /* layout notes:
+       - flex 기반 모바일/태블릿 유지
+       - 데스크톱에서 grid로 5등분 정렬, 카드 이탈 방지
+       - 기존 색상/그라데이션/섀도우 등 시각 스타일은 모두 유지 */
   </style>
 </head>
 
 <body>
   <!-- ✅ 전역 네비게이션: nav-only header partial 이 여기로만 주입됨 -->
-  <div id="site-header"></div>
 
   <canvas id="fx"></canvas>
 
@@ -1105,18 +1064,18 @@
           <div id="ticketVal" class="amount" data-user-tickets>0</div>
           <div class="unit">TICKETS</div>
         </div>
-        <!-- 계정 기준 총 플레이 수 -->
+        <!-- 계정 기준 총 플레이 수 (프론트 합산 또는 백엔드 stats 기반) -->
         <div class="pill plays" title="총 플레이 수">
           <div class="icon">🎮</div>
           <div id="playVal" class="amount" data-user-plays>0</div>
           <div class="unit">PLAYS</div>
         </div>
-        <!-- SHOP 이동 버튼 -->
+        <!-- SHOP 이동 버튼(디자인 유지) -->
         <button class="pill shop" onclick="goShop()" title="상점">
           <div class="icon">🛍️</div>
           <div class="label">SHOP</div>
         </button>
-        <!-- RANKING 버튼 -->
+        <!-- RANKING 버튼 (SHOP 오른쪽, 동일 규격) -->
         <button class="pill rank" onclick="openRankingModal()" title="실시간 랭킹">
           <div class="icon">🏅</div>
           <div class="label">RANKING</div>
@@ -1153,7 +1112,7 @@
             </div>
           </div>
 
-          <!-- 게임 카드: 허브 메인 콘텐츠 -->
+          <!-- 게임 카드: 허브 메인 콘텐츠 (이 페이지에만 존재) -->
           <div class="rowTop">
             <div class="card" onclick="goGame('2048')">
               <div class="thumb">
@@ -1225,6 +1184,7 @@
             </div>
           </div>
 
+          <!-- ⛔ 기존 하단 가로형 광고 배너는 제거됨 -->
         </div>
       </main>
     </section>
@@ -1438,11 +1398,13 @@
     const BASE = "/";
     const AUTH_API_BASE = "/api/auth";
     const LEADERBOARD_API_BASE = "/api/leaderboard";
-    const WALLET_API_BASE = "/api/wallet";
+    const WALLET_API_BASE = "/api/wallet"; // ✅ 통합 지갑(/api/wallet) 연동 베이스
 
+    /* 경로 매핑 (각 게임에서 홈 버튼으로 돌아올 때 이 페이지가 로그인된 메인 허브 역할을 하도록 유지) */
     const GAME = {
       "2048":           BASE + "games/2048.html",
       "brick-breaker":  BASE + "games/brick-breaker.html",
+      // 👇 brick-match 옛 링크도 retro-match.html로 열리도록 alias 처리
       "retro-match":    BASE + "games/brick-match.html",
       "retro-running":  BASE + "games/retro-running.html",
       "tetris":         BASE + "games/tetris.html"
@@ -1459,8 +1421,10 @@
       window.location.href = BASE + "shop.html";
     }
 
+    /* 보상 집계 (coins/tickets/xp) – 계정 기반 + 로컬 fallback */
     const NUM = n => Number.isFinite(+n) ? +n : 0;
 
+    // 계정별 통합 통계(허브 기준 단일 소스)
     const ACCOUNT_TOTALS = {
       coins:   null,
       tickets: null,
@@ -1486,6 +1450,7 @@
       localStorage.setItem('rg_xp_cap',  t.xpCap);
     }
 
+    // 허브에서 사용하는 최종 합산값(계정값 우선, 없으면 로컬)
     function readTotals(){
       const local = readTotalsFromLocal();
       return {
@@ -1496,6 +1461,7 @@
       };
     }
 
+    // 프론트 전용 임시 보상(비로그인일 때만 의미, 로그인 계정 보상은 서버/DB가 기준)
     function addReward({coins=0,tickets=0,xp=0}={}){
       const base = readTotalsFromLocal();
       base.coins   += NUM(coins);
@@ -1505,6 +1471,7 @@
       renderHUD();
     }
 
+    /* HUD 렌더링 */
     function fmt(n){ return Number(n||0).toLocaleString('en-US'); }
 
     function renderHUD(){
@@ -1518,6 +1485,7 @@
       if (xpEl)     xpEl.textContent     = fmt(t.xp);
       if (ticketEl) ticketEl.textContent = fmt(t.tickets);
 
+      // 플레이 수는 계정 값이 있으면 그 값을, 없으면 로컬 누적값(rg_plays_total)을 사용
       const localPlays = NUM(localStorage.getItem('rg_plays_total') || 0);
       const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
       if (playEl) playEl.textContent = fmt(plays);
@@ -1534,7 +1502,9 @@
       if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap','rg_plays_total'].includes(e.key)) renderHUD();
     });
 
+    /* 로그인 상태 / 사용자 정보 확인 (허브 기준 계정 인식 + 통합 스탯 반영) */
     function redirectToLogin(){
+      // 현재는 자동으로 호출하지 않음 (필요 시 다른 버튼/링크에서 수동 호출용)
       try{
         const next = encodeURIComponent(location.pathname + location.search);
         window.location.href = BASE + "login.html?next=" + next;
@@ -1566,20 +1536,31 @@
       }
     }
 
+    // /api/auth/me 응답에서 계정 스탯 통합
     function applyAccountStatsFromUser(user){
       if(!user) return;
       const stats = user.stats || {};
       const coins   = NUM(
-        stats.points ?? stats.coins ?? stats.balance ?? 0
+        stats.points ??
+        stats.coins ??
+        stats.balance ??
+        0
       );
       const xp      = NUM(
-        stats.exp ?? stats.xp ?? 0
+        stats.exp ??
+        stats.xp ??
+        0
       );
       const tickets = NUM(
-        stats.tickets ?? stats.ticket ?? 0
+        stats.tickets ??
+        stats.ticket ??
+        0
       );
       const plays   = NUM(
-        stats.plays ?? stats.play_count ?? stats.totalPlays ?? 0
+        stats.plays ??
+        stats.play_count ??
+        stats.totalPlays ??
+        0
       );
       const xpCap   = stats.xpCap != null ? NUM(stats.xpCap) : null;
 
@@ -1590,6 +1571,7 @@
       ACCOUNT_TOTALS.plays   = plays;
       if (xpCap != null) ACCOUNT_TOTALS.xpCap = xpCap;
 
+      // 각 게임 진입 시 계정 티켓을 기준으로 사용할 수 있도록 로컬에도 미러링
       const localBase = readTotalsFromLocal();
       writeTotalsToLocal({
         coins:   coins,
@@ -1598,8 +1580,10 @@
         xpCap:   xpCap != null ? xpCap : localBase.xpCap,
       });
 
+      // HUD 갱신 (코인/XP/티켓/플레이 수)
       renderHUD();
 
+      // app.js가 로딩되어 있다면, RG.getStats()와도 자연스럽게 일치하도록 전역 허브 상태 제공
       try{
         window.RG_HUB = window.RG_HUB || {};
         window.RG_HUB.getAccountTotals = function(){
@@ -1615,6 +1599,7 @@
       }catch(e){}
     }
 
+    // ✅ 서버 지갑(/api/wallet)에서 최신 통합 스탯을 한 번 더 동기화 (있을 때만)
     async function syncWalletFromServer(){
       try{
         const res = await fetch(WALLET_API_BASE + "?summary=1", {
@@ -1656,6 +1641,7 @@
       }
     }
 
+    // 로그인 체크: 허브에서는 자동 리다이렉트 없이 "로그인된 계정의 허브" 역할만 수행
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
         const res = await fetch(AUTH_API_BASE + "/me", {
@@ -1668,6 +1654,7 @@
         });
 
         if(!res.ok){
+          // 비로그인/오류 → 게임은 그대로, 환영 문구/계정 HUD만 초기화
           updateUserGreeting(null);
           ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
           renderHUD();
@@ -1686,14 +1673,18 @@
           return;
         }
 
+        // 전역에 보관 (필요시 다른 스크립트에서 활용 가능)
         window.__RG_CURRENT_USER__ = data.user;
         updateUserGreeting(data.user);
         applyAccountStatsFromUser(data.user);
 
+        // app.js (window.RG)가 이미 초기화되어 있다면, 거기서도 계정 정보를 새로고침
         if (window.RG && typeof window.RG.getSession === "function") {
+          // 계정 단위 허브이기 때문에, 게임 → 홈으로 돌아온 직후에도 최신 스탯을 강제로 반영
           window.RG.getSession({ refresh: true }).catch(()=>{});
         }
 
+        // ✅ 로그인된 경우, /api/wallet 기준으로 한 번 더 통합 스탯 동기화
         syncWalletFromServer().catch(()=>{});
       }catch(err){
         console.error("auth check error", err);
@@ -1703,6 +1694,7 @@
       }
     };
 
+    // URL 파라미터 보상 (?coins=&tickets=&xp=)
     (function consumeQueryReward(){
       const p = new URLSearchParams(location.search);
       const c = NUM(p.get('coins'));
@@ -1714,6 +1706,7 @@
       }
     })();
 
+    // localStorage 큐 보상 (rg_reward)
     (function consumeQueuedReward(){
       const raw = localStorage.getItem('rg_reward');
       if(!raw) return;
@@ -1724,13 +1717,17 @@
       localStorage.removeItem('rg_reward');
     })();
 
+    // 페이지 진입 시: 로그인 정보만 확인해서 환영 문구 + 계정 스탯 업데이트 (리다이렉트 없음)
     (function(){
       const params = new URLSearchParams(location.search);
       if (params.get("code")) {
+        // OAuth 코드 교환이 끝난 후 ensureLoggedIn이 다시 호출됨
         return;
       }
       window.ensureLoggedIn();
     })();
+
+    /* ===== 랭킹 모달 로직 ===== */
 
     const RANK_GAMES = [
       { slug:"2048",          label:"2048" },
@@ -1738,6 +1735,7 @@
       { slug:"retro-match",   label:"Retro Match" },
       { slug:"retro-running", label:"Retro Runner" },
       { slug:"tetris",        label:"Tetris" }
+      // 필요 시 brick-match 등 추가 가능 (위에서 alias 처리)
     ];
 
     let currentRankingGame = "2048";
@@ -1877,6 +1875,7 @@
         });
 
         if(!res.ok){
+          // 실패 시 샘플 더미 데이터라도 보여줌
           console.warn("leaderboard api error", res.status);
           renderRankingPlaceholder();
           return;
@@ -1896,6 +1895,7 @@
           else if(Array.isArray(data.data)) list = data.data;
         }
 
+        // 백엔드가 아직 없을 경우 대비 더미 처리
         if(!list || !list.length){
           renderRankingPlaceholder();
           return;
@@ -1915,9 +1915,11 @@
       backdrop.classList.add("open");
       backdrop.setAttribute("aria-hidden","false");
 
+      // 초기 게임: 전달값 or 마지막 게임 or 기본 2048
       if(initialGame) currentRankingGame = initialGame;
       loadRanking(currentRankingGame);
 
+      // ESC로 닫기
       document.addEventListener("keydown", handleRankModalKeydown);
     }
 
@@ -1943,15 +1945,19 @@
       }
     }
 
+    // 전역에서 접근 가능하도록 export
     window.openRankingModal = openRankingModal;
     window.closeRankingModal = closeRankingModal;
 
+    // 백드롭 클릭으로 닫기
     (function(){
       const backdrop = document.getElementById("rankModalBackdrop");
       if(backdrop){
         backdrop.addEventListener("click", handleRankBackdropClick);
       }
     })();
+
+    /* ===== 설정 모달 로직 ===== */
 
     const SETTINGS_STORAGE_KEY = "rg_user_settings";
 
@@ -1964,6 +1970,7 @@
       gameHints:     true,
     };
 
+    // 설정에서 제어하는 애니메이션 on/off 플래그 (기본값 true)
     let fxEnabled = true;
 
     function loadSettings(){
@@ -2006,8 +2013,10 @@
     }
 
     function applySettingsToPage(settings){
+      // 배경 이펙트 on/off
       fxEnabled = settings.backgroundFx !== false;
 
+      // reduced motion은 추후 게임/애니메이션에서 참고할 수 있도록 class로만 표시
       try{
         if(settings.reducedMotion){
           document.documentElement.classList.add("rg-reduced-motion");
@@ -2016,6 +2025,7 @@
         }
       }catch(e){}
 
+      // 소리 관련 값은 전역 상태로만 넘겨둔다 (개별 게임에서 활용)
       try{
         window.RG_HUB = window.RG_HUB || {};
         window.RG_HUB.getSettings = function(){
@@ -2031,6 +2041,7 @@
       try{
         const backdrop = document.getElementById("settingsModalBackdrop");
         if(!backdrop) return;
+        // 최신 settings 다시 로드 (다른 탭에서 변경했을 수도 있음)
         currentSettings = loadSettings();
         syncSettingsUI(currentSettings);
         applySettingsToPage(currentSettings);
@@ -2076,6 +2087,7 @@
         backdrop.addEventListener("click", handleSettingsBackdropClick);
       }
 
+      // 토글 공통 핸들러
       const toggles = document.querySelectorAll(".settings-toggle");
       toggles.forEach(function(toggle){
         const input = toggle.querySelector("input[type='checkbox']");
@@ -2092,6 +2104,7 @@
 
         input.addEventListener("change", onChange);
         toggle.addEventListener("click", function(evt){
+          // label 클릭 시 중복으로 두 번 토글되는 것 방지
           if(evt.target === input) return;
           input.checked = !input.checked;
           onChange();
@@ -2112,13 +2125,16 @@
         }
       }catch(e){}
       try{
+        // 서버가 /logout 을 제공하는 경우를 대비해 시도
         window.location.href = BASE + "logout.html";
       }catch(e){}
     }
 
+    // 다른 스크립트에서도 사용 가능하도록 export
     window.openSettingsModal = openSettingsModal;
     window.closeSettingsModal = closeSettingsModal;
 
+    /* 배경 파티클 */
     const c=document.getElementById('fx');
     const g=c.getContext('2d');
 
@@ -2141,6 +2157,7 @@
       });
     }
 
+    // 설정에서 제어하는 애니메이션 on/off 플래그 (값은 applySettingsToPage에서 갱신)
     function loop(){
       g.clearRect(0,0,c.width,c.height);
       if(fxEnabled){
@@ -2160,6 +2177,7 @@
     }
     loop();
 
+    /* 외부 적립 호출 예 (각 게임에서 window.RG_addReward 호출 시 허브 HUD에 반영) */
     window.RG_addReward = addReward;
   </script>
 
@@ -2207,6 +2225,7 @@
           provider = document.referrer.includes('naver') ? 'naver' : 'kakao';
         }
 
+        // Cloudflare Pages Functions 경로로 통일
         var endpoint = provider === 'naver'
           ? AUTH_API_BASE + '/oauth/naver/callback'
           : AUTH_API_BASE + '/oauth/kakao/callback';
@@ -2224,9 +2243,12 @@
           try{ data = await r.json(); }catch(e){}
           if(!r.ok || !data || !data.ok){
             console.error('OAuth callback failed', r.status, data);
+            // 실패해도 로그인 페이지로 자동 이동하지 않음
             return;
           }
+          // 쿼리 스트립
           history.replaceState({}, "", location.pathname);
+          // 유저 정보 반영: 허브 기준 계정 스탯 + 헤더/상단 HUD 갱신
           if (typeof window.ensureLoggedIn === "function") {
             window.ensureLoggedIn();
           }
@@ -2235,12 +2257,12 @@
           }catch(e){}
         }).catch(function(err){
           console.error('OAuth error', err);
+          // 에러 발생 시에도 자동 리다이렉트 없음
         });
       }catch(e){}
     })();
   </script>
 
-  <!-- ✅ 전역 푸터 partial 주입 위치 -->
-  <div id="site-footer"></div>
+  <!-- ✅ 전역 푸터 partial 주입 위치 (페이지 본문에는 허브 카드만 존재) -->
 </body>
 </html>

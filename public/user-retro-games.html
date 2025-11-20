@@ -982,12 +982,17 @@
       }
     }
 
-    /* ✅ 상단 sitemap 영역 숨기기 (헤더 partial 내 sitemap 가정 클래스 전체 차단) */
+    /* ✅ 상단/하단 sitemap 영역 숨기기 (header/footer partial 내 sitemap 전부 차단) */
     #site-header .sitemap,
     #site-header .site-map,
     #site-header .nav-sitemap,
     #site-header [data-role="sitemap"],
-    #site-header [data-section="sitemap"]{
+    #site-header [data-section="sitemap"],
+    #site-footer .sitemap,
+    #site-footer .site-map,
+    #site-footer .nav-sitemap,
+    #site-footer [data-role="sitemap"],
+    #site-footer [data-section="sitemap"]{
       display:none !important;
     }
 

@@ -304,7 +304,28 @@
 
   /* ───────────────────────────── 네비게이션 ───────────────────────────── */
   const nav = (path) => { location.href = path; };
-  const goHome      = () => nav('index.html');
+
+  /**
+   * ✅ 전역 홈 이동
+   * - 로그인 되어 있으면: user-retro-games.html (로그인 후 허브)
+   * - 로그인 안 되어 있으면: index.html (비로그인 메인)
+   *
+   * 모든 페이지(상점 포함)에서 홈 버튼이 이 로직을 사용하도록 통합.
+   */
+  const goHome = async () => {
+    try {
+      const me = await getSession();
+      if (me) {
+        nav('user-retro-games.html');
+      } else {
+        nav('index.html');
+      }
+    } catch (e) {
+      if (CFG.debug) console.warn('[nav] goHome failed, fallback to index', e);
+      nav('index.html');
+    }
+  };
+
   const goLogin     = () => nav('login.html');
   const goSignup    = () => nav('signup.html');
   const goShop      = () => nav('shop.html');

@@ -34,7 +34,7 @@
 </script>
 <!-- === /Common SEO/A11y === -->
 
-<!-- AdSense 스니펫(요청 그대로, 실제 클라이언트 ID 적용) -->
+<!-- AdSense 스니펫 -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
   
@@ -534,7 +534,7 @@
 </style>
 </head>
 
-<!-- 공통 JS: 절대경로로 로드 -->
+<!-- 공통 JS -->
 <script defer src="/assets/js/app.js"></script>
 <script defer src="/assets/js/analytics.js"></script>
 
@@ -688,8 +688,8 @@
 
 <script>
 /***** AdSense 연동 *****/
-const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 메타/스니펫과 동일
-const AD_SLOT   = ''; // TODO: 실제 애드센스 광고 유닛 slot ID로 교체하면 개별 광고 노출 가능
+const AD_CLIENT = 'ca-pub-6713974265397310';
+const AD_SLOT   = '';
 
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
@@ -799,9 +799,12 @@ function saveJSON(k,v){
 function updateTicketUI(){
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
   const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  $('#ticketsAmt').textContent=tickets;
-  $('#ticketsCap').textContent=(plays%10)+' / 10';
-  $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
+  const amt = document.getElementById('ticketsAmt');
+  const cap = document.getElementById('ticketsCap');
+  const bar = document.getElementById('ticketsBar');
+  if(amt) amt.textContent=tickets;
+  if(cap) cap.textContent=(plays%10)+' / 10';
+  if(bar) bar.style.width = (((plays%10)/10*100).toFixed(1))+'%';
 }
 
 /***** 플레이/티켓 카운트 & 광고 주기 (3회당 1회) *****/
@@ -812,7 +815,6 @@ function addPlay(){
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
-  /* 🔁 3회 플레이마다 인터스티셜 광고 노출 */
   if(plays % 3 === 0){ showInterstitialAd(); }
 }
 
@@ -845,23 +847,6 @@ function difficultyMult(){
 }
 
 /***** 🔗 RG Wallet 공통 허브 연동 *****/
-/**
- * /api/wallet 스펙 (게임 공통 허브)
- * 1) SYNC
- *   POST /api/wallet
- *   { "action": "SYNC", "gameId": "tetris" }
- *
- * 2) ADD_REWARD
- *   POST /api/wallet
- *   {
- *     "action": "ADD_REWARD",
- *     "gameId": "tetris",
- *     "score": number,
- *     "reward": number,
- *     "reason": "GAME_CLEAR",
- *     "meta": { ... }
- *   }
- */
 const RG_WALLET_ENDPOINT = '/api/wallet';
 const RG_GAME_ID         = 'tetris';
 
@@ -982,7 +967,7 @@ async function RG_addReward(payload){
   };
 
   function levelParams(lv){
-    const g = Math.max(30, Math.round(1000 * Math.pow(0.92, lv-1))); // ms per row
+    const g = Math.max(30, Math.round(1000 * Math.pow(0.92, lv-1)));
     const lock = Math.max(60, 600 - lv*8);
     let garbageSec=null;
     if(lv>=40 && lv<50) garbageSec=10;
@@ -1017,36 +1002,37 @@ async function RG_addReward(payload){
 
       this.score=0; this.lines=0; this.level=1; this.params=levelParams(1);
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-      this.running=false; this.paused=false;
+      this.running=true;          // ✅ 초기 진입 시 바로 게임 동작
+      this.paused=false;
       this.last=0; this.dropAcc=0; this.lockAcc=0; this.garbageTimer=0;
 
-      /* 포인트 상태 */
-      this.points=0; this.combo=0; this.lastB2BEligible=false; this.lastRotate=false; this.usedKick=false;
+      this.points=0; this.combo=0; this.lastB2BEligible=false;
+      this.lastRotate=false; this.usedKick=false;
 
-      /* ✅ 소프트드롭 상태 */
       this.softDrop=false; this.softAcc=0; this.softInterval=0.02;
 
       this.resize(); this.bindDeck(); this.bindKeys();
-      this.spawn(); this.uiSync(); this.updatePointsUI();
+      this.reset();                 // ✅ 캔버스/상태 초기화 + spawn 포함
+      this.uiSync(); this.updatePointsUI();
       requestAnimationFrame(t=>this.loop(t));
       window.addEventListener('resize',()=>this.resize(),{passive:true});
 
-      /* ✅ 세션 시작 */
-      notifyStart();
+      notifyStart();                // 세션 시작 콜백
     }
 
     /* ---------- Layout / UI ---------- */
     resize(){
       const wrap=document.getElementById('canvasWrap');
+      if(!wrap) return;
       const d=DPR();
       const r=wrap.getBoundingClientRect();
-      const targetH=Math.min(r.height, r.width*2);
+      const targetH=Math.min(r.height || 480, (r.width || 320)*2);
       const targetW=targetH/2;
       this.c.style.width=targetW+'px';
       this.c.style.height=targetH+'px';
       this.c.width=Math.floor(targetW*d);
       this.c.height=Math.floor(targetH*d);
-      this.cell=Math.floor((this.c.height)/(VISIBLE_ROWS));
+      this.cell=Math.max(8, Math.floor((this.c.height)/(VISIBLE_ROWS)));
       this.offsetX=Math.floor((this.c.width - (COLS*this.cell))/2);
       this.offsetY=Math.floor((this.c.height - (VISIBLE_ROWS*this.cell))/2);
     }
@@ -1078,7 +1064,6 @@ async function RG_addReward(payload){
       });
       $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver()));
 
-      /* HOME: 광고 후 메인 허브로 이동 */
       $('#homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/user-retro-games.html'; }));
 
       const tier=$('#tier'), lvl=$('#lvlRange');
@@ -1168,7 +1153,11 @@ async function RG_addReward(payload){
       this.points=0; this.combo=0; this.lastB2BEligible=false;
       this.lastRotate=false; this.usedKick=false;
       this.softDrop=false; this.softAcc=0;
-      $('#gameOver').style.display='none';
+      this.running=true; this.paused=false;
+
+      const ov=document.getElementById('gameOver');
+      if(ov) ov.style.display='none';
+
       this.spawn(); this.uiSync(); this.updatePointsUI();
     }
 
@@ -1242,7 +1231,6 @@ async function RG_addReward(payload){
         localStorage.setItem(LS_KEYS.best, String(this.best));
       }
 
-      // ---- 포인트 모델 ----
       const mult = difficultyMult();
       const tInfo = this.detectTSpin(cleared);
       let baseP = 0, eligible=false;
@@ -1323,7 +1311,6 @@ async function RG_addReward(payload){
       }
     }
 
-    // --- 간이 T-Spin 판정 ---
     detectTSpin(linesCleared){
       if(this.current.type!=='T') return {is:false, mini:false};
       if(!this.lastRotate) return {is:false, mini:false};
@@ -1349,14 +1336,13 @@ async function RG_addReward(payload){
     }
 
     gameOver(){
+      if(!this.running) return;
       this.running=false;
       this.paused=false;
 
-      // 기록/티켓 로컬 처리
       addRecord(this.score, this.points);
       addPlay();
 
-      // 🔗 서버 통합 지갑에 보상 적립
       const finalScore = this.score|0;
       const earnedPoints = this.points|0;
 
@@ -1378,7 +1364,6 @@ async function RG_addReward(payload){
       const ov=document.getElementById('gameOver'); 
       if(ov) ov.style.display='flex';
 
-      /* ✅ 세션 종료 */
       notifyFinish(this.score|0);
     }
 
@@ -1390,7 +1375,6 @@ async function RG_addReward(payload){
         this.dropAcc += dt;
         this.lockAcc += dt*1000;
 
-        // 기본 중력 낙하
         if(this.dropAcc >= gsec){
           if(!this.move(0,1)){
             if(this.lockAcc >= this.params.lockDelay){ this.lock(); }
@@ -1400,7 +1384,6 @@ async function RG_addReward(payload){
           this.dropAcc = 0;
         }
 
-        // ✅ 소프트드롭: ↓ 누르는 동안 빠르게 연속 하강
         if(this.softDrop){
           this.softAcc += dt;
           while(this.softAcc >= this.softInterval){
@@ -1427,14 +1410,13 @@ async function RG_addReward(payload){
 
     draw(){
       const ctx=this.ctx;
-      const cell=this.cell;
+      const cell=this.cell || 16;
       ctx.clearRect(0,0,this.c.width,this.c.height);
       ctx.fillStyle='#000';
       ctx.fillRect(0,0,this.c.width,this.c.height);
       ctx.fillStyle='#0c122b';
       ctx.fillRect(this.offsetX, this.offsetY, COLS*cell, VISIBLE_ROWS*cell);
 
-      // grid lines
       ctx.save();
       ctx.globalAlpha=0.15;
       ctx.strokeStyle='#6f7cff';
@@ -1452,7 +1434,6 @@ async function RG_addReward(payload){
       }
       ctx.restore();
 
-      // placed blocks
       for(let y=2;y<ROWS;y++){
         for(let x=0;x<COLS;x++){
           const t=this.grid[y][x];
@@ -1460,7 +1441,6 @@ async function RG_addReward(payload){
           this.drawCell(x,y-2,t);
         }
       }
-      // current piece
       if(this.current){
         for(const b of this.current.blocks){
           const x=this.current.x+b.x, y=this.current.y+b.y;
@@ -1468,7 +1448,6 @@ async function RG_addReward(payload){
         }
       }
 
-      // CRT scanlines
       ctx.globalAlpha=0.12;
       ctx.fillStyle='#000';
       for(let yy=0; yy<this.c.height; yy+=2){
@@ -1479,7 +1458,7 @@ async function RG_addReward(payload){
 
     drawCell(x,y,type){
       const ctx=this.ctx;
-      const cell=this.cell;
+      const cell=this.cell || 16;
       const px=this.offsetX + x*cell;
       const py=this.offsetY + y*cell;
       const c=COLORS[type]||'#8aa0ff';
@@ -1498,7 +1477,6 @@ async function RG_addReward(payload){
 
   const game=new Tetris(document.getElementById('game'));
   updateTicketUI();
-  // ✅ 페이지 진입 시 서버 기준 통합 지갑 상태 동기화
   RG_syncWalletHUD();
 })();
 
@@ -1523,7 +1501,7 @@ document.getElementById('recModal').addEventListener('click',e=>{
   if(e.target.id==='recModal') $('#recModal').style.display='none';
 });
 
-/***** ✅ 세션 훅: ESM 없이 안전 호출 *****/
+/***** ✅ 세션 훅 *****/
 function notifyStart(){
   try{
     if (typeof window.gameStart === 'function') window.gameStart('tetris');
@@ -1535,7 +1513,7 @@ function notifyFinish(finalScore){
   }catch(e){}
 }
 
-/***** 가시성 훅: 탭 이탈 시 일시정지 등 연결 지점 *****/
+/***** 가시성 훅 *****/
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     // 필요 시 추가 로깅/기록 처리
@@ -1562,7 +1540,7 @@ document.addEventListener('visibilitychange', () => {
         if(el) el.style.display='none';
         return;
       }
-      if(!el){ return; } // no banner -> do not init
+      if(!el){ return; }
       el.style.display='flex';
       var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
       if(agree) agree.addEventListener('click', function(){

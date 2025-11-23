@@ -171,7 +171,6 @@
       display:grid;
       place-items:center;
       border-radius:50%;
-      /* 여기 수정: #3a7fff → #3a7bff */
       background:radial-gradient(circle at 30% 30%,#8bb3ff,#3a7bff);
       box-shadow:0 0 10px #6fb0ffaa;
       font-size:14px;
@@ -364,7 +363,7 @@
       position:fixed;
       top:50%;
       transform:translateY(-50%);
-      width:160px;      /* 세로 배너 폭 (예: 160x600) */
+      width:160px;
       height:600px;
       display:flex;
       align-items:center;
@@ -391,7 +390,6 @@
     .sideAd-right{
       right:8px;
     }
-    /* 좁은 화면에서는 세로 배너 숨김 처리 */
     @media (max-width:1280px){
       .sideAd{display:none;}
     }
@@ -422,19 +420,15 @@
     }
 
     /* 반응형 보완 */
-
     @media (max-width:1200px){
       .hudTop{left:18px;gap:8px;}
     }
-
     @media (max-width:1024px){
       .auth{right:18px;}
       .rowTop{gap:24px;}
       .stack{transform:translateY(-24px);}
       .goldBtn{min-width:min(84vw,720px);}
     }
-
-    /* 태블릿 / 작은 노트북: 헤더 요소가 겹치지 않도록 재배치 */
     @media (max-width:860px){
       header{
         padding-top:calc(16px + var(--safe-top));
@@ -461,7 +455,6 @@
         margin-top:4px;
       }
     }
-
     @media (max-width:680px){
       .stack{transform:translateY(-16px);}
       .goldBtn{
@@ -488,7 +481,6 @@
         max-width:260px;
       }
     }
-
     @media (max-width:480px){
       main{
         padding:0 14px 10px;
@@ -507,8 +499,6 @@
         font-size:16px;
       }
     }
-
-    /* 데스크톱(넓은 화면)에서 카드 5개를 컨테이너 안에 균등 정렬하기 위한 보정 */
     @media (min-width:1024px){
       .rowTop{
         display:grid;
@@ -516,7 +506,7 @@
         gap:28px;
         justify-content:center;
         align-items:stretch;
-        overflow:visible; /* 데스크톱에서는 가로 스크롤 불필요 */
+        overflow:visible;
       }
       .rowTop .card{
         flex:none;
@@ -621,7 +611,6 @@
     .rank-modal-close:hover{
       filter:brightness(1.05);
     }
-
     .rank-game-tabs{
       display:flex;
       flex-wrap:wrap;
@@ -650,7 +639,6 @@
       text-shadow:0 0 6px rgba(255,240,160,.8);
       opacity:1;
     }
-
     .rank-table-wrap{
       flex:1;
       min-height:200px;
@@ -732,7 +720,6 @@
       opacity:.9;
       color:#ffd86a;
     }
-
     .rank-modal-footer{
       margin-top:8px;
       font-size:11px;
@@ -752,7 +739,6 @@
       letter-spacing:.2px;
       opacity:.9;
     }
-
     @media (max-width:640px){
       .rank-modal{
         padding:14px 12px 14px;
@@ -834,7 +820,6 @@
     .settings-close-btn:hover{
       filter:brightness(1.05);
     }
-
     .settings-body{
       flex:1;
       overflow:auto;
@@ -894,8 +879,6 @@
       font-size:11px;
       opacity:.78;
     }
-
-    /* 토글 스위치 */
     .settings-toggle{
       position:relative;
       width:44px;
@@ -934,7 +917,6 @@
       transform:translateX(20px);
       background:radial-gradient(circle at 30% 30%,#fffdf0,#fff1a8);
     }
-
     .settings-footer{
       margin-top:10px;
       font-size:11px;
@@ -954,7 +936,6 @@
       letter-spacing:.2px;
       opacity:.9;
     }
-
     .settings-actions-row{
       display:flex;
       flex-wrap:wrap;
@@ -982,7 +963,6 @@
     .settings-action-btn:hover{
       filter:brightness(1.05);
     }
-
     @media (max-width:640px){
       .settings-modal{
         padding:14px 12px 14px;
@@ -990,10 +970,373 @@
       }
     }
 
+    /* ===== SHOP 모달 (shop.html 디자인을 팝업으로 재현) ===== */
+    .shop-modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.78);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9200;
+    }
+    .shop-modal-backdrop.open{
+      display:flex;
+    }
+    .shop-modal{
+      width:min(1024px,96vw);
+      max-height:86vh;
+      border-radius:22px;
+      background:radial-gradient(circle at 0% -40%,#402890,#050015 70%);
+      box-shadow:0 0 40px rgba(0,0,0,.9),0 0 40px rgba(60,120,255,.8);
+      border:2px solid #3e2b7b;
+      padding:18px 20px 18px;
+      display:flex;
+      flex-direction:column;
+      color:#e4e7ff;
+    }
+    .shop-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .shop-title-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .shop-title{
+      font-size:18px;
+      font-weight:900;
+      color:var(--gold1);
+      text-shadow:0 0 12px #ffdc7a;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .shop-sub{
+      font-size:12px;
+      opacity:.85;
+    }
+    .shop-close-btn{
+      border-radius:999px;
+      border:1px solid #3040a8;
+      background:linear-gradient(180deg,#1b2b7f,#0b164f);
+      color:#e9f0ff;
+      font-size:13px;
+      font-weight:800;
+      padding:6px 10px;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 4px 10px rgba(0,0,0,.5);
+    }
+    .shop-close-btn:hover{
+      filter:brightness(1.05);
+    }
+    .shop-top-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+      margin-bottom:8px;
+    }
+    .shop-counters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .shop-counter-pill{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:14px;
+      border:1px solid #3140a8;
+      background:linear-gradient(180deg,#0a1436,#050819);
+      box-shadow:0 6px 12px rgba(0,0,0,.55),inset 0 0 16px rgba(0,0,0,.7);
+      font-size:11px;
+    }
+    .shop-counter-icon{
+      font-size:14px;
+    }
+    .shop-counter-main{
+      font-weight:800;
+      font-size:13px;
+    }
+    .shop-counter-unit{
+      font-size:11px;
+      opacity:.8;
+    }
+    .shop-controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .shop-filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .shop-filter-btn{
+      padding:5px 10px;
+      border-radius:999px;
+      border:1px solid #3240a8;
+      background:linear-gradient(180deg,#0d1638,#060c24);
+      font-size:11px;
+      font-weight:700;
+      cursor:pointer;
+      opacity:.78;
+      white-space:nowrap;
+    }
+    .shop-filter-btn span.tag{
+      font-weight:800;
+      margin-right:4px;
+      color:#ffdf6e;
+    }
+    .shop-filter-btn.active{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#321c00;
+      border-color:#7a5600;
+      text-shadow:0 0 6px rgba(255,240,160,.8);
+      opacity:1;
+    }
+    .shop-sort{
+      display:flex;
+      align-items:center;
+      gap:4px;
+      font-size:11px;
+      opacity:.86;
+    }
+    .shop-sort select{
+      background:linear-gradient(180deg,#0c1432,#05091b);
+      border-radius:999px;
+      border:1px solid #3240a8;
+      padding:4px 8px;
+      color:#e4e7ff;
+      font-size:11px;
+      outline:none;
+    }
+    .shop-grid{
+      flex:1;
+      margin-top:8px;
+      border-radius:14px;
+      border:1px solid #283474;
+      background:linear-gradient(180deg,#05081c,#050314);
+      box-shadow:inset 0 0 18px rgba(0,0,0,.7);
+      padding:10px 10px 8px;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+      gap:10px;
+    }
+    .shop-card{
+      position:relative;
+      border-radius:14px;
+      border:1px solid #3040a8;
+      background:radial-gradient(circle at 0% -40%,#27215a,#050015 70%);
+      box-shadow:0 8px 18px rgba(0,0,0,.65);
+      padding:10px 10px 9px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:12px;
+    }
+    .shop-card-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:6px;
+    }
+    .shop-card-title-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .shop-card-title{
+      font-size:13px;
+      font-weight:800;
+    }
+    .shop-card-sub{
+      font-size:11px;
+      opacity:.8;
+    }
+    .shop-card-badge{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid #ffcf4a;
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#321c00;
+      font-size:10px;
+      font-weight:800;
+      text-transform:uppercase;
+      box-shadow:0 0 10px rgba(255,220,120,.8);
+      white-space:nowrap;
+    }
+    .shop-card-meta{
+      font-size:11px;
+      opacity:.85;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:6px;
+    }
+    .shop-card-meta-left{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .shop-card-tag{
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.2px;
+      opacity:.85;
+    }
+    .shop-card-duration{
+      font-size:11px;
+      opacity:.9;
+    }
+    .shop-card-meta-right{
+      font-size:10px;
+      opacity:.8;
+      text-align:right;
+    }
+    .shop-card-price-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:6px;
+      margin-top:4px;
+    }
+    .shop-card-price-main{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      font-size:11px;
+    }
+    .shop-card-price-unit{
+      font-size:11px;
+      opacity:.82;
+    }
+    .shop-card-price-value{
+      font-size:13px;
+      font-weight:800;
+      color:#ffdf6e;
+      text-shadow:0 0 8px rgba(255,220,120,.8);
+    }
+    .shop-card-actions{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      justify-content:flex-end;
+      margin-top:4px;
+    }
+    .shop-buy-btn{
+      border-radius:999px;
+      border:1px solid #3040a8;
+      background:linear-gradient(180deg,#1b2b7f,#0b164f);
+      color:#e9f0ff;
+      font-size:11px;
+      font-weight:700;
+      padding:6px 10px;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 4px 10px rgba(0,0,0,.5);
+    }
+    .shop-buy-btn.primary{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#321c00;
+      border-color:#7a5600;
+      text-shadow:0 0 6px rgba(255,240,170,.85);
+    }
+    .shop-buy-btn:hover{
+      filter:brightness(1.05);
+    }
+    .shop-empty{
+      grid-column:1/-1;
+      text-align:center;
+      font-size:12px;
+      opacity:.85;
+      padding:18px 8px;
+    }
+    .shop-footer-note{
+      margin-top:8px;
+      font-size:11px;
+      opacity:.78;
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .shop-footer-note span.badge{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid #3240a8;
+      background:linear-gradient(180deg,#0b1337,#05091f);
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.2px;
+      opacity:.9;
+    }
+
+    .shop-toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      max-width:min(420px,90vw);
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid #3240a8;
+      background:radial-gradient(circle at 0% -40%,#26346f,#050015 70%);
+      box-shadow:0 10px 22px rgba(0,0,0,.75);
+      font-size:12px;
+      z-index:9300;
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .shop-toast.show{
+      display:flex;
+    }
+    .shop-toast-message{
+      flex:1;
+    }
+    .shop-toast-close{
+      border:none;
+      background:transparent;
+      color:#e4e7ff;
+      font-size:13px;
+      cursor:pointer;
+    }
+
+    @media (max-width:640px){
+      .shop-modal{
+        padding:14px 12px 14px;
+      }
+      .shop-grid{
+        grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+      }
+      .shop-top-row{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .shop-controls{
+        justify-content:flex-start;
+      }
+    }
+
     /* layout notes:
-       - flex 기반 모바일/태블릿 유지
-       - 데스크톱에서 grid로 5등분 정렬, 카드 이탈 방지
-       - 기존 색상/그라데이션/섀도우 등 시각 스타일은 모두 유지 */
+       - 기존 hub 레이아웃/디자인/비율 유지
+       - shop.html 레이아웃을 모달 내부에서 동일하게 재현
+       - 구매는 AJAX(fetch) 기반으로만 동작, 페이지 이동 없음 */
   </style>
 </head>
 
@@ -1006,11 +1349,11 @@
   <div class="sideAd sideAd-left" aria-label="광고 배너(좌측)">
     <div class="sideAd-inner">
       <ins class="adsbygoogle"
-           style="display:block;width:100%;height:100%;"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot=""
-           data-ad-format="auto"
-           data-full-width-responsive="false"></ins>
+        style="display:block;width:100%;height:100%;"
+        data-ad-client="ca-pub-6713974265397310"
+        data-ad-slot=""
+        data-ad-format="auto"
+        data-full-width-responsive="false"></ins>
       <script>
         try{
           (adsbygoogle = window.adsbygoogle || []).push({});
@@ -1025,11 +1368,11 @@
   <div class="sideAd sideAd-right" aria-label="광고 배너(우측)">
     <div class="sideAd-inner">
       <ins class="adsbygoogle"
-           style="display:block;width:100%;height:100%;"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot=""
-           data-ad-format="auto"
-           data-full-width-responsive="false"></ins>
+        style="display:block;width:100%;height:100%;"
+        data-ad-client="ca-pub-6713974265397310"
+        data-ad-slot=""
+        data-ad-format="auto"
+        data-full-width-responsive="false"></ins>
       <script>
         try{
           (adsbygoogle = window.adsbygoogle || []).push({});
@@ -1046,36 +1389,31 @@
       <div class="hudTop" aria-label="보상 현황">
         <div class="pill coins" title="보유 코인(포인트)">
           <div class="icon">🪙</div>
-          <!-- 계정 포인트/코인: app.js 에서 data-user-points로도 갱신 -->
           <div id="coinVal" class="amount" data-user-points>0</div>
           <div class="unit">COINS</div>
         </div>
         <div class="pill xp" title="경험치">
           <div class="icon">🏆</div>
-          <!-- 계정 경험치: app.js 에서 data-user-exp로도 갱신 -->
           <div id="xpVal" class="amount" data-user-exp>0</div>
           <div class="unit">XP</div>
           <span id="xpCap" class="sr-only">/ 20K</span>
           <span class="sr-only" aria-hidden="true"><span id="xpBar"></span></span>
         </div>
-        <!-- 계정 보유 티켓 -->
         <div class="pill tickets" title="보유 티켓">
           <div class="icon">🎟️</div>
           <div id="ticketVal" class="amount" data-user-tickets>0</div>
           <div class="unit">TICKETS</div>
         </div>
-        <!-- 계정 기준 총 플레이 수 (프론트 합산 또는 백엔드 stats 기반) -->
         <div class="pill plays" title="총 플레이 수">
           <div class="icon">🎮</div>
           <div id="playVal" class="amount" data-user-plays>0</div>
           <div class="unit">PLAYS</div>
         </div>
-        <!-- SHOP 이동 버튼(디자인 유지) -->
-        <button class="pill shop" onclick="goShop()" title="상점">
+        <!-- SHOP 버튼: 페이지 이동 대신 팝업 모달 열기 -->
+        <button class="pill shop" onclick="openShopModal()" title="상점">
           <div class="icon">🛍️</div>
           <div class="label">SHOP</div>
         </button>
-        <!-- RANKING 버튼 (SHOP 오른쪽, 동일 규격) -->
         <button class="pill rank" onclick="openRankingModal()" title="실시간 랭킹">
           <div class="icon">🏅</div>
           <div class="label">RANKING</div>
@@ -1084,10 +1422,8 @@
 
       <div class="title">🎮 RETRO GAMES</div>
       <div class="subtitle">오늘의 미니게임을 선택하세요!</div>
-      <!-- 로그인 사용자 이름/닉네임 표시 -->
       <div id="userGreeting" class="subtitle user-greeting" aria-live="polite"></div>
 
-      <!-- 우측: 설정 -->
       <div class="auth">
         <button class="authbtn" type="button" onclick="openSettingsModal()">⚙️ 설정</button>
       </div>
@@ -1098,7 +1434,6 @@
     <section class="content">
       <main>
         <div class="stack">
-          <!-- 오늘의 행운 -->
           <div class="ctaWrap">
             <div
               class="goldBtn"
@@ -1112,7 +1447,6 @@
             </div>
           </div>
 
-          <!-- 게임 카드: 허브 메인 콘텐츠 (이 페이지에만 존재) -->
           <div class="rowTop">
             <div class="card" onclick="goGame('2048')">
               <div class="thumb">
@@ -1183,8 +1517,6 @@
               <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
           </div>
-
-          <!-- ⛔ 기존 하단 가로형 광고 배너는 제거됨 -->
         </div>
       </main>
     </section>
@@ -1209,9 +1541,7 @@
         <button type="button" class="rank-modal-close" onclick="closeRankingModal()">닫기 ✕</button>
       </div>
 
-      <div class="rank-game-tabs" id="rankGameTabs" role="tablist" aria-label="게임 선택">
-        <!-- JS에서 탭 자동 생성 -->
-      </div>
+      <div class="rank-game-tabs" id="rankGameTabs" role="tablist" aria-label="게임 선택"></div>
 
       <div class="rank-table-wrap">
         <div class="rank-table-head">
@@ -1252,12 +1582,9 @@
       </div>
 
       <div class="settings-body">
-        <!-- 소리 설정 -->
         <section class="settings-section" aria-label="소리 설정">
           <div class="settings-section-header">
-            <div class="settings-section-title">
-              🔊 소리 설정
-            </div>
+            <div class="settings-section-title">🔊 소리 설정</div>
           </div>
           <div class="settings-section-desc">
             효과음 및 배경 음악 사용 여부를 선택합니다. 일부 게임의 세부 볼륨 조절은 각 게임 내 옵션을 따릅니다.
@@ -1286,12 +1613,9 @@
           </div>
         </section>
 
-        <!-- 애니메이션 설정 -->
         <section class="settings-section" aria-label="애니메이션 설정">
           <div class="settings-section-header">
-            <div class="settings-section-title">
-              ✨ 애니메이션 설정
-            </div>
+            <div class="settings-section-title">✨ 애니메이션 설정</div>
           </div>
           <div class="settings-section-desc">
             배경 이펙트 및 일부 인터랙션 애니메이션을 줄여 눈의 피로를 줄일 수 있습니다.
@@ -1320,12 +1644,9 @@
           </div>
         </section>
 
-        <!-- 게임 설정 -->
         <section class="settings-section" aria-label="게임 설정">
           <div class="settings-section-header">
-            <div class="settings-section-title">
-              🎮 게임 설정
-            </div>
+            <div class="settings-section-title">🎮 게임 설정</div>
           </div>
           <div class="settings-section-desc">
             게임 시작 전 안내 및 힌트 표시 여부를 선택합니다. 각 게임별 고급 옵션은 추후 업데이트됩니다.
@@ -1354,12 +1675,9 @@
           </div>
         </section>
 
-        <!-- 계정 관련 -->
         <section class="settings-section" aria-label="계정 설정">
           <div class="settings-section-header">
-            <div class="settings-section-title">
-              👤 계정 관련
-            </div>
+            <div class="settings-section-title">👤 계정 관련</div>
           </div>
           <div class="settings-section-desc">
             내 정보 및 로그아웃, 계정 전환 등의 작업으로 이동합니다.
@@ -1394,17 +1712,102 @@
     </div>
   </div>
 
+  <!-- ✅ SHOP 모달 (shop.html을 동일 UI로 팝업화) -->
+  <div id="shopModalBackdrop" class="shop-modal-backdrop" aria-hidden="true">
+    <div class="shop-modal" role="dialog" aria-modal="true" aria-labelledby="shopModalTitle">
+      <div class="shop-header">
+        <div class="shop-title-wrap">
+          <div id="shopModalTitle" class="shop-title">
+            <span>🛍️ RETRO SHOP</span>
+          </div>
+          <div class="shop-sub">
+            보유 코인·티켓으로 광고 제거, 경험치 부스트 등 각종 아이템을 구매할 수 있습니다.
+          </div>
+        </div>
+        <button type="button" class="shop-close-btn" onclick="closeShopModal()">닫기 ✕</button>
+      </div>
+
+      <div class="shop-top-row">
+        <div class="shop-counters" aria-label="보유 재화">
+          <div class="shop-counter-pill">
+            <span class="shop-counter-icon">🪙</span>
+            <div>
+              <div class="shop-counter-main" id="shopCoinsVal">0</div>
+              <div class="shop-counter-unit">COINS</div>
+            </div>
+          </div>
+          <div class="shop-counter-pill">
+            <span class="shop-counter-icon">🎟️</span>
+            <div>
+              <div class="shop-counter-main" id="shopTicketsVal">0</div>
+              <div class="shop-counter-unit">TICKETS</div>
+            </div>
+          </div>
+          <div class="shop-counter-pill">
+            <span class="shop-counter-icon">🏆</span>
+            <div>
+              <div class="shop-counter-main" id="shopXpVal">0</div>
+              <div class="shop-counter-unit">XP</div>
+            </div>
+          </div>
+        </div>
+        <div class="shop-controls">
+          <div class="shop-filters" id="shopFilterRow" role="tablist" aria-label="카테고리 선택">
+            <button type="button" class="shop-filter-btn active" data-filter="all">
+              <span class="tag">ALL</span><span>전체</span>
+            </button>
+            <button type="button" class="shop-filter-btn" data-filter="ads">
+              <span class="tag">ADS</span><span>광고 제거</span>
+            </button>
+            <button type="button" class="shop-filter-btn" data-filter="xp">
+              <span class="tag">XP</span><span>경험치 부스트</span>
+            </button>
+            <button type="button" class="shop-filter-btn" data-filter="coins">
+              <span class="tag">COIN</span><span>코인 충전</span>
+            </button>
+            <button type="button" class="shop-filter-btn" data-filter="tickets">
+              <span class="tag">TICKET</span><span>티켓 패스</span>
+            </button>
+            <button type="button" class="shop-filter-btn" data-filter="special">
+              <span class="tag">SP</span><span>스페셜</span>
+            </button>
+          </div>
+          <div class="shop-sort">
+            <span>정렬:</span>
+            <select id="shopSortSelect" aria-label="정렬 방식 선택">
+              <option value="recommended">추천순</option>
+              <option value="priceLow">가격 낮은순</option>
+              <option value="priceHigh">가격 높은순</option>
+              <option value="duration">지속시간순</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="shopGrid" class="shop-grid" aria-live="polite"></div>
+
+      <div class="shop-footer-note">
+        <span class="badge">AJAX ONLY</span>
+        <span>※ 모든 구매는 페이지 이동 없이 즉시 처리되며, 구매 후 지갑(/api/wallet) 및 상단 HUD에 바로 반영됩니다.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOP 토스트 -->
+  <div id="shopToast" class="shop-toast" role="status" aria-live="polite">
+    <div id="shopToastMsg" class="shop-toast-message"></div>
+    <button type="button" class="shop-toast-close" onclick="hideShopToast()">✕</button>
+  </div>
+
   <script>
     const BASE = "/";
     const AUTH_API_BASE = "/api/auth";
     const LEADERBOARD_API_BASE = "/api/leaderboard";
-    const WALLET_API_BASE = "/api/wallet"; // ✅ 통합 지갑(/api/wallet) 연동 베이스
+    const WALLET_API_BASE = "/api/wallet";
 
-    /* 경로 매핑 (각 게임에서 홈 버튼으로 돌아올 때 이 페이지가 로그인된 메인 허브 역할을 하도록 유지) */
     const GAME = {
       "2048":           BASE + "games/2048.html",
       "brick-breaker":  BASE + "games/brick-breaker.html",
-      // 👇 brick-match 옛 링크도 retro-match.html로 열리도록 alias 처리
       "retro-match":    BASE + "games/brick-match.html",
       "retro-running":  BASE + "games/retro-running.html",
       "tetris":         BASE + "games/tetris.html"
@@ -1418,13 +1821,12 @@
       window.location.href = LUCKY;
     }
     function goShop(){
-      window.location.href = BASE + "shop.html";
+      // 유지용(외부에서 호출 가능), 실제 동작은 모달
+      openShopModal();
     }
 
-    /* 보상 집계 (coins/tickets/xp) – 계정 기반 + 로컬 fallback */
+    /* 보상 집계 */
     const NUM = n => Number.isFinite(+n) ? +n : 0;
-
-    // 계정별 통합 통계(허브 기준 단일 소스)
     const ACCOUNT_TOTALS = {
       coins:   null,
       tickets: null,
@@ -1450,7 +1852,6 @@
       localStorage.setItem('rg_xp_cap',  t.xpCap);
     }
 
-    // 허브에서 사용하는 최종 합산값(계정값 우선, 없으면 로컬)
     function readTotals(){
       const local = readTotalsFromLocal();
       return {
@@ -1461,7 +1862,6 @@
       };
     }
 
-    // 프론트 전용 임시 보상(비로그인일 때만 의미, 로그인 계정 보상은 서버/DB가 기준)
     function addReward({coins=0,tickets=0,xp=0}={}){
       const base = readTotalsFromLocal();
       base.coins   += NUM(coins);
@@ -1469,9 +1869,9 @@
       base.xp      += NUM(xp);
       writeTotalsToLocal(base);
       renderHUD();
+      renderShopCounters();
     }
 
-    /* HUD 렌더링 */
     function fmt(n){ return Number(n||0).toLocaleString('en-US'); }
 
     function renderHUD(){
@@ -1485,7 +1885,6 @@
       if (xpEl)     xpEl.textContent     = fmt(t.xp);
       if (ticketEl) ticketEl.textContent = fmt(t.tickets);
 
-      // 플레이 수는 계정 값이 있으면 그 값을, 없으면 로컬 누적값(rg_plays_total)을 사용
       const localPlays = NUM(localStorage.getItem('rg_plays_total') || 0);
       const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
       if (playEl) playEl.textContent = fmt(plays);
@@ -1499,12 +1898,13 @@
 
     renderHUD();
     window.addEventListener('storage', e=>{
-      if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap','rg_plays_total'].includes(e.key)) renderHUD();
+      if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap','rg_plays_total'].includes(e.key)) {
+        renderHUD();
+        renderShopCounters();
+      }
     });
 
-    /* 로그인 상태 / 사용자 정보 확인 (허브 기준 계정 인식 + 통합 스탯 반영) */
     function redirectToLogin(){
-      // 현재는 자동으로 호출하지 않음 (필요 시 다른 버튼/링크에서 수동 호출용)
       try{
         const next = encodeURIComponent(location.pathname + location.search);
         window.location.href = BASE + "login.html?next=" + next;
@@ -1536,31 +1936,20 @@
       }
     }
 
-    // /api/auth/me 응답에서 계정 스탯 통합
     function applyAccountStatsFromUser(user){
       if(!user) return;
       const stats = user.stats || {};
       const coins   = NUM(
-        stats.points ??
-        stats.coins ??
-        stats.balance ??
-        0
+        stats.points ?? stats.coins ?? stats.balance ?? 0
       );
       const xp      = NUM(
-        stats.exp ??
-        stats.xp ??
-        0
+        stats.exp ?? stats.xp ?? 0
       );
       const tickets = NUM(
-        stats.tickets ??
-        stats.ticket ??
-        0
+        stats.tickets ?? stats.ticket ?? 0
       );
       const plays   = NUM(
-        stats.plays ??
-        stats.play_count ??
-        stats.totalPlays ??
-        0
+        stats.plays ?? stats.play_count ?? stats.totalPlays ?? 0
       );
       const xpCap   = stats.xpCap != null ? NUM(stats.xpCap) : null;
 
@@ -1571,7 +1960,6 @@
       ACCOUNT_TOTALS.plays   = plays;
       if (xpCap != null) ACCOUNT_TOTALS.xpCap = xpCap;
 
-      // 각 게임 진입 시 계정 티켓을 기준으로 사용할 수 있도록 로컬에도 미러링
       const localBase = readTotalsFromLocal();
       writeTotalsToLocal({
         coins:   coins,
@@ -1580,10 +1968,9 @@
         xpCap:   xpCap != null ? xpCap : localBase.xpCap,
       });
 
-      // HUD 갱신 (코인/XP/티켓/플레이 수)
       renderHUD();
+      renderShopCounters();
 
-      // app.js가 로딩되어 있다면, RG.getStats()와도 자연스럽게 일치하도록 전역 허브 상태 제공
       try{
         window.RG_HUB = window.RG_HUB || {};
         window.RG_HUB.getAccountTotals = function(){
@@ -1599,7 +1986,6 @@
       }catch(e){}
     }
 
-    // ✅ 서버 지갑(/api/wallet)에서 최신 통합 스탯을 한 번 더 동기화 (있을 때만)
     async function syncWalletFromServer(){
       try{
         const res = await fetch(WALLET_API_BASE + "?summary=1", {
@@ -1636,12 +2022,12 @@
         });
 
         renderHUD();
+        renderShopCounters();
       }catch(err){
         console.warn("[RG][wallet] sync from /api/wallet failed:", err);
       }
     }
 
-    // 로그인 체크: 허브에서는 자동 리다이렉트 없이 "로그인된 계정의 허브" 역할만 수행
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
         const res = await fetch(AUTH_API_BASE + "/me", {
@@ -1654,10 +2040,10 @@
         });
 
         if(!res.ok){
-          // 비로그인/오류 → 게임은 그대로, 환영 문구/계정 HUD만 초기화
           updateUserGreeting(null);
           ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
           renderHUD();
+          renderShopCounters();
           return;
         }
 
@@ -1670,31 +2056,28 @@
           updateUserGreeting(null);
           ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
           renderHUD();
+          renderShopCounters();
           return;
         }
 
-        // 전역에 보관 (필요시 다른 스크립트에서 활용 가능)
         window.__RG_CURRENT_USER__ = data.user;
         updateUserGreeting(data.user);
         applyAccountStatsFromUser(data.user);
 
-        // app.js (window.RG)가 이미 초기화되어 있다면, 거기서도 계정 정보를 새로고침
         if (window.RG && typeof window.RG.getSession === "function") {
-          // 계정 단위 허브이기 때문에, 게임 → 홈으로 돌아온 직후에도 최신 스탯을 강제로 반영
           window.RG.getSession({ refresh: true }).catch(()=>{});
         }
 
-        // ✅ 로그인된 경우, /api/wallet 기준으로 한 번 더 통합 스탯 동기화
         syncWalletFromServer().catch(()=>{});
       }catch(err){
         console.error("auth check error", err);
         updateUserGreeting(null);
         ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
         renderHUD();
+        renderShopCounters();
       }
     };
 
-    // URL 파라미터 보상 (?coins=&tickets=&xp=)
     (function consumeQueryReward(){
       const p = new URLSearchParams(location.search);
       const c = NUM(p.get('coins'));
@@ -1706,7 +2089,6 @@
       }
     })();
 
-    // localStorage 큐 보상 (rg_reward)
     (function consumeQueuedReward(){
       const raw = localStorage.getItem('rg_reward');
       if(!raw) return;
@@ -1717,25 +2099,21 @@
       localStorage.removeItem('rg_reward');
     })();
 
-    // 페이지 진입 시: 로그인 정보만 확인해서 환영 문구 + 계정 스탯 업데이트 (리다이렉트 없음)
     (function(){
       const params = new URLSearchParams(location.search);
       if (params.get("code")) {
-        // OAuth 코드 교환이 끝난 후 ensureLoggedIn이 다시 호출됨
         return;
       }
       window.ensureLoggedIn();
     })();
 
     /* ===== 랭킹 모달 로직 ===== */
-
     const RANK_GAMES = [
       { slug:"2048",          label:"2048" },
       { slug:"brick-breaker", label:"Brick Breaker" },
       { slug:"retro-match",   label:"Retro Match" },
       { slug:"retro-running", label:"Retro Runner" },
       { slug:"tetris",        label:"Tetris" }
-      // 필요 시 brick-match 등 추가 가능 (위에서 alias 처리)
     ];
 
     let currentRankingGame = "2048";
@@ -1875,7 +2253,6 @@
         });
 
         if(!res.ok){
-          // 실패 시 샘플 더미 데이터라도 보여줌
           console.warn("leaderboard api error", res.status);
           renderRankingPlaceholder();
           return;
@@ -1895,7 +2272,6 @@
           else if(Array.isArray(data.data)) list = data.data;
         }
 
-        // 백엔드가 아직 없을 경우 대비 더미 처리
         if(!list || !list.length){
           renderRankingPlaceholder();
           return;
@@ -1915,11 +2291,9 @@
       backdrop.classList.add("open");
       backdrop.setAttribute("aria-hidden","false");
 
-      // 초기 게임: 전달값 or 마지막 게임 or 기본 2048
       if(initialGame) currentRankingGame = initialGame;
       loadRanking(currentRankingGame);
 
-      // ESC로 닫기
       document.addEventListener("keydown", handleRankModalKeydown);
     }
 
@@ -1945,11 +2319,6 @@
       }
     }
 
-    // 전역에서 접근 가능하도록 export
-    window.openRankingModal = openRankingModal;
-    window.closeRankingModal = closeRankingModal;
-
-    // 백드롭 클릭으로 닫기
     (function(){
       const backdrop = document.getElementById("rankModalBackdrop");
       if(backdrop){
@@ -1958,9 +2327,7 @@
     })();
 
     /* ===== 설정 모달 로직 ===== */
-
     const SETTINGS_STORAGE_KEY = "rg_user_settings";
-
     const DEFAULT_SETTINGS = {
       soundMaster:   true,
       bgm:           true,
@@ -1970,7 +2337,6 @@
       gameHints:     true,
     };
 
-    // 설정에서 제어하는 애니메이션 on/off 플래그 (기본값 true)
     let fxEnabled = true;
 
     function loadSettings(){
@@ -2013,10 +2379,8 @@
     }
 
     function applySettingsToPage(settings){
-      // 배경 이펙트 on/off
       fxEnabled = settings.backgroundFx !== false;
 
-      // reduced motion은 추후 게임/애니메이션에서 참고할 수 있도록 class로만 표시
       try{
         if(settings.reducedMotion){
           document.documentElement.classList.add("rg-reduced-motion");
@@ -2025,7 +2389,6 @@
         }
       }catch(e){}
 
-      // 소리 관련 값은 전역 상태로만 넘겨둔다 (개별 게임에서 활용)
       try{
         window.RG_HUB = window.RG_HUB || {};
         window.RG_HUB.getSettings = function(){
@@ -2041,7 +2404,6 @@
       try{
         const backdrop = document.getElementById("settingsModalBackdrop");
         if(!backdrop) return;
-        // 최신 settings 다시 로드 (다른 탭에서 변경했을 수도 있음)
         currentSettings = loadSettings();
         syncSettingsUI(currentSettings);
         applySettingsToPage(currentSettings);
@@ -2087,7 +2449,6 @@
         backdrop.addEventListener("click", handleSettingsBackdropClick);
       }
 
-      // 토글 공통 핸들러
       const toggles = document.querySelectorAll(".settings-toggle");
       toggles.forEach(function(toggle){
         const input = toggle.querySelector("input[type='checkbox']");
@@ -2104,7 +2465,6 @@
 
         input.addEventListener("change", onChange);
         toggle.addEventListener("click", function(evt){
-          // label 클릭 시 중복으로 두 번 토글되는 것 방지
           if(evt.target === input) return;
           input.checked = !input.checked;
           onChange();
@@ -2125,14 +2485,448 @@
         }
       }catch(e){}
       try{
-        // 서버가 /logout 을 제공하는 경우를 대비해 시도
         window.location.href = BASE + "logout.html";
       }catch(e){}
     }
 
-    // 다른 스크립트에서도 사용 가능하도록 export
     window.openSettingsModal = openSettingsModal;
     window.closeSettingsModal = closeSettingsModal;
+
+    /* ===== SHOP 모달 로직 (AJAX 상점) ===== */
+    const SHOP_API = {
+      list: "/specials/shop",
+      buy:  "/specials/shop/buy"
+    };
+
+    let shopLoaded = false;
+    let shopItems = [];
+    let shopCurrentFilter = "all";
+    let shopCurrentSort = "recommended";
+    let shopToastTimer = null;
+
+    const SHOP_FALLBACK_ITEMS = [
+      {
+        id:"ads_3h",
+        category:"ads",
+        name:"3시간 광고 제거",
+        desc:"3시간 동안 RETRO GAMES 내 배너 광고를 숨깁니다.",
+        badge:"HOT",
+        priceCoins:150,
+        durationLabel:"3시간",
+        tag:"ADS · 광고 제거",
+        sortWeight:10
+      },
+      {
+        id:"ads_1d",
+        category:"ads",
+        name:"1일 광고 제거",
+        desc:"오늘 하루만큼은 몰입해서 플레이하세요.",
+        badge:"BEST",
+        priceCoins:300,
+        durationLabel:"24시간",
+        tag:"ADS · 광고 제거",
+        sortWeight:9
+      },
+      {
+        id:"xp_30m_2x",
+        category:"xp",
+        name:"XP 2배 · 30분",
+        desc:"30분 동안 획득 경험치가 2배가 됩니다.",
+        badge:"NEW",
+        priceCoins:120,
+        durationLabel:"30분",
+        tag:"XP · 경험치 부스트",
+        sortWeight:8
+      },
+      {
+        id:"xp_90m_2x",
+        category:"xp",
+        name:"XP 2배 · 90분",
+        desc:"긴 플레이 세션에 적합한 2배 경험치 부스트.",
+        badge:"",
+        priceCoins:260,
+        durationLabel:"90분",
+        tag:"XP · 경험치 부스트",
+        sortWeight:7
+      },
+      {
+        id:"xp_3h_3x",
+        category:"xp",
+        name:"XP 3배 · 3시간",
+        desc:"특훈 모드! 3배 경험치로 랭킹을 노려보세요.",
+        badge:"🔥",
+        priceCoins:420,
+        durationLabel:"3시간",
+        tag:"XP · 경험치 부스트",
+        sortWeight:6
+      },
+      {
+        id:"coin_pack_s",
+        category:"coins",
+        name:"코인 패키지 · S",
+        desc:"소량의 코인을 충전합니다.",
+        badge:"",
+        priceCoins:0,
+        rewardCoins:300,
+        durationLabel:"즉시 지급",
+        tag:"COINS · 코인 충전",
+        sortWeight:5
+      },
+      {
+        id:"coin_pack_m",
+        category:"coins",
+        name:"코인 패키지 · M",
+        desc:"가성비 좋은 코인 번들.",
+        badge:"★",
+        priceCoins:0,
+        rewardCoins:800,
+        durationLabel:"즉시 지급",
+        tag:"COINS · 코인 충전",
+        sortWeight:4
+      },
+      {
+        id:"coin_pack_l",
+        category:"coins",
+        name:"코인 패키지 · L",
+        desc:"랭킹 도전을 위한 대용량 코인 번들.",
+        badge:"VALUE",
+        priceCoins:0,
+        rewardCoins:1800,
+        durationLabel:"즉시 지급",
+        tag:"COINS · 코인 충전",
+        sortWeight:3
+      },
+      {
+        id:"ticket_5",
+        category:"tickets",
+        name:"티켓 5장 번들",
+        desc:"플레이 전용 티켓 5장을 지급합니다.",
+        badge:"",
+        priceCoins:200,
+        rewardTickets:5,
+        durationLabel:"즉시 지급",
+        tag:"TICKETS · 플레이",
+        sortWeight:2
+      },
+      {
+        id:"ticket_15",
+        category:"tickets",
+        name:"티켓 15장 번들",
+        desc:"자주 플레이하는 유저에게 추천.",
+        badge:"BEST",
+        priceCoins:500,
+        rewardTickets:15,
+        durationLabel:"즉시 지급",
+        tag:"TICKETS · 플레이",
+        sortWeight:1
+      },
+      {
+        id:"special_lucky_3",
+        category:"special",
+        name:"오늘의 행운 3회권",
+        desc:"오늘의 행운 뽑기를 3회 추가로 이용할 수 있습니다.",
+        badge:"SP",
+        priceCoins:260,
+        durationLabel:"당일 한정",
+        tag:"SPECIAL · 행운 뽑기",
+        sortWeight:0
+      }
+    ];
+
+    function showShopToast(message){
+      try{
+        const el = document.getElementById("shopToast");
+        const msgEl = document.getElementById("shopToastMsg");
+        if(!el || !msgEl) return;
+        msgEl.textContent = message || "";
+        el.classList.add("show");
+        if(shopToastTimer) clearTimeout(shopToastTimer);
+        shopToastTimer = setTimeout(()=>hideShopToast(), 3200);
+      }catch(e){}
+    }
+
+    function hideShopToast(){
+      try{
+        const el = document.getElementById("shopToast");
+        if(!el) return;
+        el.classList.remove("show");
+      }catch(e){}
+    }
+
+    function renderShopCounters(){
+      try{
+        const t = readTotals();
+        const coinsEl   = document.getElementById("shopCoinsVal");
+        const ticketsEl = document.getElementById("shopTicketsVal");
+        const xpEl      = document.getElementById("shopXpVal");
+        if(coinsEl)   coinsEl.textContent   = fmt(t.coins);
+        if(ticketsEl) ticketsEl.textContent = fmt(t.tickets);
+        if(xpEl)      xpEl.textContent      = fmt(t.xp);
+      }catch(e){}
+    }
+
+    function normalizeShopItem(raw){
+      const base = {...raw};
+      base.category = (base.category || "special").toLowerCase();
+      base.priceCoins = NUM(base.priceCoins ?? base.price ?? base.cost ?? 0);
+      base.rewardCoins = NUM(base.rewardCoins ?? base.coins ?? 0);
+      base.rewardTickets = NUM(base.rewardTickets ?? base.tickets ?? 0);
+      base.durationLabel = base.durationLabel || base.durationText || "";
+      base.badge = base.badge || "";
+      base.tag = base.tag || "";
+      base.sortWeight = NUM(base.sortWeight ?? 0);
+      return base;
+    }
+
+    function getSortedFilteredItems(){
+      let items = shopItems.slice();
+      if(shopCurrentFilter && shopCurrentFilter !== "all"){
+        items = items.filter(it=>it.category === shopCurrentFilter);
+      }
+      items.sort((a,b)=>{
+        if(shopCurrentSort === "priceLow"){
+          const pa = a.priceCoins || 0;
+          const pb = b.priceCoins || 0;
+          return pa - pb;
+        }
+        if(shopCurrentSort === "priceHigh"){
+          const pa = a.priceCoins || 0;
+          const pb = b.priceCoins || 0;
+          return pb - pa;
+        }
+        if(shopCurrentSort === "duration"){
+          return (b.sortWeight||0) - (a.sortWeight||0);
+        }
+        return (a.sortWeight||0) - (b.sortWeight||0);
+      });
+      return items;
+    }
+
+    function renderShopGrid(){
+      const grid = document.getElementById("shopGrid");
+      if(!grid) return;
+      grid.innerHTML = "";
+
+      const items = getSortedFilteredItems();
+      if(!items.length){
+        const empty = document.createElement("div");
+        empty.className = "shop-empty";
+        empty.textContent = "표시할 아이템이 없습니다. 잠시 후 다시 시도해 주세요.";
+        grid.appendChild(empty);
+        return;
+      }
+
+      items.forEach(item=>{
+        const card = document.createElement("article");
+        card.className = "shop-card";
+        const badgeHtml = item.badge ? `<span class="shop-card-badge">${item.badge}</span>` : "";
+        const tagText = item.tag || (()=> {
+          if(item.category === "ads") return "ADS · 광고 제거";
+          if(item.category === "xp") return "XP · 경험치 부스트";
+          if(item.category === "coins") return "COINS · 코인 충전";
+          if(item.category === "tickets") return "TICKETS · 플레이";
+          return "SPECIAL 아이템";
+        })();
+
+        const priceLabel = item.priceCoins ? `${fmt(item.priceCoins)} 코인` :
+          (item.rewardCoins ? `보상 ${fmt(item.rewardCoins)} 코인` :
+          (item.rewardTickets ? `보상 ${fmt(item.rewardTickets)} 티켓` : "-"));
+
+        card.innerHTML = `
+          <div class="shop-card-header">
+            <div class="shop-card-title-wrap">
+              <div class="shop-card-title">${item.name}</div>
+              <div class="shop-card-sub">${item.desc || ""}</div>
+            </div>
+            ${badgeHtml}
+          </div>
+          <div class="shop-card-meta">
+            <div class="shop-card-meta-left">
+              <div class="shop-card-tag">${tagText}</div>
+              <div class="shop-card-duration">${item.durationLabel || ""}</div>
+            </div>
+            <div class="shop-card-meta-right">
+              ${item.category === "coins" && item.rewardCoins ? `+${fmt(item.rewardCoins)} COINS` : ""}
+              ${item.category === "tickets" && item.rewardTickets ? `+${fmt(item.rewardTickets)} TICKETS` : ""}
+            </div>
+          </div>
+          <div class="shop-card-price-row">
+            <div class="shop-card-price-main">
+              <div class="shop-card-price-unit">가격</div>
+              <div class="shop-card-price-value">${priceLabel}</div>
+            </div>
+          </div>
+          <div class="shop-card-actions">
+            <button type="button" class="shop-buy-btn primary" data-item-id="${item.id}">코인으로 구매</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      grid.querySelectorAll(".shop-buy-btn").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const id = btn.getAttribute("data-item-id");
+          const item = shopItems.find(it=>String(it.id) === String(id));
+          if(item) buyShopItem(item,"coins");
+        });
+      });
+    }
+
+    async function fetchShopListFromServer(){
+      try{
+        const res = await fetch(SHOP_API.list, {
+          method:"GET",
+          headers:{
+            "Accept":"application/json",
+            "Cache-Control":"no-store"
+          },
+          credentials:"include"
+        });
+        if(!res.ok){
+          console.warn("[RG][shop] list api error", res.status);
+          return null;
+        }
+        const data = await res.json().catch(()=>null);
+        if(!data) return null;
+        const items = Array.isArray(data.items) ? data.items :
+                      Array.isArray(data.catalog) ? data.catalog :
+                      Array.isArray(data.data) ? data.data : null;
+        if(!items) return null;
+        return items.map(normalizeShopItem);
+      }catch(e){
+        console.warn("[RG][shop] list api fetch failed:", e);
+        return null;
+      }
+    }
+
+    async function loadShopDataIfNeeded(){
+      if(shopLoaded && shopItems.length){
+        renderShopCounters();
+        renderShopGrid();
+        return;
+      }
+      renderShopCounters();
+
+      const fromServer = await fetchShopListFromServer();
+      if(fromServer && fromServer.length){
+        shopItems = fromServer;
+      }else{
+        shopItems = SHOP_FALLBACK_ITEMS.map(normalizeShopItem);
+      }
+      shopLoaded = true;
+      renderShopGrid();
+    }
+
+    async function buyShopItem(item, currency){
+      if(!item) return;
+      const t = readTotals();
+      const price = item.priceCoins || 0;
+
+      if(currency === "coins" && price > t.coins){
+        showShopToast("코인이 부족합니다. 게임을 플레이해서 코인을 모아보세요!");
+        return;
+      }
+
+      if(!window.confirm(`'${item.name}' 아이템을 ${fmt(price)} 코인으로 구매하시겠어요?`)){
+        return;
+      }
+
+      try{
+        const res = await fetch(SHOP_API.buy, {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "Accept":"application/json",
+            "Cache-Control":"no-store"
+          },
+          credentials:"include",
+          body: JSON.stringify({
+            itemId: item.id,
+            payWith: currency || "coins"
+          })
+        });
+
+        const data = await res.json().catch(()=>null);
+
+        if(!res.ok || !data || data.ok === false){
+          const msg = (data && (data.message || data.error)) || "구매에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+          showShopToast(msg);
+          return;
+        }
+
+        showShopToast("구매가 완료되었습니다!");
+        await syncWalletFromServer().catch(()=>{});
+        renderShopCounters();
+      }catch(e){
+        console.error("[RG][shop] buy error:", e);
+        showShopToast("네트워크 오류로 구매에 실패했습니다.");
+      }
+    }
+
+    function openShopModal(){
+      try{
+        const backdrop = document.getElementById("shopModalBackdrop");
+        if(!backdrop) return;
+        backdrop.classList.add("open");
+        backdrop.setAttribute("aria-hidden","false");
+        document.addEventListener("keydown", handleShopKeydown);
+        loadShopDataIfNeeded();
+      }catch(e){}
+    }
+
+    function closeShopModal(){
+      try{
+        const backdrop = document.getElementById("shopModalBackdrop");
+        if(!backdrop) return;
+        backdrop.classList.remove("open");
+        backdrop.setAttribute("aria-hidden","true");
+        document.removeEventListener("keydown", handleShopKeydown);
+      }catch(e){}
+    }
+
+    function handleShopBackdropClick(e){
+      const backdrop = document.getElementById("shopModalBackdrop");
+      if(!backdrop) return;
+      if(e.target === backdrop){
+        closeShopModal();
+      }
+    }
+
+    function handleShopKeydown(e){
+      if(e.key === "Escape"){
+        closeShopModal();
+      }
+    }
+
+    (function attachShopHandlers(){
+      const backdrop = document.getElementById("shopModalBackdrop");
+      if(backdrop){
+        backdrop.addEventListener("click", handleShopBackdropClick);
+      }
+      const filterRow = document.getElementById("shopFilterRow");
+      if(filterRow){
+        filterRow.querySelectorAll(".shop-filter-btn").forEach(btn=>{
+          btn.addEventListener("click", ()=>{
+            const val = btn.getAttribute("data-filter") || "all";
+            shopCurrentFilter = val;
+            filterRow.querySelectorAll(".shop-filter-btn").forEach(b=>b.classList.remove("active"));
+            btn.classList.add("active");
+            renderShopGrid();
+          });
+        });
+      }
+      const sortSel = document.getElementById("shopSortSelect");
+      if(sortSel){
+        sortSel.addEventListener("change", ()=>{
+          shopCurrentSort = sortSel.value || "recommended";
+          renderShopGrid();
+        });
+      }
+    })();
+
+    window.openShopModal = openShopModal;
+    window.closeShopModal = closeShopModal;
+    window.RG_addReward = addReward;
 
     /* 배경 파티클 */
     const c=document.getElementById('fx');
@@ -2157,7 +2951,6 @@
       });
     }
 
-    // 설정에서 제어하는 애니메이션 on/off 플래그 (값은 applySettingsToPage에서 갱신)
     function loop(){
       g.clearRect(0,0,c.width,c.height);
       if(fxEnabled){
@@ -2176,9 +2969,6 @@
       requestAnimationFrame(loop);
     }
     loop();
-
-    /* 외부 적립 호출 예 (각 게임에서 window.RG_addReward 호출 시 허브 HUD에 반영) */
-    window.RG_addReward = addReward;
   </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
@@ -2225,7 +3015,6 @@
           provider = document.referrer.includes('naver') ? 'naver' : 'kakao';
         }
 
-        // Cloudflare Pages Functions 경로로 통일
         var endpoint = provider === 'naver'
           ? AUTH_API_BASE + '/oauth/naver/callback'
           : AUTH_API_BASE + '/oauth/kakao/callback';
@@ -2243,12 +3032,9 @@
           try{ data = await r.json(); }catch(e){}
           if(!r.ok || !data || !data.ok){
             console.error('OAuth callback failed', r.status, data);
-            // 실패해도 로그인 페이지로 자동 이동하지 않음
             return;
           }
-          // 쿼리 스트립
           history.replaceState({}, "", location.pathname);
-          // 유저 정보 반영: 허브 기준 계정 스탯 + 헤더/상단 HUD 갱신
           if (typeof window.ensureLoggedIn === "function") {
             window.ensureLoggedIn();
           }
@@ -2257,12 +3043,9 @@
           }catch(e){}
         }).catch(function(err){
           console.error('OAuth error', err);
-          // 에러 발생 시에도 자동 리다이렉트 없음
         });
       }catch(e){}
     })();
   </script>
-
-  <!-- ✅ 전역 푸터 partial 주입 위치 (페이지 본문에는 허브 카드만 존재) -->
 </body>
 </html>

@@ -608,6 +608,8 @@
     }
   }
 
+  /* ✅ 2048은 티켓 소모 없이 자유 플레이로 유지하되,
+     다른 게임에서 재사용할 수 있도록 consumeTicketForSession 함수는 그대로 둔다. */
   function consumeTicketForSession(){
     const totals = getOrInitGlobalTotals();
     if(totals.tickets <= 0){
@@ -769,13 +771,7 @@
         return;
       }
 
-      // 실제 게임만 티켓 소비
-      if(!consumeTicketForSession()){
-        this.syncHUD();
-        this.draw();
-        return;
-      }
-
+      // ✅ 2048은 티켓 소모 없이 자유 플레이
       this.reset(1);
       this.draw();
       notifyStart();
@@ -811,7 +807,7 @@
       $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
       $('#newBtn').onclick=()=>{
         if(this.moves>0){ addRecord(this.score,this.points||0);}
-        if(!this.testMode && !consumeTicketForSession()) return;
+        // 2048 새 게임은 티켓 재차 소모 없이 리셋
         this.reset(this.level);
       };
       $('#undoBtn').onclick=()=> this.undo();
@@ -825,7 +821,7 @@
       document.addEventListener('keydown',(e)=>{
         if(e.code==='KeyN'){
           if(this.moves>0){ addRecord(this.score,this.points||0);}
-          if(!this.testMode && !consumeTicketForSession()) return;
+          // 키보드 N도 티켓 소모 없이 새 게임
           this.reset(this.level);
         }
         if(e.code==='KeyU'){ this.undo(); }

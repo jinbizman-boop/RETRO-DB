@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
   <meta charset="utf-8" />
@@ -291,9 +291,9 @@
       place-items:center;
     }
     canvas#game{
+      display:block;
       width:100%;
       height:auto;
-      aspect-ratio:16/10;
       background:#000;
       border-radius:18px;
       border:1px solid #1b2b45;
@@ -992,13 +992,10 @@
       this.ctx=canvas.getContext('2d');
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
       this.level=1;
-      this._resizeRAF=null;
-      this._fitRAF=null;
 
-      this._initResizeObserver();
+      // 캔버스 기본 크기 세팅 (16:10 비율 유지, CSS는 width:100%로 스케일)
+      this._setBaseSize();
 
-      // ✅ 먼저 캔버스 크기를 맞춘 뒤 레벨 생성 → UI 뭉개짐 방지
-      this.resize(true);
       this.reset(1);
       this.bind();
 
@@ -1008,100 +1005,19 @@
       notifyStart();
     }
 
-    _initResizeObserver(){
-      const bezel = this.c.closest('.bezel') || document.body;
-
-      // ✅ ResizeObserver 미지원 브라우저에서 에러 나지 않도록 방어
-      if(typeof ResizeObserver === 'undefined'){
-        this.resize(true);
-        window.addEventListener('orientationchange', ()=>{
-          if(this._resizeRAF) cancelAnimationFrame(this._resizeRAF);
-          this._resizeRAF=requestAnimationFrame(()=> this.resize(true));
-        }, {passive:true});
-        window.addEventListener('resize', ()=>{
-          if(this._resizeRAF) cancelAnimationFrame(this._resizeRAF);
-          this._resizeRAF=requestAnimationFrame(()=> this.resize(true));
-        }, {passive:true});
-        return;
-      }
-
-      try{
-        const ro = new ResizeObserver(()=>{
-          if(this._resizeRAF) cancelAnimationFrame(this._resizeRAF);
-          this._resizeRAF = requestAnimationFrame(()=> this.resize(true));
-        });
-        ro.observe(bezel);
-        this._ro=ro;
-      }catch(e){
-        console.warn('ResizeObserver init failed', e);
-        this.resize(true);
-      }
-
-      window.addEventListener('orientationchange', ()=>{
-        if(this._resizeRAF) cancelAnimationFrame(this._resizeRAF);
-        this._resizeRAF=requestAnimationFrame(()=> this.resize(true));
-      }, {passive:true});
-    }
-
-    _targetSize(){
-      const bezel = this.c.closest?.('.bezel') || this.c.parentElement || document.scrollingElement || document.body;
-      let rect;
-      try{
-        rect = (typeof bezel.getBoundingClientRect==='function')
-          ? bezel.getBoundingClientRect()
-          : {width: this.c.clientWidth||640, height: this.c.clientHeight||400};
-      }catch(e){
-        rect = {width: this.c.clientWidth||640, height: this.c.clientHeight||400};
-      }
-      const availW = Math.max(0, (rect.width||640) - 24);
-      const availH = Math.max(0, (rect.height||400) - 24);
-      const aspect = 16/10;
-      let cssW = Math.min(availW, availH*aspect);
-      let cssH = cssW/aspect;
-      if(!isFinite(cssW) || cssW<=0){
-        cssW = 640;
-        cssH = 400;
-      }
-      return {cssW:Math.floor(cssW), cssH:Math.floor(cssH)};
-    }
-
-    resize(rebuild){
+    _setBaseSize(){
       const d=DPR();
-      const size=this._targetSize();
-      const cssW=size.cssW;
-      const cssH=size.cssH;
+      // 현재 CSS 레이아웃 기준 폭을 우선 사용, 없으면 960px 기준
+      let cssW = this.c.clientWidth || 960;
+      if(cssW <= 0) cssW = 960;
+      const aspect = 16/10;
+      let cssH = cssW / aspect;
 
-      const styleW = parseInt(this.c.style.width||0,10);
-      const styleH = parseInt(this.c.style.height||0,10);
+      this.c.width  = Math.max(10, Math.floor(cssW*d));
+      this.c.height = Math.max(10, Math.floor(cssH*d));
 
-      if(styleW!==cssW || styleH!==cssH){
-        this.c.style.width = cssW+'px';
-        this.c.style.height = cssH+'px';
-        this.c.width = Math.max(10, Math.floor(cssW*d));
-        this.c.height = Math.max(10, Math.floor(cssH*d));
-
-        // 패들 및 볼 위치를 새 캔버스 크기에 맞게 보정
-        if(this.paddle){
-          this.paddle.y = this.c.height - 28*d;
-          this.paddle.x = clamp(this.paddle.x || (this.c.width*0.5), this.paddle.w*0.5, this.c.width - this.paddle.w*0.5);
-        }
-        if(this.balls){
-          for(const b of this.balls){
-            b.x = clamp(b.x || (this.c.width*0.5), b.r, this.c.width-b.r);
-            b.y = clamp(b.y || (this.c.height*0.5), b.r, this.c.height-b.r);
-          }
-        }
-
-        // ✅ 리사이즈 후 벽돌 그리드 재생성 → UI 비율 깨지는 문제 방지
-        if(rebuild && this.params){
-          this.makeLevel();
-        }
-
-        this.draw();
-      }
-
-      if(this._fitRAF) cancelAnimationFrame(this._fitRAF);
-      this._fitRAF = requestAnimationFrame(()=> fitCabinet());
+      if(!this.c.style.width) this.c.style.width = '100%';
+      if(!this.c.style.height) this.c.style.height = 'auto';
     }
 
     bind(){
@@ -1112,22 +1028,38 @@
         lvl.value=lv;
         this.setLevel(lv);
       };
-      tier.addEventListener('change',()=>applyTier(tier.value));
-      lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
+      if(tier){
+        tier.addEventListener('change',()=>applyTier(tier.value));
+      }
+      if(lvl){
+        lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
+      }
 
-      $('#sizeSel').addEventListener('change',e=>{
-        _colsPreset=+e.target.value||12;
-        this.setLevel(this.level);
-      });
+      const sizeSel = $('#sizeSel');
+      if(sizeSel){
+        sizeSel.addEventListener('change',e=>{
+          _colsPreset=+e.target.value||12;
+          this.setLevel(this.level);
+        });
+      }
 
-      $('#newBtn').addEventListener('click',()=> this.reset(this.level));
-      $('#undoBtn').addEventListener('click',()=>{ this.paused=!this.paused; });
+      const newBtn  = $('#newBtn');
+      const undoBtn = $('#undoBtn');
+      const homeBtn = $('#homeBtn');
+      const endBtn  = $('#endBtn');
 
-      $('#homeBtn').addEventListener('click',()=>
-        showAdThen(()=> window.location.href = '/user-retro-games.html')
-      );
+      if(newBtn) newBtn.addEventListener('click',()=> this.reset(this.level));
+      if(undoBtn) undoBtn.addEventListener('click',()=>{ this.paused=!this.paused; });
 
-      $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.manualEnd()));
+      if(homeBtn){
+        homeBtn.addEventListener('click',()=>
+          showAdThen(()=> window.location.href = '/user-retro-games.html')
+        );
+      }
+
+      if(endBtn){
+        endBtn.addEventListener('click',()=> showAdThen(()=> this.manualEnd()));
+      }
 
       const mapX = (clientX)=>{
         const r=this.c.getBoundingClientRect();
@@ -1178,8 +1110,8 @@
       this.level=lv||1;
       this.params=paramsForLevel(this.level);
 
-      // 리셋 시에도 한 번 더 캔버스 크기 정렬 (초기 로드 안전)
-      this.resize(false);
+      // 레벨 리셋 시에도 캔버스 크기 한번 정렬
+      this._setBaseSize();
 
       this.score=0;
       this.points=0;
@@ -1249,16 +1181,21 @@
     }
 
     updateHUD(){
-      $('#score').textContent=this.score|0;
+      const scoreEl = $('#score');
+      const bestEl  = $('#best');
+      const movesEl = $('#moves');
+      const pointsEl= $('#pointsAmt');
+      const bar     = $('#pointsBar');
+
+      if(scoreEl) scoreEl.textContent=this.score|0;
       if(this.score>this.best){
         this.best=this.score|0;
         localStorage.setItem(LS_KEYS.best, String(this.best));
       }
-      $('#best').textContent=this.best|0;
-      $('#moves').textContent=(Math.max(0,this.level-1))|0;
-      $('#pointsAmt').textContent=fmt(this.points|0);
+      if(bestEl) bestEl.textContent=this.best|0;
+      if(movesEl) movesEl.textContent=(Math.max(0,this.level-1))|0;
+      if(pointsEl) pointsEl.textContent=fmt(this.points|0);
       const cap=5000;
-      const bar=$('#pointsBar');
       if(bar) bar.style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
       updateTicketUI();
     }
@@ -1770,39 +1707,42 @@
       console.assert(p40.baseSpeed>p1.baseSpeed, 'speed increases');
       console.assert(p40.paddleW<=p1.paddleW, 'paddle width non-increasing');
       console.assert(p100.unbreakableRate>=p40.unbreakableRate, 'steel rate monotonic');
-
-      const cv=document.createElement('canvas');
-      cv.width=640;
-      cv.height=400;
-      const g=new BrickBreaker(cv);
-      let ok=true;
-      try{
-        const s=g._targetSize();
-        ok = Number.isFinite(s.cssW)&&Number.isFinite(s.cssH);
-      }catch(e){
-        ok=false;
-      }
-      console.assert(ok, '_targetSize finite');
     }catch(e){
       console.warn('self test skipped', e);
     }
   })();
 
   /* ================= Bootstrap ================= */
-  const game=new BrickBreaker(document.getElementById('game'));
-  (function initUI(){
+  function bootstrapBrickBreaker(){
+    const canvas = document.getElementById('game');
+    if(!canvas) return;
+    const game = new BrickBreaker(canvas);
+    window.__brickBreaker = game;
+
     const tier=$('#tier');
     const lvl=$('#lvlRange');
     const applyTier=t=>{
       let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1;
-      lvl.value=lv;
+      if(lvl) lvl.value=lv;
       game.setLevel(lv);
     };
-    applyTier(tier.value);
-    lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
+    if(tier){
+      applyTier(tier.value);
+    }
+    if(lvl){
+      lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
+    }
+
     updateTicketUI();
     initSideBanners();
-  })();
+    fitCabinet();
+  }
+
+  if(document.readyState === 'complete' || document.readyState === 'interactive'){
+    setTimeout(bootstrapBrickBreaker, 0);
+  }else{
+    document.addEventListener('DOMContentLoaded', bootstrapBrickBreaker);
+  }
   </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">

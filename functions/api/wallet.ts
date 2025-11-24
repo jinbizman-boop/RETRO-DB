@@ -48,6 +48,26 @@ function cleanUserId(raw: string | null): string {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Local badRequest Helper                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * badRequest
+ * ----------
+ * - `_utils/json.ts` 에 badRequest export 가 없어서 발생했던
+ *   Cloudflare 빌드 에러를 피하기 위해, 이 파일 안에서만 사용하는
+ *   로컬 헬퍼로 구현한다.
+ * - 내부적으로는 프로젝트 공통 json() 헬퍼를 그대로 사용한다.
+ *
+ * 사용 패턴:
+ *   return badRequest({ ok:false, error:"INVALID_USER", ... });
+ */
+function badRequest(body: unknown): Response {
+  // _utils/json 의 시그니처: json(body, init?)
+  return json(body, { status: 400 });
+}
+
+/* ------------------------------------------------------------------ */
 /*  타입 정의                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -221,15 +241,13 @@ export async function onRequestPost(context: {
     const userId = cleanUserId(userIdHeader);
 
     if (!userId) {
-      // badRequest 헬퍼 대신 json() + status 400 직접 지정
-      return json(
-        {
-          ok: false,
-          error: "INVALID_USER",
-          message: "유효하지 않은 사용자 식별자",
-        },
-        { status: 400 }
-      );
+      // ❗ 기존에는 json(..., {status:400})을 직접 호출했지만,
+      //    이제는 로컬 badRequest() 헬퍼를 사용해서 패턴을 통일한다.
+      return badRequest({
+        ok: false,
+        error: "INVALID_USER",
+        message: "유효하지 않은 사용자 식별자",
+      });
     }
 
     /* -------------------------------------------------------------- */
@@ -282,14 +300,11 @@ export async function onRequestPost(context: {
     /* 4) 지원하지 않는 action                                         */
     /* -------------------------------------------------------------- */
 
-    return json(
-      {
-        ok: false,
-        error: "UNSUPPORTED_ACTION",
-        message: "지원하지 않는 action 입니다.",
-      },
-      { status: 400 }
-    );
+    return badRequest({
+      ok: false,
+      error: "UNSUPPORTED_ACTION",
+      message: "지원하지 않는 action 입니다.",
+    });
   } catch (err: any) {
     console.error("[wallet.ts] error", err);
 
@@ -304,3 +319,135 @@ export async function onRequestPost(context: {
     );
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Implementation Notes (for maintainers)                             */
+/* ------------------------------------------------------------------ */
+/**
+ * 1. Cloudflare Pages / Wrangler 빌드 안정성
+ * -----------------------------------------
+ * - 과거 빌드 실패 원인은 `_utils/json.ts` 에 존재하지 않는
+ *   `badRequest` export 를 import 하면서 발생했다.
+ *
+ *   예전 코드:
+ *     import { json, badRequest } from "./_utils/json";
+ *
+ * - 이 파일에서는 badRequest 를 외부에서 가져오지 않고,
+ *   내부 로컬 헬퍼로 구현했다.
+ *   → Cloudflare 번들러가 `_utils/json.ts` 에서 없는 export 를
+ *     찾으려고 하지 않기 때문에 빌드 에러가 사라진다.
+ *
+ * - json() 헬퍼는 그대로 사용하므로, 응답 포맷/헤더/동작은 기존과 동일하다.
+ *
+ *
+ * 2. UserId 처리 흐름
+ * -------------------
+ * - `_middleware.ts` 에서 세션/쿠키 기반으로 X-User-Id 를 헤더에 넣어준다.
+ * - 이 파일에서는 `cleanUserId()` 를 통해:
+ *     * null/undefined → "" (무효)
+ *     * 앞뒤 공백 제거
+ *     * 허용되지 않는 문자 포함 시 "" 반환
+ *     * 128자 초과 시 "" 반환
+ * - 결국 onRequestPost 안에서는:
+ *     const userIdHeader = request.headers.get("X-User-Id");
+ *     const userId = cleanUserId(userIdHeader);
+ *     if (!userId) { return badRequest({ ...INVALID_USER... }); }
+ *
+ *   이런 패턴으로, 잘못된/누락된 유저 식별자는 일관되게 400 처리된다.
+ *
+ *
+ * 3. Wallet 동작 규칙 (비즈니스 로직)
+ * ----------------------------------
+ * - user_wallet:
+ *     balance   : 포인트
+ *     tickets   : 티켓 수
+ *     play_count: 플레이 횟수
+ *
+ * - SYNC / SYNCWALLET:
+ *     → 현재 값 그대로 반환.
+ *     → user_wallet 에 레코드가 없으면 (user_id,0,0,0) 신규 생성 후 {0,0,0} 반환.
+ *
+ * - ADD_REWARD / ADDGAMEREWARD:
+ *     - reward 가 NaN / undefined / null 이면 0 처리.
+ *     - play_count: 기존 값 + 1
+ *     - tickets: play_count 가 10, 20, 30 ... 일 때마다 +1
+ *     - balance: reward 만큼 증가하되, [0, 5000] 범위를 벗어나지 않도록 clamp
+ *     - wallet_transaction:
+ *         (user_id, amount=reward, reason, metaJson) 기록
+ *         metaJson 은 score/tier/level 등을 포함한 JSON 문자열
+ *     - 최종적으로 갱신된 balance/tickets/playCount 반환.
+ *
+ *
+ * 4. API Contract (클라이언트 관점)
+ * ---------------------------------
+ * - 요청:
+ *     POST /api/wallet
+ *     Content-Type: application/json
+ *     Credentials: include (중요! 세션 쿠키 → X-User-Id 로 변환)
+ *
+ *   Body 예시:
+ *     { "action": "SYNC" }
+ *     { "action": "ADD_REWARD", "reward": 120, "score": 9999, ... }
+ *
+ * - 응답 (성공):
+ *     {
+ *       ok: true,
+ *       balance: number,
+ *       tickets: number,
+ *       playCount: number
+ *     }
+ *
+ * - 응답 (에러 예시):
+ *     // INVALID_USER
+ *     {
+ *       ok: false,
+ *       error: "INVALID_USER",
+ *       message: "유효하지 않은 사용자 식별자"
+ *     }
+ *
+ *     // UNSUPPORTED_ACTION
+ *     {
+ *       ok: false,
+ *       error: "UNSUPPORTED_ACTION",
+ *       message: "지원하지 않는 action 입니다."
+ *     }
+ *
+ *     // SERVER_ERROR (HTTP 500)
+ *     {
+ *       ok: false,
+ *       error: "SERVER_ERROR",
+ *       message: "Wallet 처리 중 서버 오류가 발생했습니다."
+ *     }
+ *
+ *
+ * 5. 다른 함수/파일과의 관계
+ * ---------------------------
+ * - `_utils/db.ts`:
+ *     - Env 타입과 getSql(env) 헬퍼를 제공.
+ *     - getSql(env) 는 neon 인스턴스를 반환한다고 가정.
+ *
+ * - `_middleware.ts`:
+ *     - 세션을 기반으로 유저를 식별하고, X-User-Id 헤더에 넣는 역할.
+ *     - 이 파일은 X-User-Id 만 신뢰하고 있으며, 세션 상세 구조는 모른다.
+ *
+ * - 게임 클라이언트 (예: tetris.html, retro-running.html 등):
+ *     - SYNC / ADD_REWARD 호출 시 항상 credentials: "include" 로 호출해야
+ *       middleware → wallet → DB 흐름이 끝까지 연결된다.
+ *
+ *
+ * 6. 유지보수 시 주의할 점
+ * ------------------------
+ * - badRequest 를 다시 외부 모듈에서 import 하도록 바꾸면,
+ *   `_utils/json.ts` 에 해당 export 가 실제로 존재하는지 반드시 확인해야 한다.
+ *
+ * - wallet 의 비즈니스 규칙(10회마다 티켓 +1, balance cap 5000 등)을 바꾸고 싶다면,
+ *   applyGameReward 내부만 수정하면 된다.
+ *
+ * - user_wallet 스키마가 바뀐다면:
+ *     * SELECT / INSERT / UPDATE 문을 동시에 수정해야 한다.
+ *     * WalletSnapshot 타입도 함께 갱신해야 한다.
+ *
+ * - 배포 과정에서 이 파일 빌드 에러가 나면,
+ *   Cloudflare 로그에 `api/wallet.ts` 관련 메시지가 다시 나올 것이므로
+ *   항상 최신 에러 로그를 확인해서 수정하면 된다.
+ */

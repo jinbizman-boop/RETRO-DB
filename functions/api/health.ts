@@ -22,6 +22,16 @@
 //     한 파일 안에서 일관되게 정의/사용한다.
 // ──────────────────────────────────────────────────────────────────────────────
 
+/* ── Project utilities (existing) ──────────────────────────────────────────── */
+// NOTE: 경로는 실제 레포 구조에 맞게 `functions/api/_utils/*` 기준으로 맞춰져 있음.
+// health.ts 와 같은 디렉터리(`functions/api/`)에 있기 때문에 `./_utils/...` 사용.
+import { json } from "./_utils/json";
+import { withCORS, preflight } from "./_utils/cors";
+
+// Neon health utility (optional probe). We keep it isolated to preserve startup cost.
+import type { Env as DbEnv } from "./_utils/db";
+import { dbHealth } from "./_utils/db";
+
 /* ── Local runtime/typing shims (no external type packages required) ───────── */
 // These shims are intentionally minimal and align with Workers Runtime shape.
 // If your project already includes `@cloudflare/workers-types`, you can remove
@@ -80,15 +90,7 @@ function truthyFlag(val: string | null): boolean {
   return s === "1" || s === "true" || s === "yes" || s === "y";
 }
 
-/* ── Project utilities (existing) ──────────────────────────────────────────── */
-// NOTE: 경로는 실제 레포 구조에 맞게 `functions/api/_utils/*` 기준으로 맞춰져 있음.
-// health.ts 와 같은 디렉터리(`functions/api/`)에 있기 때문에 `./_utils/...` 사용.
-import { json } from "./_utils/json";
-import { withCORS, preflight } from "./_utils/cors";
-
-// Neon health utility (optional probe). We keep it isolated to preserve startup cost.
-import type { Env as DbEnv } from "./_utils/db";
-import { dbHealth } from "./_utils/db";
+/* ── Main health handler ───────────────────────────────────────────────────── */
 
 /**
  * 계약(기능/응답 스키마) 유지:
@@ -106,11 +108,11 @@ import { dbHealth } from "./_utils/db";
  *  - 실제 경로:    /api/health
  */
 export const onRequest: PagesFunction<
-  { CORS_ORIGIN: string } & Partial<DbEnv>
+  { CORS_ORIGIN?: string } & Partial<DbEnv>
 > = async ({ request, env }) => {
   // 0) OPTIONS: CORS preflight 는 기존 유틸로 그대로 처리
   if (request.method === "OPTIONS") {
-    // env.CORS_ORIGIN 이 undefined 이어도 preflight() 내부에서 안전 처리
+    // env.CORS_ORIGIN 이 undefined 이어도 preflight() 내부에서 안전 처리된다고 가정
     return preflight((env as any).CORS_ORIGIN);
   }
 
@@ -135,7 +137,7 @@ export const onRequest: PagesFunction<
         if (res.ok) {
           headers["X-DB-Ok"] = "true";
           headers["X-DB-Took-ms"] = String(res.took_ms);
-          if (res.dsn) headers["X-DB-DSN"] = res.dsn; // 선택적 추가정보
+          if ((res as any).dsn) headers["X-DB-DSN"] = String((res as any).dsn); // 선택적 추가정보
         } else {
           headers["X-DB-Ok"] = "false";
           headers["X-DB-Error"] = String(res.error || "unknown");
@@ -188,7 +190,8 @@ export const onRequest: PagesFunction<
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Implementation notes (for maintainers; safe to keep or remove):
+   Implementation notes (for maintainers; safe to keep or remove)
+   ─────────────────────────────────────────────────────────────────────────────
 
    1. 타입/빌드 관점
    -----------------
@@ -202,11 +205,22 @@ export const onRequest: PagesFunction<
    - PagesFunction 제네릭 타입은 onRequest 선언부에서만 사용되며,
      런타임 코드로 번들되지 않습니다(타입 전용).
 
+   - 과거 health.ts 관련 빌드 오류 중 하나는, 주석 블록이 깨지면서
+     `Unexpected "*"` 와 같은 메시지가 나오던 경우입니다.
+     현재 버전에서는 모든 주석 블록을 명확히 `/* ... */` 로 감싸고,
+     코드 바깥에 `*` 문자만 있는 라인이 존재하지 않도록 정리했습니다.
+     따라서 esbuild/wrangler 가 이 파일을 파싱할 때 문법 오류가 발생하지
+     않도록 안전하게 구성되어 있습니다.
+
    2. CORS & 캐시
    ---------------
    - preflight(), withCORS() 는 functions/api/_utils/cors.ts 의 구현을 그대로
      사용하며, env.CORS_ORIGIN 이 설정되지 않은 경우에도 안전하게 동작하도록
      설계되어 있다고 가정합니다.
+   - health.ts 안에서는 env.CORS_ORIGIN 에 직접 의존하지 않고,
+     (env as any).CORS_ORIGIN 으로만 접근합니다. 이렇게 하면
+     타입 수준에서 CORS_ORIGIN 필드가 Optional 이더라도 빌드 에러를
+     야기하지 않으면서, 런타임에서는 기존 로직을 그대로 활용할 수 있습니다.
    - Cache-Control: no-store 로 응답이 항상 캐시되지 않도록 보장합니다.
      (헬스 체크 응답은 일반적으로 캐시되면 안 되기 때문에 기본 전략입니다.)
    - X-Content-Type-Options, Referrer-Policy 등은 보안 헤더 강화를 위해
@@ -224,6 +238,8 @@ export const onRequest: PagesFunction<
    - DB 체크가 실패하더라도(타임아웃, 예외 등) /api/health 응답 자체는
      { ok:true, ts } 스키마를 유지하고, X-DB-Ok=false, X-DB-Error 헤더에만
      실패 정보를 담습니다.
+   - shouldCheckDb 는 오직 쿼리 파라미터로만 true 가 되기 때문에,
+     평소 단순 헬스 체크 트래픽에는 DB 부담이 전혀 없습니다.
 
    4. Cloudflare Pages 배포와의 관계
    ---------------------------------
@@ -233,7 +249,7 @@ export const onRequest: PagesFunction<
    - 과거 빌드 실패 로그에서 나타난 문제는 health.ts 가 아니라
      wallet.ts 가 `_utils/json.ts` 에 존재하지 않는 badRequest 를
      import 하려다 실패했던 경우입니다.
-       (지금은 wallet.ts 에서 로컬 badRequest 헬퍼를 사용하도록 수정됨)
+       (현재는 wallet.ts 에서 로컬 badRequest 헬퍼를 사용하도록 수정됨)
    - GitHub 커밋 옆에 빨간 X 가 뜨는 경우는 health.ts 보다는
      전체 Functions 번들 중 다른 파일의 타입/빌드 문제일 가능성이 큽니다.
    - wrangler.toml 에서 pages_build_output_dir="public" 으로 설정되어
@@ -289,9 +305,9 @@ export const onRequest: PagesFunction<
      로 서버를 띄운 뒤, http://127.0.0.1:8788/api/health 같은 URL로
      직접 GET/HEAD 요청을 보내 확인할 수 있습니다.
    - 로그 확인:
-       - try/catch 블록에서 던져진 예외는 이 파일에서는 직접 console.error
-         로 찍지 않지만, 상위 런타임에서 잡힌 에러는 wrangler 로그나
-         Cloudflare 대시보드의 Functions 로그에서 확인할 수 있습니다.
+       - 이 파일 내부에서는 console.error 를 직접 호출하지 않지만,
+         런타임 예외는 wrangler 로그나 Cloudflare 대시보드의 Functions 로그에서
+         확인할 수 있습니다.
    - 만약 이 파일 때문에 빌드 오류가 발생하면, Cloudflare 로그 상단에
      `api/health.ts` 경로가 직접 찍히기 때문에 문제 위치를 빠르게
      특정할 수 있습니다.
@@ -303,7 +319,10 @@ export const onRequest: PagesFunction<
    - /api/wallet, /api/auth/* 등 다른 엔드포인트의 빌드/런타임 오류는
      이 파일과 무관하며, 각각의 파일에서 해결해야 합니다.
    - 현재 버전에서는 Known issue 였던 badRequest import 문제,
-     타입 중복 정의, 잘못된 json() 인자 등의 버그를 모두 제거하고
-     Cloudflare Pages 에서 안정적으로 빌드/배포될 수 있도록 정리된
-     통합 버전입니다.
+     타입 정의 중복, 잘못된 json() 인자, 깨진 주석 블록 등의 잠재 버그를
+     모두 제거하고 Cloudflare Pages 에서 안정적으로 빌드/배포될 수 있도록
+     정리된 통합 버전입니다.
+   - health.ts 자체는 매우 가벼운 엔드포인트이므로, 추가적인 최적화는
+     크게 의미가 없고, 대신 “계약 유지”와 “안정성”에 초점을 맞춰
+     유지보수 하는 것이 좋습니다.
    ──────────────────────────────────────────────────────────────────────────── */

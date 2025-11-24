@@ -57,9 +57,7 @@
       color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
       overflow:hidden
     }
-    /* ✅ 혹시 app.js가 유저 허브(.wrap)를 잘못 주입하더라도
-       이 게임 페이지에서는 허브 전체를 숨겨서
-       인덱스(유저 허브)가 통째로 뜨는 현상을 막는다. */
+    /* 허브 숨김 */
     .wrap{display:none !important;}
 
     #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
@@ -99,7 +97,6 @@
       width:100%;
       height:100%;
     }
-    /* 화면이 좁아지면 광고는 자동 숨김, 캐비닛만 100% 사용 */
     @media (max-width:1200px){
       .cabinetLayout{
         grid-template-columns:minmax(0,1fr);
@@ -142,7 +139,7 @@
     }
     .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
 
-    /* HUD unified (button-like) */
+    /* HUD */
     .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
     .chip,.pill,.hud .btnMini{
       position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
@@ -173,17 +170,43 @@
     .playCount{font-size:12px;opacity:.85;margin-left:6px}
 
     /* Screen */
-    .play{position:relative;margin:10px 18px;border-radius:16px;background:linear-gradient(180deg,#0a1530,#031125);box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)}
-    .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
+    .play{
+      position:relative;
+      margin:10px 18px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#0a1530,#031125);
+      box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)
+    }
+    .screen{
+      aspect-ratio:16/9;
+      display:grid;
+      place-items:center;
+      padding:18px
+    }
     .bezel{
       width:100%;height:100%;border-radius:14px;
       background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);
       box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
       display:grid;place-items:center;overflow:hidden
     }
-    .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
+
+    /* ★ 플레이 화면 이탈 방지: 캔버스가 항상 베젤 안에 맞게 중앙 정렬되도록 수정 */
+    .canvasWrap{
+      width:100%;
+      height:100%;
+      max-width:980px;
+      max-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
     canvas#game{
-      width:100%;height:auto;aspect-ratio:1/1;
+      display:block;
+      max-width:100%;
+      max-height:100%;
+      width:auto;
+      height:auto;
+      aspect-ratio:1/1;
       background:var(--tile0);
       border-radius:18px;border:1px solid #1b2b45;
       box-shadow:inset 0 0 40px rgba(0,0,0,.25)
@@ -608,8 +631,7 @@
     }
   }
 
-  /* ✅ 2048은 티켓 소모 없이 자유 플레이로 유지하되,
-     다른 게임에서 재사용할 수 있도록 consumeTicketForSession 함수는 그대로 둔다. */
+  /* 2048은 티켓 소모 없이 자유 플레이 */
   function consumeTicketForSession(){
     const totals = getOrInitGlobalTotals();
     if(totals.tickets <= 0){
@@ -716,7 +738,7 @@
   }
   function addRecord(score, points){
     const recs=loadJSON(LS_KEYS.records,[]);
-    const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
+       const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
     saveJSON(LS_KEYS.records,recs.slice(0,200));
   }
   function showRecords(){
@@ -751,7 +773,6 @@
       this.size=4;
       this.testMode = !!opts.testMode;
 
-      // grid 먼저 초기화해서 draw() 안전 보장
       this.grid = this.makeGrid(this.size);
 
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
@@ -764,14 +785,12 @@
       this._initResizeObserver();
       this.resize();
 
-      // ✅ 테스트 모드에서는 티켓/지갑/알림 모두 건드리지 않고 단순 초기화만 수행
       if(this.testMode){
         this.reset(1);
         this.draw();
         return;
       }
 
-      // ✅ 2048은 티켓 소모 없이 자유 플레이
       this.reset(1);
       this.draw();
       notifyStart();
@@ -807,7 +826,6 @@
       $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
       $('#newBtn').onclick=()=>{
         if(this.moves>0){ addRecord(this.score,this.points||0);}
-        // 2048 새 게임은 티켓 재차 소모 없이 리셋
         this.reset(this.level);
       };
       $('#undoBtn').onclick=()=> this.undo();
@@ -821,7 +839,6 @@
       document.addEventListener('keydown',(e)=>{
         if(e.code==='KeyN'){
           if(this.moves>0){ addRecord(this.score,this.points||0);}
-          // 키보드 N도 티켓 소모 없이 새 게임
           this.reset(this.level);
         }
         if(e.code==='KeyU'){ this.undo(); }
@@ -837,7 +854,6 @@
       const wrap = this.c.parentElement || this.c;
       let lastW = 0;
 
-      // ✅ ResizeObserver 미지원 브라우저에서 에러 방지 (게임 오류 방지용)
       if (typeof ResizeObserver === 'undefined') {
         this.resize();
         return;
@@ -863,12 +879,15 @@
       const rect = bezel.getBoundingClientRect();
       const availW = Math.max(0, rect.width - 2);
       const availH = Math.max(0, rect.height - 2);
-      const SCALE = 0.99; const Y_OFFSET=-12;
+      const SCALE = 0.98; // 살짝 여유를 줘서 베젤 안에서 항상 안전하게 보이게
       const sideCSS = Math.floor(Math.min(availW, availH) * SCALE);
       const d = DPR();
-      this.c.style.width = sideCSS + 'px'; this.c.style.height = sideCSS + 'px';
-      this.c.width = Math.floor(sideCSS * d); this.c.height = Math.floor(sideCSS * d);
-      const wrap = this.c.parentElement; if(wrap){ wrap.style.transform = `translateY(${Y_OFFSET}px)`; }
+
+      this.c.style.width  = sideCSS + 'px';
+      this.c.style.height = sideCSS + 'px';
+      this.c.width  = Math.floor(sideCSS * d);
+      this.c.height = Math.floor(sideCSS * d);
+
       this.draw();
       fitCabinet();
     }
@@ -984,7 +1003,6 @@
       addPlay();
       notifyFinish(this.score|0);
 
-      // 테스트 모드에서는 보상/지갑 연동 생략
       if(this.testMode) return;
 
       try{
@@ -1016,23 +1034,68 @@
     }
 
     draw(){
-      // grid가 준비되지 않은 경우 방어
       if(!this.grid) return;
 
-      const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.clearRect(0,0,W,H);
-      const pad=16*DPR(); const n=this.size; const gap=10*DPR(); const cell=(W - pad*2 - gap*(n-1))/n; const radius=12*DPR();
-      ctx.fillStyle=getCSS('--tile0'); roundRect(ctx,pad,pad,W-pad*2,H-pad*2,18*DPR()); ctx.fill();
+      const ctx=this.ctx;
+      const W=this.c.width, H=this.c.height;
+      ctx.clearRect(0,0,W,H);
+
+      const pad = 16*DPR();
+      const n   = this.size;
+      const gap = 10*DPR();
+      const radius = 12*DPR();
+
+      // 보드가 항상 정사각형으로 중앙 정렬되도록 보정 (플레이 화면 이탈 방지)
+      const boardSide = Math.max(0, Math.min(W, H) - pad*2);
+      const cell = (boardSide - gap*(n-1)) / n;
+      const boardX = (W - boardSide) / 2;
+      const boardY = (H - boardSide) / 2;
+
+      ctx.fillStyle=getCSS('--tile0');
+      roundRect(ctx,boardX,boardY,boardSide,boardSide,18*DPR());
+      ctx.fill();
+
       for(let r=0;r<n;r++){
         for(let c=0;c<n;c++){
-          const x=pad + c*(cell+gap), y=pad + r*(cell+gap); const v=this.grid[r][c];
-          ctx.fillStyle=tileColor(v); roundRect(ctx,x,y,cell,cell,radius); ctx.fill();
-          if(v){ ctx.fillStyle='#111'; ctx.font=`bold ${Math.floor(cell*0.38)}px ui-sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v, x+cell/2, y+cell/2+1); }
+          const x = boardX + c*(cell+gap);
+          const y = boardY + r*(cell+gap);
+          const v=this.grid[r][c];
+          ctx.fillStyle=tileColor(v);
+          roundRect(ctx,x,y,cell,cell,radius);
+          ctx.fill();
+          if(v){
+            ctx.fillStyle='#111';
+            ctx.font=`bold ${Math.floor(cell*0.38)}px ui-sans-serif`;
+            ctx.textAlign='center';
+            ctx.textBaseline='middle';
+            ctx.fillText(v, x+cell/2, y+cell/2+1);
+          }
         }
       }
     }
-    flash(text){ const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.save(); ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(W*0.08)}px ui-sans-serif`; ctx.textAlign='center'; ctx.fillText(text, W/2, H/2); ctx.restore(); }
+
+    flash(text){
+      const ctx=this.ctx; const W=this.c.width, H=this.c.height;
+      ctx.save();
+      ctx.fillStyle='rgba(0,0,0,.35)';
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#fff';
+      ctx.font=`bold ${Math.floor(W*0.08)}px ui-sans-serif`;
+      ctx.textAlign='center';
+      ctx.fillText(text, W/2, H/2);
+      ctx.restore();
+    }
   }
-  function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
   function getCSS(n){ return getComputedStyle(document.documentElement).getPropertyValue(n)||'#fff'; }
   function tileColor(v){
     switch(v){
@@ -1056,11 +1119,13 @@
   setTimeout(fitCabinet, 0);
 
   (function runTests(){
-    // ✅ 테스트 인스턴스는 testMode:true 로 생성 → 티켓/지갑/광고와 완전히 분리
     try{
       const c=document.createElement('canvas');
       const g=new G2048(c,{testMode:true});
-      g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
+      g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+      const s0=g.score; g.move('L');
+      console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L');
+      console.assert(g.score-s0===4,'score add');
       g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
       g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
       console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
@@ -1077,7 +1142,7 @@
     lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
     updateTicketUI();
     syncWalletFromServerAndRender();
-    initSideBanners(); // 좌우 배너 로딩
+    initSideBanners();
   })();
   </script>
 

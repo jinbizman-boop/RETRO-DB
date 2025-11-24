@@ -161,7 +161,7 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
  *
  * 규칙:
  * - playCount: 1 증가
- * - 10회마다 tickets +1 (10, 20, 30, ...)
+ * - 10회마다 tickets +1 (10, 20, 30, ... 등 10의 배수마다)
  * - balance: reward 만큼 증가 (최대 5,000 cap, 음수 방지)
  * - wallet_transaction 로그 기록
  *
@@ -169,6 +169,23 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
  * - reward/score 가 NaN / undefined / null 이면 0 으로 처리
  * - reason 은 80자 이내로 잘라서 저장
  * - meta 는 JSON.stringify() 로 직렬화하여 meta 컬럼에 저장
+ *
+ * DB 스키마 가정:
+ *   CREATE TABLE user_wallet (
+ *     user_id    text PRIMARY KEY,
+ *     balance    integer NOT NULL DEFAULT 0,
+ *     tickets    integer NOT NULL DEFAULT 0,
+ *     play_count integer NOT NULL DEFAULT 0
+ *   );
+ *
+ *   CREATE TABLE wallet_transaction (
+ *     id        bigserial PRIMARY KEY,
+ *     user_id   text NOT NULL,
+ *     amount    integer NOT NULL,
+ *     reason    text NOT NULL,
+ *     meta      jsonb,
+ *     created_at timestamptz NOT NULL DEFAULT now()
+ *   );
  */
 async function applyGameReward(
   env: Env,
@@ -367,6 +384,7 @@ export async function onRequestPost(context: {
  *   `badRequest` export 를 import 하면서 발생했다.
  *
  *   예전 문제 코드 (지금은 사용하지 않음):
+ *
  *     import { json, badRequest } from "./_utils/json";
  *
  * - 이 파일에서는 badRequest 를 외부에서 가져오지 않고,
@@ -536,4 +554,10 @@ export async function onRequestPost(context: {
  *     * 반드시 functions/api/wallet.ts 하나만 엔트리로 사용하도록 유지하고,
  *       과거에 사용하던 wallet/balance.ts, wallet/transaction.ts 등은
  *       필요 시 참고용으로만 두거나, 완전히 제거하는 편이 좋다.
+ *
+ * - 로컬 개발 시:
+ *     * `wrangler pages dev public --local` 또는 레포 설정에 맞는
+ *       dev 명령을 사용해 /api/wallet 을 직접 호출해 볼 수 있다.
+ *     * 브라우저 콘솔이나 네트워크 탭에서 요청/응답을 확인하여
+ *       action, reward, 쿠키/헤더 등이 제대로 전달되는지 검증하는 것이 좋다.
  */

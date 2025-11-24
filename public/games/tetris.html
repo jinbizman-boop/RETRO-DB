@@ -88,8 +88,7 @@
   }
   .ad-rail-inner{
     width:120px;
-    max-width:100%;
-    min-height:600px;
+    height:600px;          /* 🔧 고정 높이로 120×600 규격 유지 */
     border-radius:16px;
     border:1px solid #283a73;
     box-shadow:0 10px 30px rgba(0,0,0,.6), inset 0 0 24px rgba(46,74,163,.45);
@@ -1024,17 +1023,20 @@ async function RG_addReward(payload){
     resize(){
       const wrap=document.getElementById('canvasWrap');
       if(!wrap) return;
+      const rect = wrap.getBoundingClientRect();
       const d=DPR();
-      const r=wrap.getBoundingClientRect();
-      const targetH=Math.min(r.height || 480, (r.width || 320)*2);
-      const targetW=targetH/2;
-      this.c.style.width=targetW+'px';
-      this.c.style.height=targetH+'px';
-      this.c.width=Math.floor(targetW*d);
-      this.c.height=Math.floor(targetH*d);
-      this.cell=Math.max(8, Math.floor((this.c.height)/(VISIBLE_ROWS)));
-      this.offsetX=Math.floor((this.c.width - (COLS*this.cell))/2);
-      this.offsetY=Math.floor((this.c.height - (VISIBLE_ROWS*this.cell))/2);
+      const cssW = rect.width;
+      const cssH = rect.height;
+      if(!cssW || !cssH) return;
+
+      /* 🔧 보이는 크기는 CSS(폭 100%, 높이 100%)에 맡기고,
+         여기서는 내부 해상도만 맞춰서 베젤 밖으로 안 튀게 처리 */
+      this.c.width  = Math.floor(cssW * d);
+      this.c.height = Math.floor(cssH * d);
+
+      this.cell    = Math.max(8, Math.floor(this.c.height / VISIBLE_ROWS));
+      this.offsetX = Math.floor((this.c.width  - (COLS * this.cell)) / 2);
+      this.offsetY = Math.floor((this.c.height - (VISIBLE_ROWS * this.cell)) / 2);
     }
     uiSync(){
       $('#score').textContent=this.score;

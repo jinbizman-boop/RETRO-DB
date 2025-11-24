@@ -771,6 +771,11 @@ window.RG_addReward = async function RG_addReward(payload){
 
     reset(level){
       this.level=level||1; this.p=paramsForLevel(this.level);
+      // ✅ 점수 기반 속도 증가 기본값
+      this.baseStartSpd = this.p.startSpd;
+      this.scoreSpeedStep = 200;           // 200점마다 한 단계
+      this.scoreSpeedBonusPerStep = 12;    // 단계당 속도 보너스
+      this.scoreSpeedBonusMax = 120;       // 최대 추가 보너스
       this.spd=this.p.startSpd; this.t=0; this.nextSpawn=0; this.dayT=0; this.isNight=false;
       this.milestoneScoreNext=100; this.boostT=0;
       this.score=0; this.best= +(localStorage.getItem(LS_KEYS.best)||0);
@@ -874,7 +879,13 @@ window.RG_addReward = async function RG_addReward(payload){
       this.c.height = Math.floor(rect.height * d);
     }
 
-    setLevel(lv){ this.level=lv; this.p=paramsForLevel(lv); this.syncHUD(true); }
+    setLevel(lv){
+      this.level=lv;
+      this.p=paramsForLevel(lv);
+      // 레벨 변경 시에도 점수 기반 속도 증가의 기준값 갱신
+      this.baseStartSpd = this.p.startSpd;
+      this.syncHUD(true);
+    }
     syncHUD(initial=false){
       $('#score').textContent=this.score|0;
       $('#best').textContent=this.best|0;
@@ -974,9 +985,14 @@ window.RG_addReward = async function RG_addReward(payload){
       }
 
       if(this.itemInvActive){ this.itemInvT=Math.max(0, this.itemInvT-dt); if(this.itemInvT<=0){ this.itemInvActive=false; this.itemSpeedMult=1; } }
+      // ✅ 점수 200점마다 기본 이동 속도 소폭 증가
+      const stepsForSpeed = Math.floor(si / (this.scoreSpeedStep || 200));
+      const bonusFromScore = clamp(stepsForSpeed * (this.scoreSpeedBonusPerStep || 10), 0, this.scoreSpeedBonusMax || 120);
+      const dynamicStart = (this.baseStartSpd || this.p.startSpd) + bonusFromScore;
+
       var boost = (this.boostT>0? 60 : 0); this.boostT = Math.max(0, this.boostT-dt);
       var mult = this.itemSpeedMult||1;
-      this.spd = clamp(this.spd + this.p.accel*dt, this.p.startSpd, this.p.maxSpd) * mult + boost;
+      this.spd = clamp(this.spd + this.p.accel*dt, dynamicStart, this.p.maxSpd) * mult + boost;
 
       this.t += dt; this.dayT += dt;
       if(this.p.nightSec<9999){ if(this.dayT>=this.p.nightSec){ this.dayT=0; this.isNight=!this.isNight; } }

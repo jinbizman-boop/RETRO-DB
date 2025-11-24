@@ -10,13 +10,6 @@
  *
  * ※ 기존 wallet/balance.ts, wallet/transaction.ts 와 논리 호환
  * ※ _middleware.ts 가 유저 식별(X-User-Id) 헤더를 자동 주입해야 정상동작
- *
- * [중요]
- *  - 이 파일은 `functions/api/wallet.ts` 경로에 있으며,
- *    보조 유틸들은 같은 디렉터리 내부의 `./_utils/...` 아래에 존재해야 한다.
- *  - VSCode 에서 TS2307(Cannot find module '../_utils/...') 가 발생했다면
- *    상대경로가 한 단계 위(`../`)를 바라보고 있기 때문이며,
- *    반드시 `./_utils/...` 형태로 맞춰야 한다.
  */
 
 import type { Env } from "./_utils/db";
@@ -52,7 +45,7 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
     balance: number | null;
     tickets: number | null;
     play_count: number | null;
-  }>` 
+  }>`
     SELECT balance, tickets, play_count
     FROM user_wallet
     WHERE user_id = ${userId}

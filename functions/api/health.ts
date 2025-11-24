@@ -23,15 +23,21 @@
 /* ── Local runtime/typing shims (no external type packages required) ───────── */
 // These shims are intentionally minimal and align with Workers Runtime shape.
 // If your project already includes `@cloudflare/workers-types`, you can remove
-// this block safely.
+// this block safely and instead:
+//
+//   import type { PagesFunction } from "@cloudflare/workers-types";
+//
 type CfContext<E> = {
   request: Request;
   env: E;
   params?: Record<string, string>;
   data?: unknown;
 };
+
 // Handler signature used by Cloudflare Pages Functions.
-type PagesFunction<E = unknown> = (ctx: CfContext<E>) => Response | Promise<Response>;
+type PagesFunction<E = unknown> = (
+  ctx: CfContext<E>
+) => Response | Promise<Response>;
 
 /* Small utility to get a high-resolution timestamp even in non-Workers builds. */
 function nowMs(): number {
@@ -65,7 +71,7 @@ function safeString(v: unknown): string {
   }
 }
 
-/* Parse simple truthy flags from query (?db=1, ?db=true) */
+/* Parse simple truthy flags from query (?db=1, ?db=true, ?db=yes, ?db=y) */
 function truthyFlag(val: string | null): boolean {
   if (!val) return false;
   const s = val.trim().toLowerCase();
@@ -73,6 +79,8 @@ function truthyFlag(val: string | null): boolean {
 }
 
 /* ── Project utilities (existing) ──────────────────────────────────────────── */
+// NOTE: 경로는 실제 레포 구조에 맞게 `functions/api/_utils/*` 기준으로 맞춰져 있음.
+// health.ts 와 같은 디렉터리(`functions/api/`)에 있기 때문에 `./_utils/...` 사용.
 import { json } from "./_utils/json";
 import { withCORS, preflight } from "./_utils/cors";
 
@@ -90,34 +98,42 @@ import { dbHealth } from "./_utils/db";
  *  - 운영 헤더 추가: Cache-Control: no-store, X-Health-Took-ms (+ 보안 헤더 일부)
  *  - Neon(DB) 헬스는 쿼리 플래그로만 수행하고, 결과는 헤더(X-DB-*)로만 노출
  *  - 예외 내성(try/catch) 및 CORS 일관 적용
+ *
+ * Cloudflare Pages 라우팅:
+ *  - 이 파일 위치:  functions/api/health.ts
+ *  - 실제 경로:    /api/health
  */
 export const onRequest: PagesFunction<
   { CORS_ORIGIN: string } & Partial<DbEnv>
 > = async ({ request, env }) => {
-  // Preflight 그대로 유지
+  // 0) OPTIONS: CORS preflight 는 기존 유틸로 그대로 처리
   if (request.method === "OPTIONS") {
+    // env.CORS_ORIGIN 이 undefined 이어도 preflight() 내부에서 안전 처리
     return preflight(env.CORS_ORIGIN);
   }
 
+  // 1) 공통 타이밍/진단 셋업
   const t0 = nowMs();
   const url = new URL(request.url);
 
-  // 플래그: DB 헬스체크 트리거 (헤더에만 반영)
+  // 2) 플래그: DB 헬스체크 트리거 (헤더에만 반영)
   const shouldCheckDb =
     truthyFlag(url.searchParams.get("db")) ||
     (url.searchParams.get("check") || "").toLowerCase() === "db";
 
-  // 공통 헤더 기본값
+  // 3) 공통 헤더 기본값
   const headers: Record<string, string> = { ...baseHealthHeaders(t0) };
 
   try {
-    // (옵션) DB 헬스 수행 — 결과를 헤더에만 기록
+    // 4) (옵션) DB 헬스 수행 — 결과를 헤더에만 기록, body 스키마는 절대 변경 X
     if (shouldCheckDb) {
       try {
         const res = await dbHealth(env as unknown as DbEnv);
+
         if (res.ok) {
           headers["X-DB-Ok"] = "true";
           headers["X-DB-Took-ms"] = String(res.took_ms);
+          if (res.dsn) headers["X-DB-DSN"] = res.dsn; // 선택적 추가정보
         } else {
           headers["X-DB-Ok"] = "false";
           headers["X-DB-Error"] = String(res.error || "unknown");
@@ -129,12 +145,36 @@ export const onRequest: PagesFunction<
       }
     }
 
-    // HEAD: 상태/헤더만 반환(본문 없음)
+    // 5) HEAD: 상태/헤더만 반환(본문 없음) — 모니터링 툴에서 사용 용이
     if (request.method === "HEAD") {
-      return withCORS(new Response(null, { status: 200, headers }), env.CORS_ORIGIN);
+      // withCORS: CORS_ORIGIN 이 없으면 기본 CORS 처리(프로젝트 유틸 기준)
+      return withCORS(
+        new Response(null, { status: 200, headers }),
+        env.CORS_ORIGIN
+      );
     }
 
-    // 나머지 모든 메서드: 본문 스키마는 원본과 100% 동일
+    // 6) 나머지 모든 메서드(GET/POST 등): 본문 스키마는 원본과 100% 동일
+    return withCORS(
+      json(
+        { ok: true, ts: Date.now() },
+        { headers } // json 유틸이 헤더 merge
+      ),
+      env.CORS_ORIGIN
+    );
+  } catch (e) {
+    // 7) 예외 상황에서도 CORS/캐시 정책 및 계약 유지(가능한 한 ok:true 응답)
+    const note = `degraded: ${safeString((e as any)?.message ?? e)}`;
+    headers["X-Health-Note"] = note;
+
+    // HEAD/GET/POST 등 모든 비-OPTIONS 경로에서 스키마 유지
+    if (request.method === "HEAD") {
+      return withCORS(
+        new Response(null, { status: 200, headers }),
+        env.CORS_ORIGIN
+      );
+    }
+
     return withCORS(
       json(
         { ok: true, ts: Date.now() },
@@ -142,34 +182,48 @@ export const onRequest: PagesFunction<
       ),
       env.CORS_ORIGIN
     );
-  } catch (e) {
-    // 예외 상황에서도 CORS/캐시 정책 및 계약 유지(가능한 한 ok:true 응답)
-    const note = `degraded: ${safeString((e as any)?.message ?? e)}`;
-    headers["X-Health-Note"] = note;
-
-    // HEAD/GET/POST 등 모든 비-OPTIONS 경로에서 스키마 유지
-    if (request.method === "HEAD") {
-      return withCORS(new Response(null, { status: 200, headers }), env.CORS_ORIGIN);
-    }
-    return withCORS(
-      json({ ok: true, ts: Date.now() }, { headers }),
-      env.CORS_ORIGIN
-    );
   }
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Implementation notes (for maintainers; safe to keep or remove):
-   - This file purposely avoids importing global Worker types. If your repo
-     later adds `@cloudflare/workers-types`, remove local shims and rely on:
-         import type { PagesFunction } from "@cloudflare/workers-types";
-   - `withCORS` consistently applies CORS to every path (HEAD/OPTIONS included).
-   - `json()` is assumed to return a Response with JSON body and merged headers.
-   - HEAD keeps headers in sync with GET but omits body per RFC semantics.
-   - `nowMs()` uses performance.now() when available for fine-grained timings,
-     yet gracefully falls back to Date.now() outside Workers.
-   - DB health probe is purely optional (query opt-in) and affects headers only,
-     ensuring the body contract remains unchanged for all clients.
-   - Extra headers (X-Content-Type-Options, Referrer-Policy) are lightweight
-     security wins without breaking caches or CORS behavior.
+
+   1. 타입/빌드 관점
+      - 이 파일은 로컬 tsc 빌드(tsconfig.json 의 "lib": ["ES2022","WebWorker"])
+        와 Cloudflare Pages Functions 번들 모두에서 컴파일 가능하도록
+        Request/Response/URL 등의 전역 타입만 사용합니다.
+      - @cloudflare/workers-types 를 프로젝트에 추가했다면, 상단의 local
+        PagesFunction 정의 부분을 제거하고 공식 타입을 import 해도 됩니다.
+
+   2. CORS & 캐시
+      - preflight(), withCORS() 는 functions/api/_utils/cors.ts 의 구현을 그대로
+        사용하며, env.CORS_ORIGIN 이 설정되지 않은 경우에도 안전하게 동작하도록
+        작성되어 있습니다.
+      - Cache-Control: no-store 로 응답이 항상 캐시되지 않도록 보장합니다.
+
+   3. DB 헬스체크
+      - ?db=1 또는 ?check=db 로 호출하면 dbHealth() 를 통해 Neon 연결 상태를
+        확인하고, 결과를 X-DB-* 헤더에만 남깁니다.
+      - 이 플래그를 쓰지 않는 한, DB 를 전혀 건드리지 않으므로 장애 상황에도
+        /api/health 기본 동작은 최대한 보장됩니다.
+
+   4. Cloudflare Pages 배포와의 관계
+      - 이 health.ts 는 ES Module + 타입 only 코드로 구성되어 있으며
+        NodeJS 전용 API(require, fs 등)는 전혀 사용하지 않기 때문에
+        Pages 빌드 실패의 직접적인 원인이 되지 않습니다.
+      - GitHub 커밋 옆에 빨간 X 가 뜨는 경우는 health.ts 가 아니라
+        전체 Pages 빌드 설정(빌드 커맨드, Output 디렉터리 등) 문제인 경우가
+        대부분입니다.
+      - wrangler.toml 에서 pages_build_output_dir="public" 으로 설정되어
+        있다면, Cloudflare Pages 대시보드에서도 Output directory 를
+        "public" 으로 맞추고, 별도의 Build command 는 비워 두는 구성이
+        이 레포 구조에 가장 안전합니다.
+
+   5. 직접 점검 방법
+      - 브라우저/포스트맨에서:
+          GET  https://<your-domain>/api/health
+        응답: { "ok": true, "ts": <number> }  + X-Health-Took-ms 헤더
+      - DB 포함 체크:
+          GET  https://<your-domain>/api/health?db=1
+        응답 body 는 동일하고, 헤더에 X-DB-Ok, X-DB-Took-ms 등이 추가됩니다.
    ──────────────────────────────────────────────────────────────────────────── */

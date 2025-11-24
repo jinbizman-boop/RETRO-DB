@@ -1,4 +1,4 @@
-// C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\admin\users.ts 
+// C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\admin\users.ts
 
 import { json } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";

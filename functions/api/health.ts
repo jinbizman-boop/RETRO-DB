@@ -336,4 +336,3 @@ export const onRequest: PagesFunction<
      재사용하는 것이 운영 관점에서 많은 이점을 줍니다.
    ─────────────────────────────────────────────────────────────────────────────
 */
-::contentReference[oaicite:0]{index=0}

@@ -934,7 +934,7 @@
   /* ================= 퍼즐 파라미터(레벨 스케일링) ================= */
   let _colsPreset=12;
   function paramsForLevel(lv){
-    const baseSpeed = 220 + lv*7.5;
+    const baseSpeed = 300 + lv*7.5;
     const paddleW = clamp(180 - lv*1.4, 56, 180);
     const rows = lv<8? 5 : lv<15? 6 : lv<25? 7 : lv<35? 8 : lv<50? 9 : 10;
     const cols = _colsPreset;
@@ -993,7 +993,7 @@
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
       this.level=1;
 
-      // 캔버스 기본 크기 세팅 (16:10 비율 유지, CSS는 width:100%로 스케일)
+      // 캔버스 기본 크기 세팅 (16:9 비율, bezel과 동일 / CSS는 width:100%로 스케일)
       this._setBaseSize();
 
       this.reset(1);
@@ -1010,7 +1010,9 @@
       // 현재 CSS 레이아웃 기준 폭을 우선 사용, 없으면 960px 기준
       let cssW = this.c.clientWidth || 960;
       if(cssW <= 0) cssW = 960;
-      const aspect = 16/10;
+
+      // ★ bezel(.screen)과 동일한 16:9 비율 유지 → 게임 화면이 캐비닛을 벗어나지 않도록 정렬
+      const aspect = 16/9;
       let cssH = cssW / aspect;
 
       this.c.width  = Math.max(10, Math.floor(cssW*d));
@@ -1135,6 +1137,11 @@
       this.paused=false;
       this._ended=false;
 
+      /* ★ 10초마다 속도 증가용 상태값 초기화 */
+      this.timeSinceStart = 0;
+      this.nextSpeedUpAt = 10;   // 10초, 20초, 30초...
+      this.speedScale = 1;
+
       const ov=document.getElementById('gameOver');
       if(ov) ov.style.display='none';
 
@@ -1201,7 +1208,8 @@
     }
 
     spawnBall(px){
-      const speed=this.params.baseSpeed*DPR();
+      /* ★ 현재 speedScale 반영해서 항상 “점점 빨라진 상태”를 유지 */
+      const speed=this.params.baseSpeed*DPR()*this.speedScale;
       const angle = -Math.PI/3 + (Math.random()*Math.PI/6);
       const x = px|| this.paddle.x;
       const y = this.paddle.y - 12*DPR();
@@ -1426,6 +1434,19 @@
       if(this.comboTimer>0){
         this.comboTimer-=dt;
         if(this.comboTimer<=0) this.combo=1;
+      }
+
+      /* ★ 10초마다 전체 볼 속도 약 6%씩 증가 */
+      this.timeSinceStart += dt;
+      const STEP = 8;
+      const INC = 1.08;
+      while(this.timeSinceStart >= this.nextSpeedUpAt){
+        this.speedScale *= INC;
+        this.nextSpeedUpAt += STEP;
+        this.balls.forEach(b=>{
+          b.vx *= INC;
+          b.vy *= INC;
+        });
       }
 
       // lasers

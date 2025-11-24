@@ -15,7 +15,44 @@
 import type { Env } from "./_utils/db";
 import { getSql } from "./_utils/db";
 import { json, badRequest } from "./_utils/json";
-import { cleanUserId } from "./_utils/schema/wallet";
+// ⚠️ cleanUserId 는 schema 모듈에서 가져오지 않고, 이 파일 안에서 직접 구현한다.
+//    (경로 문제 / export 불일치로 인한 빌드 실패를 방지하기 위함)
+
+/* ------------------------------------------------------------------ */
+/*  UserId Helper                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * X-User-Id 헤더 값 정규화 + 검증
+ *
+ * - null/undefined → "" (무효)
+ * - 앞뒤 공백 제거
+ * - 너무 긴 값(128자 초과) → 무효
+ * - 허용 문자:
+ *    알파벳, 숫자, 언더바, 하이픈, @, ., :
+ *   (기존 프로젝트에서 사용하던 userId 패턴과 호환되도록 구성)
+ *
+ * 이 함수에서 "" 를 반환하면 "INVALID_USER" 로 처리한다.
+ */
+function cleanUserId(raw: string | null): string {
+  if (!raw) return "";
+
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+
+  // 길이 보호 (Cloudflare / Neon 양쪽에서 너무 긴 키를 막기 위함)
+  if (trimmed.length > 128) return "";
+
+  // 허용 문자 이외가 포함되어 있으면 무효 처리
+  const ok = /^[A-Za-z0-9_\-@.:]+$/.test(trimmed);
+  if (!ok) return "";
+
+  return trimmed;
+}
+
+/* ------------------------------------------------------------------ */
+/*  타입 정의                                                          */
+/* ------------------------------------------------------------------ */
 
 /** DB에서 읽어오는 wallet 스냅샷 타입 */
 type WalletSnapshot = {
@@ -33,6 +70,16 @@ type RewardPayload = {
   reason?: string;
   meta?: any;
 };
+
+/** 클라이언트에서 오는 action 문자열 정규화 */
+function normalizeAction(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().toUpperCase();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Core Query Helpers                                                 */
+/* ------------------------------------------------------------------ */
 
 /**
  * user_wallet 테이블에서 현재 상태를 조회하고,
@@ -88,6 +135,7 @@ async function applyGameReward(
 ): Promise<WalletSnapshot> {
   const sql = getSql(env);
 
+  // NaN / undefined / null 을 모두 0 으로 안전 처리
   const reward = Number.isFinite(payload.reward as number)
     ? (payload.reward as number)
     : 0;
@@ -144,6 +192,10 @@ async function applyGameReward(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Request Handler                                                    */
+/* ------------------------------------------------------------------ */
+
 /**
  * POST /api/wallet
  *
@@ -152,6 +204,9 @@ async function applyGameReward(
  *  { "action": "SYNCWALLET" }
  *  { "action": "ADD_REWARD",     "reward": 120, ... }
  *  { "action": "ADDGAMEREWARD",  "reward": 120, ... }
+ *
+ * 클라이언트에서는 항상 credentials: "include" 로 호출하여
+ * _middleware.ts 가 부여하는 X-User-Id 헤더를 함께 전달해야 한다.
  */
 export async function onRequestPost(context: {
   request: Request;
@@ -160,8 +215,12 @@ export async function onRequestPost(context: {
   const { request, env } = context;
 
   try {
-    // --- 1) User identification (middleware가 넣어주는 헤더)
-    const userIdHeader = request.headers.get("X-User-Id") || "";
+    /* -------------------------------------------------------------- */
+    /* 1) User identification                                         */
+    /* -------------------------------------------------------------- */
+
+    // _middleware.ts 에서 세션/쿠키 기반으로 넣어주는 헤더
+    const userIdHeader = request.headers.get("X-User-Id");
     const userId = cleanUserId(userIdHeader);
 
     if (!userId) {
@@ -173,15 +232,20 @@ export async function onRequestPost(context: {
       });
     }
 
-    // --- 2) Body 파싱
+    /* -------------------------------------------------------------- */
+    /* 2) Body 파싱                                                    */
+    /* -------------------------------------------------------------- */
+
     const body: any =
       (await request
         .json()
         .catch(() => ({}))) || {};
 
-    const action = String(body.action || "").toUpperCase();
+    const action = normalizeAction(body.action);
 
-    // --- 3) ACTION SWITCH
+    /* -------------------------------------------------------------- */
+    /* 3) ACTION SWITCH                                                */
+    /* -------------------------------------------------------------- */
 
     // 3-1. 지갑 상태 동기화
     if (action === "SYNC" || action === "SYNCWALLET") {
@@ -214,7 +278,10 @@ export async function onRequestPost(context: {
       });
     }
 
-    // --- 지원하지 않는 action
+    /* -------------------------------------------------------------- */
+    /* 4) 지원하지 않는 action                                         */
+    /* -------------------------------------------------------------- */
+
     return badRequest({
       ok: false,
       error: "UNSUPPORTED_ACTION",
@@ -223,6 +290,7 @@ export async function onRequestPost(context: {
   } catch (err: any) {
     console.error("[wallet.ts] error", err);
 
+    // json() helper 는 (body, init?) 시그니처를 사용하는 것으로 가정
     return json(
       {
         ok: false,

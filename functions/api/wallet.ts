@@ -10,26 +10,30 @@
  *
  * ※ 기존 wallet/balance.ts, wallet/transaction.ts 와 논리 호환
  * ※ _middleware.ts 가 유저 식별(X-User-Id) 헤더를 자동 주입해야 정상동작
+ * ※ Cloudflare Pages Functions / Wrangler 빌드에서 단일 엔트리로 사용됨.
  */
 
 import type { Env } from "./_utils/db";
 import { getSql } from "./_utils/db";
 import { json } from "./_utils/json";
 
-/* ------------------------------------------------------------------ */
-/*  UserId Helper                                                      */
-/* ------------------------------------------------------------------ */
+/* ========================================================================== */
+/*  UserId Helper                                                             */
+/* ========================================================================== */
 
 /**
+ * cleanUserId
+ * -----------
  * X-User-Id 헤더 값 정규화 + 검증
  *
  * - null/undefined → "" (무효)
  * - 앞뒤 공백 제거
  * - 너무 긴 값(128자 초과) → 무효
  * - 허용 문자:
- *    알파벳, 숫자, 언더바, 하이픈, @, ., :
+ *    알파벳, 숫자, 언더바(_), 하이픈(-), @, ., :
  *
  * 이 함수에서 "" 를 반환하면 "INVALID_USER" 로 처리한다.
+ * 즉, 이 함수는 "사용할 수 있는 userId"만 통과시키는 필터 역할을 한다.
  */
 function cleanUserId(raw: string | null): string {
   if (!raw) return "";
@@ -47,9 +51,9 @@ function cleanUserId(raw: string | null): string {
   return trimmed;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Local badRequest Helper                                           */
-/* ------------------------------------------------------------------ */
+/* ========================================================================== */
+/*  Local badRequest Helper                                                   */
+/* ========================================================================== */
 
 /**
  * badRequest
@@ -61,15 +65,19 @@ function cleanUserId(raw: string | null): string {
  *
  * 사용 패턴:
  *   return badRequest({ ok:false, error:"INVALID_USER", ... });
+ *
+ * 주의:
+ *   - 절대로 `import { badRequest } from "./_utils/json"` 형태로
+ *     외부에서 가져오지 않는다. (빌드 에러 방지)
  */
 function badRequest(body: unknown): Response {
   // _utils/json 의 시그니처: json(body, init?)
   return json(body, { status: 400 });
 }
 
-/* ------------------------------------------------------------------ */
-/*  타입 정의                                                          */
-/* ------------------------------------------------------------------ */
+/* ========================================================================== */
+/*  타입 정의                                                                 */
+/* ========================================================================== */
 
 /** DB에서 읽어오는 wallet 스냅샷 타입 */
 type WalletSnapshot = {
@@ -88,19 +96,31 @@ type RewardPayload = {
   meta?: any;
 };
 
-/** 클라이언트에서 오는 action 문자열 정규화 */
+/**
+ * 클라이언트에서 오는 action 문자열 정규화
+ * - undefined / null / 비문자열 → ""
+ * - 앞뒤 공백 제거 후 대문자로 통일
+ *   예) " sync " → "SYNC"
+ */
 function normalizeAction(value: unknown): string {
   if (typeof value !== "string") return "";
   return value.trim().toUpperCase();
 }
 
-/* ------------------------------------------------------------------ */
-/*  Core Query Helpers                                                 */
-/* ------------------------------------------------------------------ */
+/* ========================================================================== */
+/*  Core Query Helpers                                                        */
+/* ========================================================================== */
 
 /**
  * user_wallet 테이블에서 현재 상태를 조회하고,
  * 없으면 (user_id,0,0,0) 레코드를 생성한 뒤 스냅샷을 반환한다.
+ *
+ * - 레코드가 없을 때:
+ *     INSERT INTO user_wallet (user_id, balance, tickets, play_count)
+ *     VALUES (${userId}, 0, 0, 0)
+ *     ON CONFLICT (user_id) DO NOTHING;
+ *
+ *   이후 balance=0, tickets=0, playCount=0 을 반환한다.
  */
 async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapshot> {
   const sql = getSql(env);
@@ -141,9 +161,14 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
  *
  * 규칙:
  * - playCount: 1 증가
- * - 10회마다 tickets +1
+ * - 10회마다 tickets +1 (10, 20, 30, ...)
  * - balance: reward 만큼 증가 (최대 5,000 cap, 음수 방지)
  * - wallet_transaction 로그 기록
+ *
+ * 방어적 처리:
+ * - reward/score 가 NaN / undefined / null 이면 0 으로 처리
+ * - reason 은 80자 이내로 잘라서 저장
+ * - meta 는 JSON.stringify() 로 직렬화하여 meta 컬럼에 저장
  */
 async function applyGameReward(
   env: Env,
@@ -170,7 +195,7 @@ async function applyGameReward(
 
   // 10번마다 티켓 1개
   let newTickets = walletNow.tickets;
-  if (nextPlay % 10 === 0) {
+  if (nextPlay > 0 && nextPlay % 10 === 0) {
     newTickets += 1;
   }
 
@@ -209,21 +234,31 @@ async function applyGameReward(
   };
 }
 
-/* ------------------------------------------------------------------ */
-/*  Request Handler                                                    */
-/* ------------------------------------------------------------------ */
+/* ========================================================================== */
+/*  Request Handler                                                           */
+/* ========================================================================== */
 
 /**
  * POST /api/wallet
+ * ----------------
  *
  * Body 예시:
  *  { "action": "SYNC" }
  *  { "action": "SYNCWALLET" }
- *  { "action": "ADD_REWARD",     "reward": 120, ... }
- *  { "action": "ADDGAMEREWARD",  "reward": 120, ... }
+ *  { "action": "ADD_REWARD",     "reward": 120, "score": 9999, ... }
+ *  { "action": "ADDGAMEREWARD",  "reward": 120, "score": 9999, ... }
  *
  * 클라이언트에서는 항상 credentials: "include" 로 호출하여
  * _middleware.ts 가 부여하는 X-User-Id 헤더를 함께 전달해야 한다.
+ *
+ * 응답 공통 포맷:
+ *  - 성공:
+ *      { ok: true, balance: number, tickets: number, playCount: number }
+ *  - 에러:
+ *      { ok: false, error: string, message?: string }
+ *
+ *   error 값 예:
+ *      INVALID_USER / UNSUPPORTED_ACTION / SERVER_ERROR
  */
 export async function onRequestPost(context: {
   request: Request;
@@ -237,12 +272,12 @@ export async function onRequestPost(context: {
     /* -------------------------------------------------------------- */
 
     // _middleware.ts 에서 세션/쿠키 기반으로 넣어주는 헤더
+    // 예: request.headers.set("X-User-Id", user.id);
     const userIdHeader = request.headers.get("X-User-Id");
     const userId = cleanUserId(userIdHeader);
 
     if (!userId) {
-      // ❗ 기존에는 json(..., {status:400})을 직접 호출했지만,
-      //    이제는 로컬 badRequest() 헬퍼를 사용해서 패턴을 통일한다.
+      // X-User-Id 가 없거나, cleanUserId 에서 무효 처리된 경우
       return badRequest({
         ok: false,
         error: "INVALID_USER",
@@ -254,6 +289,7 @@ export async function onRequestPost(context: {
     /* 2) Body 파싱                                                    */
     /* -------------------------------------------------------------- */
 
+    // 잘못된 JSON 이거나, body 자체가 없는 경우를 대비해 방어 코드
     const body: any =
       (await request
         .json()
@@ -320,20 +356,21 @@ export async function onRequestPost(context: {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Implementation Notes (for maintainers)                             */
-/* ------------------------------------------------------------------ */
+/* ========================================================================== */
+/*  Implementation Notes (for maintainers)                                    */
+/* ========================================================================== */
+
 /**
  * 1. Cloudflare Pages / Wrangler 빌드 안정성
  * -----------------------------------------
  * - 과거 빌드 실패 원인은 `_utils/json.ts` 에 존재하지 않는
  *   `badRequest` export 를 import 하면서 발생했다.
  *
- *   예전 코드:
+ *   예전 문제 코드 (지금은 사용하지 않음):
  *     import { json, badRequest } from "./_utils/json";
  *
  * - 이 파일에서는 badRequest 를 외부에서 가져오지 않고,
- *   내부 로컬 헬퍼로 구현했다.
+ *   내부 로컬 헬퍼(badRequest 함수)로 구현했다.
  *   → Cloudflare 번들러가 `_utils/json.ts` 에서 없는 export 를
  *     찾으려고 하지 않기 때문에 빌드 에러가 사라진다.
  *
@@ -343,39 +380,62 @@ export async function onRequestPost(context: {
  * 2. UserId 처리 흐름
  * -------------------
  * - `_middleware.ts` 에서 세션/쿠키 기반으로 X-User-Id 를 헤더에 넣어준다.
+ *   예: 로그인된 사용자의 userId 를 쿠키/세션에서 읽어와,
+ *       request.headers.set("X-User-Id", userId) 형태로 주입.
+ *
  * - 이 파일에서는 `cleanUserId()` 를 통해:
  *     * null/undefined → "" (무효)
  *     * 앞뒤 공백 제거
  *     * 허용되지 않는 문자 포함 시 "" 반환
  *     * 128자 초과 시 "" 반환
+ *
  * - 결국 onRequestPost 안에서는:
+ *
  *     const userIdHeader = request.headers.get("X-User-Id");
  *     const userId = cleanUserId(userIdHeader);
- *     if (!userId) { return badRequest({ ...INVALID_USER... }); }
+ *     if (!userId) {
+ *       return badRequest({ ok:false, error:"INVALID_USER", ... });
+ *     }
  *
  *   이런 패턴으로, 잘못된/누락된 유저 식별자는 일관되게 400 처리된다.
+ *
+ * - 이렇게 함으로써 DB user_wallet/user_transaction 테이블에
+ *   이상한 user_id (공백, 특수문자, 너무 긴 값 등)가 들어가는 것을 방지한다.
  *
  *
  * 3. Wallet 동작 규칙 (비즈니스 로직)
  * ----------------------------------
- * - user_wallet:
- *     balance   : 포인트
- *     tickets   : 티켓 수
- *     play_count: 플레이 횟수
+ * - user_wallet 테이블 컬럼 가정:
+ *     balance   : 포인트 (정수)
+ *     tickets   : 티켓 수 (정수)
+ *     play_count: 플레이 횟수 (정수)
  *
  * - SYNC / SYNCWALLET:
  *     → 현재 값 그대로 반환.
  *     → user_wallet 에 레코드가 없으면 (user_id,0,0,0) 신규 생성 후 {0,0,0} 반환.
  *
  * - ADD_REWARD / ADDGAMEREWARD:
- *     - reward 가 NaN / undefined / null 이면 0 처리.
- *     - play_count: 기존 값 + 1
- *     - tickets: play_count 가 10, 20, 30 ... 일 때마다 +1
- *     - balance: reward 만큼 증가하되, [0, 5000] 범위를 벗어나지 않도록 clamp
- *     - wallet_transaction:
- *         (user_id, amount=reward, reason, metaJson) 기록
- *         metaJson 은 score/tier/level 등을 포함한 JSON 문자열
- *     - 최종적으로 갱신된 balance/tickets/playCount 반환.
+ *
+ *   (1) reward 처리
+ *     - body.reward 가 number 이고, NaN 이 아니면 그 값을 사용.
+ *     - 그 외(문자열/undefined/null/NaN)는 0으로 처리.
+ *
+ *   (2) play_count / tickets 규칙
+ *     - play_count: 기존 play_count 에 +1
+ *     - tickets: play_count 가 10, 20, 30, ... 일 때마다 +1
+ *       (즉, nextPlay % 10 === 0 일 때 tickets++ )
+ *
+ *   (3) balance 규칙
+ *     - balance: 기존 balance + reward
+ *     - 0 미만이면 0으로, 5000 초과면 5000으로 clamp
+ *       → newBalance = min(5000, max(0, oldBalance + reward))
+ *
+ *   (4) wallet_transaction 로그
+ *     - amount: reward
+ *     - reason: payload.reason (없으면 "game_reward"), 최대 80자
+ *     - meta: JSON.stringify( { ...payload.meta, score, tier, level } )
+ *
+ * - 최종적으로 갱신된 balance/tickets/playCount 를 응답 본문으로 돌려준다.
  *
  *
  * 4. API Contract (클라이언트 관점)
@@ -386,8 +446,20 @@ export async function onRequestPost(context: {
  *     Credentials: include (중요! 세션 쿠키 → X-User-Id 로 변환)
  *
  *   Body 예시:
+ *     // 지갑 동기화
  *     { "action": "SYNC" }
- *     { "action": "ADD_REWARD", "reward": 120, "score": 9999, ... }
+ *     { "action": "SYNCWALLET" }
+ *
+ *     // 게임 보상 적립
+ *     {
+ *       "action": "ADD_REWARD",
+ *       "reward": 120,
+ *       "score": 12345,
+ *       "tier": "bronze",
+ *       "level": 3,
+ *       "reason": "tetris_clear",
+ *       "meta": { "stage": 2 }
+ *     }
  *
  * - 응답 (성공):
  *     {
@@ -398,14 +470,15 @@ export async function onRequestPost(context: {
  *     }
  *
  * - 응답 (에러 예시):
- *     // INVALID_USER
+ *
+ *     // INVALID_USER (HTTP 400)
  *     {
  *       ok: false,
  *       error: "INVALID_USER",
  *       message: "유효하지 않은 사용자 식별자"
  *     }
  *
- *     // UNSUPPORTED_ACTION
+ *     // UNSUPPORTED_ACTION (HTTP 400)
  *     {
  *       ok: false,
  *       error: "UNSUPPORTED_ACTION",
@@ -425,29 +498,42 @@ export async function onRequestPost(context: {
  * - `_utils/db.ts`:
  *     - Env 타입과 getSql(env) 헬퍼를 제공.
  *     - getSql(env) 는 neon 인스턴스를 반환한다고 가정.
+ *       (예: const sql = neon(env.DATABASE_URL))
  *
  * - `_middleware.ts`:
  *     - 세션을 기반으로 유저를 식별하고, X-User-Id 헤더에 넣는 역할.
- *     - 이 파일은 X-User-Id 만 신뢰하고 있으며, 세션 상세 구조는 모른다.
+ *     - 이 파일은 X-User-Id 값만 신뢰하고 있으며, 세션 상세 구조는 모른다.
  *
- * - 게임 클라이언트 (예: tetris.html, retro-running.html 등):
+ * - 게임 클라이언트 (예: tetris.html, user-retro-games.html 등):
  *     - SYNC / ADD_REWARD 호출 시 항상 credentials: "include" 로 호출해야
  *       middleware → wallet → DB 흐름이 끝까지 연결된다.
+ *     - action 문자열은 대소문자/공백 상관 없이 normalizeAction 에서 정규화되므로,
+ *       " sync ", "Sync", "SYNC" 모두 올바르게 인식된다.
  *
  *
  * 6. 유지보수 시 주의할 점
  * ------------------------
  * - badRequest 를 다시 외부 모듈에서 import 하도록 바꾸면,
  *   `_utils/json.ts` 에 해당 export 가 실제로 존재하는지 반드시 확인해야 한다.
+ *   (현재 구조에서는 로컬 badRequest 헬퍼만 사용하는 것이 가장 안전하다.)
  *
  * - wallet 의 비즈니스 규칙(10회마다 티켓 +1, balance cap 5000 등)을 바꾸고 싶다면,
- *   applyGameReward 내부만 수정하면 된다.
+ *   applyGameReward 내부 로직만 수정하면 된다.
  *
  * - user_wallet 스키마가 바뀐다면:
  *     * SELECT / INSERT / UPDATE 문을 동시에 수정해야 한다.
  *     * WalletSnapshot 타입도 함께 갱신해야 한다.
  *
+ * - transaction 메타 구조를 바꾸고 싶다면:
+ *     * metaJson 생성부만 수정하면 된다.
+ *     * 단, 기존 DB 에 저장된 JSON 구조와의 호환성을 고려해야 한다.
+ *
  * - 배포 과정에서 이 파일 빌드 에러가 나면,
  *   Cloudflare 로그에 `api/wallet.ts` 관련 메시지가 다시 나올 것이므로
  *   항상 최신 에러 로그를 확인해서 수정하면 된다.
+ *
+ * - GitHub 에 여러 버전의 wallet.ts 가 존재하지 않도록 주의:
+ *     * 반드시 functions/api/wallet.ts 하나만 엔트리로 사용하도록 유지하고,
+ *       과거에 사용하던 wallet/balance.ts, wallet/transaction.ts 등은
+ *       필요 시 참고용으로만 두거나, 완전히 제거하는 편이 좋다.
  */

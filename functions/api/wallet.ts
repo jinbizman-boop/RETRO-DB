@@ -14,9 +14,7 @@
 
 import type { Env } from "./_utils/db";
 import { getSql } from "./_utils/db";
-import { json, badRequest } from "./_utils/json";
-// ⚠️ cleanUserId 는 schema 모듈에서 가져오지 않고, 이 파일 안에서 직접 구현한다.
-//    (경로 문제 / export 불일치로 인한 빌드 실패를 방지하기 위함)
+import { json } from "./_utils/json";
 
 /* ------------------------------------------------------------------ */
 /*  UserId Helper                                                      */
@@ -30,7 +28,6 @@ import { json, badRequest } from "./_utils/json";
  * - 너무 긴 값(128자 초과) → 무효
  * - 허용 문자:
  *    알파벳, 숫자, 언더바, 하이픈, @, ., :
- *   (기존 프로젝트에서 사용하던 userId 패턴과 호환되도록 구성)
  *
  * 이 함수에서 "" 를 반환하면 "INVALID_USER" 로 처리한다.
  */
@@ -224,12 +221,15 @@ export async function onRequestPost(context: {
     const userId = cleanUserId(userIdHeader);
 
     if (!userId) {
-      // _utils/json 의 badRequest 사용 (Response 를 다시 json에 넣지 않도록 주의)
-      return badRequest({
-        ok: false,
-        error: "INVALID_USER",
-        message: "유효하지 않은 사용자 식별자",
-      });
+      // badRequest 헬퍼 대신 json() + status 400 직접 지정
+      return json(
+        {
+          ok: false,
+          error: "INVALID_USER",
+          message: "유효하지 않은 사용자 식별자",
+        },
+        { status: 400 }
+      );
     }
 
     /* -------------------------------------------------------------- */
@@ -282,11 +282,14 @@ export async function onRequestPost(context: {
     /* 4) 지원하지 않는 action                                         */
     /* -------------------------------------------------------------- */
 
-    return badRequest({
-      ok: false,
-      error: "UNSUPPORTED_ACTION",
-      message: "지원하지 않는 action 입니다.",
-    });
+    return json(
+      {
+        ok: false,
+        error: "UNSUPPORTED_ACTION",
+        message: "지원하지 않는 action 입니다.",
+      },
+      { status: 400 }
+    );
   } catch (err: any) {
     console.error("[wallet.ts] error", err);
 

@@ -11,6 +11,10 @@
 --  - We keep functional parity with the original file (same tables & purpose),
 --    but add: stricter constraints, idempotency keys, trigger-based balance
 --    propagation to user_stats, defensive CHECKs, and read-optimized indexes.
+--  - Extended for wallet C-architecture:
+--      * user_stats: coins + tickets + exp + games_played
+--      * transactions: meta / game / exp_delta / tickets_delta / plays_delta / reason
+--      * apply_wallet_transaction(): coins + exp + tickets + games_played 동시 갱신
 
 BEGIN;
 
@@ -31,6 +35,20 @@ BEGIN
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'txn_type') THEN
     CREATE TYPE txn_type AS ENUM ('earn','spend','purchase','reward');
+  END IF;
+END
+$$;
+
+-- Ensure 'game' value exists in txn_type (for wallet game rewards)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_enum
+    WHERE enumtypid = 'txn_type'::regtype
+      AND enumlabel = 'game'
+  ) THEN
+    ALTER TYPE txn_type ADD VALUE 'game';
   END IF;
 END
 $$;
@@ -111,19 +129,45 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user   ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token  ON sessions(token);
 
 -- ──────────────────────────────────────────────────────────────────────────────
--- User stats / wallet snapshot (coins kept here; txns adjust it)
---  - level is generated from xp (1 + floor(xp/1000))
---  - coins non-negative invariant enforced by a trigger on transactions below
+-- User stats / wallet snapshot
+--  - xp / level: 기존 구조 유지 (xp 기반 레벨)
+--  - coins / tickets / exp / games_played: wallet C안에서 사용
 -- ──────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS user_stats (
   user_id        UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   xp             BIGINT NOT NULL DEFAULT 0,
   level          INT GENERATED ALWAYS AS (GREATEST(1, (xp/1000)::INT + 1)) STORED,
   coins          BIGINT NOT NULL DEFAULT 0 CHECK (coins >= 0),
+  -- 새 필드: wallet C안용
+  exp            BIGINT NOT NULL DEFAULT 0,          -- 경험치 (wallet.ts 에서 사용)
+  tickets        BIGINT NOT NULL DEFAULT 0,          -- 티켓 개수
+  games_played   BIGINT NOT NULL DEFAULT 0,          -- 총 플레이 횟수
   last_login_at  TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 기존 DB에도 exp/tickets/games_played 컬럼을 보강 (있으면 무시)
+ALTER TABLE user_stats
+  ADD COLUMN IF NOT EXISTS exp          BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tickets      BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS games_played BIGINT NOT NULL DEFAULT 0;
+
+-- xp → exp 1회 동기화 (exp가 0일 때만)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_stats' AND column_name = 'xp'
+  )
+  AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_stats' AND column_name = 'exp'
+  ) THEN
+    UPDATE user_stats SET exp = xp WHERE exp = 0;
+  END IF;
+END
+$$;
 
 DO $$
 BEGIN
@@ -207,19 +251,68 @@ CREATE INDEX IF NOT EXISTS idx_purchases_item ON purchases(item_id);
 -- Wallet transactions (earn/spend with traceability)
 --  - balance_after is set by a trigger to reflect user_stats.coins
 --  - idempotency_key prevents accidental double-posts
+--  - C안 확장: reason, meta, game, exp_delta, tickets_delta, plays_delta 추가
 -- ──────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS transactions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type            txn_type NOT NULL,
-  amount          BIGINT NOT NULL CHECK (amount <> 0),
+  amount          BIGINT NOT NULL,                 -- 0도 허용(경험치/티켓만 변동될 수 있음)
   balance_after   BIGINT,
-  ref_table       TEXT,            -- e.g., 'game_runs', 'purchases', 'daily_luck_spins'
+  ref_table       TEXT,                            -- e.g., 'game_runs', 'purchases', 'daily_luck_spins'
   ref_id          UUID,
   note            TEXT,
   idempotency_key TEXT UNIQUE,
+  reason          TEXT,                            -- wallet.ts 의 reason
+  meta            JSONB NOT NULL DEFAULT '{}'::jsonb,
+  game            TEXT,
+  exp_delta       BIGINT NOT NULL DEFAULT 0,
+  tickets_delta   BIGINT NOT NULL DEFAULT 0,
+  plays_delta     BIGINT NOT NULL DEFAULT 0,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 기존 테이블에 새 컬럼 보강
+ALTER TABLE transactions
+  ADD COLUMN IF NOT EXISTS reason         TEXT,
+  ADD COLUMN IF NOT EXISTS meta           JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS game           TEXT,
+  ADD COLUMN IF NOT EXISTS exp_delta      BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tickets_delta  BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS plays_delta    BIGINT NOT NULL DEFAULT 0;
+
+-- amount 체크 제약 조건을 완화: 적어도 한 가지 값은 변해야 함
+DO $$
+DECLARE
+  c_name TEXT;
+BEGIN
+  SELECT conname INTO c_name
+  FROM pg_constraint
+  WHERE conrelid = 'transactions'::regclass
+    AND contype = 'c'
+    AND pg_get_constraintdef(oid) LIKE '%amount <> 0%';
+
+  IF c_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT %I', c_name);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'transactions'::regclass
+      AND conname = 'transactions_amount_nonzero_or_deltas'
+  ) THEN
+    ALTER TABLE transactions
+      ADD CONSTRAINT transactions_amount_nonzero_or_deltas
+      CHECK (
+        amount <> 0
+        OR exp_delta <> 0
+        OR tickets_delta <> 0
+        OR plays_delta <> 0
+      );
+  END IF;
+END
+$$;
+
 CREATE INDEX IF NOT EXISTS idx_txn_user_time    ON transactions(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_txn_user_ref     ON transactions(user_id, ref_table, ref_id);
 
@@ -231,33 +324,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to apply a transaction into user_stats.coins atomically
---  - BEFORE INSERT: compute candidate new balance, enforce non-negative
+-- Trigger to apply a transaction into user_stats (coins + exp + tickets + games_played)
+--  - BEFORE INSERT: compute candidate new balance, enforce non-negative coins
 --  - After successful check, set balance_after and upsert stats
 CREATE OR REPLACE FUNCTION apply_wallet_transaction() RETURNS TRIGGER AS $$
 DECLARE
-  v_coins BIGINT;
-  v_new   BIGINT;
+  v_stats        user_stats;
+  v_new_coins    BIGINT;
+  v_new_tickets  BIGINT;
+  v_new_exp      BIGINT;
+  v_new_games    BIGINT;
 BEGIN
   PERFORM ensure_user_stats_row(NEW.user_id);
 
-  SELECT coins INTO v_coins FROM user_stats WHERE user_id = NEW.user_id FOR UPDATE;
+  SELECT * INTO v_stats
+  FROM user_stats
+  WHERE user_id = NEW.user_id
+  FOR UPDATE;
 
-  -- Earn/reward/purchase(+): positive amount; spend: negative amount
-  -- Input already signed; simply add.
-  v_new := COALESCE(v_coins, 0) + NEW.amount;
+  v_new_coins   := GREATEST(0, COALESCE(v_stats.coins, 0)          + COALESCE(NEW.amount, 0));
+  v_new_tickets := GREATEST(0, COALESCE(v_stats.tickets, 0)        + COALESCE(NEW.tickets_delta, 0));
+  v_new_exp     := GREATEST(0, COALESCE(v_stats.exp, 0)            + COALESCE(NEW.exp_delta, 0));
+  v_new_games   := GREATEST(0, COALESCE(v_stats.games_played, 0)   + COALESCE(NEW.plays_delta, 0));
 
-  -- Guardrail: do not allow negative balances (comment out to allow negatives)
-  IF v_new < 0 THEN
-    RAISE EXCEPTION 'Insufficient balance: % + % = %', v_coins, NEW.amount, v_new
-      USING ERRCODE = '23514'; -- check_violation
+  -- coins 음수 방지 (추가로 5000 cap 등은 wallet.ts / delta 계산에서 처리)
+  IF v_new_coins < 0 THEN
+    RAISE EXCEPTION 'Insufficient balance: % + % = %', v_stats.coins, NEW.amount, v_new_coins
+      USING ERRCODE = '23514';
   END IF;
 
-  -- Reflect the post-transaction balance on the row itself
-  NEW.balance_after := v_new;
+  NEW.balance_after := v_new_coins;
 
-  -- Apply to user_stats
-  UPDATE user_stats SET coins = v_new, updated_at = NOW()
+  UPDATE user_stats
+  SET coins        = v_new_coins,
+      tickets      = v_new_tickets,
+      exp          = v_new_exp,
+      xp           = v_new_exp,   -- xp와 exp를 동기화 (기존 level 계산 보호)
+      games_played = v_new_games,
+      updated_at   = NOW()
   WHERE user_id = NEW.user_id;
 
   RETURN NEW;
@@ -270,6 +374,9 @@ BEGIN
     CREATE TRIGGER transactions_apply
       BEFORE INSERT ON transactions
       FOR EACH ROW EXECUTE FUNCTION apply_wallet_transaction();
+  ELSE
+    -- 이미 존재하면 함수만 최신 버전으로 교체된 상태이므로 OK
+    NULL;
   END IF;
 END
 $$;
@@ -330,8 +437,8 @@ SELECT
   s.level,
   s.coins,
   s.last_login_at,
-  (SELECT COUNT(1)           FROM game_runs r WHERE r.user_id = u.id)           AS total_runs,
-  (SELECT COALESCE(MAX(score),0) FROM game_runs r WHERE r.user_id = u.id)       AS best_score_any
+  (SELECT COUNT(1)             FROM game_runs r WHERE r.user_id = u.id) AS total_runs,
+  (SELECT COALESCE(MAX(score),0) FROM game_runs r WHERE r.user_id = u.id) AS best_score_any
 FROM users u
 LEFT JOIN user_stats s ON s.user_id = u.id;
 

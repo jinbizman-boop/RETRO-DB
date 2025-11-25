@@ -8,18 +8,19 @@
  *  - SYNC / SYNCWALLET           → 현재 사용자 wallet 상태 조회
  *  - ADD_REWARD / ADDGAMEREWARD  → 게임 보상(포인트/티켓/플레이카운트 등) 반영
  *
- * 아키텍처(최신 버전):
+ * 아키텍처(최신 버전, C안 반영):
  *  - user_stats   : 유저별 집계 상태(코인/티켓/경험치/플레이수)
  *  - transactions : 세부 트랜잭션 로그(게임 보상, 시스템 조정 등)
- *  - DB 트리거     : transactions INSERT 시 user_stats 를 자동 갱신
+ *  - DB 트리거    : transactions INSERT 시 user_stats 를 자동 갱신
  *
  * 이 파일의 역할:
  *  - HTTP 요청 단에서 유저 식별, 파라미터 검증, 비즈니스 규칙 적용
  *  - “delta(증감)”를 계산해 transactions 테이블에 INSERT
  *  - DB 트리거가 user_stats 를 갱신하면, 최신 상태를 읽어 클라이언트에 반환
  *
- * ※ _middleware.ts 가 유저 식별(X-User-Id) 헤더를 자동 주입해야 정상동작
- * ※ Cloudflare Pages Functions / Wrangler 빌드에서 단일 엔트리로 사용됨.
+ * 전제:
+ *  - _middleware.ts 가 유저 식별(X-User-Id) 헤더를 자동 주입해야 정상동작
+ *  - Cloudflare Pages Functions / Wrangler 빌드에서 단일 엔트리로 사용됨.
  */
 
 import type { Env } from "./_utils/db";
@@ -80,7 +81,6 @@ function cleanUserId(raw: string | null): string {
  *     외부에서 가져오지 않는다. (빌드 에러 방지)
  */
 function badRequest(body: unknown): Response {
-  // _utils/json 의 시그니처: json(body, init?)
   return json(body, { status: 400 });
 }
 
@@ -336,7 +336,10 @@ function buildGameRewardDelta(
   const ticketsDelta = nextPlayCount > 0 && nextPlayCount % 10 === 0 ? 1 : 0;
 
   // 포인트/코인: clamp 규칙 적용
-  const { nextBalance, delta: pointsDelta } = clampPoints(rawReward, snapshot.balance);
+  const { nextBalance, delta: pointsDelta } = clampPoints(
+    rawReward,
+    snapshot.balance
+  );
 
   // 경험치: 기본적으로 reward 기반, 없으면 score 기반
   let expDelta = 0;
@@ -350,7 +353,9 @@ function buildGameRewardDelta(
   // 게임 식별자
   const rawGame =
     (typeof payload.game === "string" && payload.game.trim()) ||
-    (payload.meta && typeof payload.meta.game === "string" && payload.meta.game.trim()) ||
+    (payload.meta &&
+      typeof payload.meta.game === "string" &&
+      payload.meta.game.trim()) ||
     "generic";
   const game = rawGame.slice(0, 64);
 
@@ -605,7 +610,7 @@ export async function onRequestPost(context: {
 }
 
 /* ========================================================================== */
-/*  Implementation Notes (for maintainers)                                    */
+/*  Implementation Notes (for maintainers) – C안 구조 설명                    */
 /* ========================================================================== */
 
 /**
@@ -618,7 +623,7 @@ export async function onRequestPost(context: {
  * - transactions:
  *     * 모든 세부 지갑 변동 이력을 기록하는 로그 테이블이다.
  *     * amount, type, reason, meta, game, exp_delta, tickets_delta, plays_delta,
- *       balance_after 등을 포함한다.
+ *       balance_after 등을 포함하도록 설계할 수 있다.
  *
  * - 트리거(apply_wallet_transaction):
  *     * transactions 에 INSERT 된 delta 를 읽어 user_stats 를 갱신한다.
@@ -638,7 +643,7 @@ export async function onRequestPost(context: {
  *     * wallet_transaction    : 트랜잭션 로그 테이블
  *     * wallet.ts 에서 직접 user_wallet UPDATE + wallet_transaction INSERT 처리
  *
- * - 현재 구조:
+ * - 현재 구조(C안):
  *     * user_stats            : 집계 + 현재 상태 테이블 (확장된 필드: exp, games_played)
  *     * transactions          : 범용 트랜잭션 테이블 (type, game, delta 컬럼 등)
  *     * 트리거(apply_wallet_transaction)가 transactions INSERT 를 받아 user_stats 를 갱신
@@ -649,6 +654,8 @@ export async function onRequestPost(context: {
  *       같은 테이블을 통해 기록 가능.
  *     * 트리거가 user_stats 를 일관되게 갱신하므로, 여러 엔드포인트에서
  *       transactions 를 INSERT 하더라도 최종 집계 로직이 한 곳에 모인다.
+ *     * API 레벨 코드는 상대적으로 단순해지고, DB 스키마/트리거를 바꾸는 것만으로
+ *       비즈니스 규칙을 중앙에서 제어할 수 있다.
  *
  *
  * 3. UserId 처리 흐름
@@ -673,7 +680,7 @@ export async function onRequestPost(context: {
  *
  *   이런 패턴으로, 잘못된/누락된 유저 식별자는 일관되게 400 처리된다.
  *
- * - 이렇게 함으로써 DB user_stats/transactions 테이블에
+ * - 이렇게 함으로써 DB user_stats / transactions 테이블에
  *   이상한 user_id (공백, 특수문자, 너무 긴 값 등)가 들어가는 것을 방지한다.
  *
  *
@@ -721,8 +728,90 @@ export async function onRequestPost(context: {
  *       클라이언트에 반환한다.
  *
  *
- * 5. API Contract (클라이언트 관점)
- * ---------------------------------
+ * 5. DB 스키마/트리거 예시 (참고용, 실제 적용 시 마이그레이션에 사용)
+ * ------------------------------------------------------------------
+ *
+ * -- user_stats 테이블
+ * CREATE TABLE IF NOT EXISTS user_stats (
+ *   user_id       text PRIMARY KEY,
+ *   coins         integer NOT NULL DEFAULT 0,
+ *   tickets       integer NOT NULL DEFAULT 0,
+ *   exp           integer NOT NULL DEFAULT 0,
+ *   games_played  integer NOT NULL DEFAULT 0,
+ *   created_at    timestamptz NOT NULL DEFAULT now(),
+ *   updated_at    timestamptz NOT NULL DEFAULT now()
+ * );
+ *
+ * -- transactions 테이블
+ * CREATE TABLE IF NOT EXISTS transactions (
+ *   id             bigserial PRIMARY KEY,
+ *   user_id        text NOT NULL,
+ *   amount         integer NOT NULL,
+ *   type           text NOT NULL,
+ *   reason         text NOT NULL,
+ *   meta           jsonb,
+ *   created_at     timestamptz NOT NULL DEFAULT now(),
+ *   game           text,
+ *   exp_delta      integer NOT NULL DEFAULT 0,
+ *   tickets_delta  integer NOT NULL DEFAULT 0,
+ *   plays_delta    integer NOT NULL DEFAULT 0,
+ *   balance_after  integer
+ * );
+ *
+ * -- user_stats 갱신용 트리거 함수
+ * CREATE OR REPLACE FUNCTION apply_wallet_transaction() RETURNS trigger AS $$
+ * DECLARE
+ *   current_stats user_stats;
+ *   new_coins integer;
+ *   new_tickets integer;
+ *   new_exp integer;
+ *   new_games integer;
+ * BEGIN
+ *   SELECT * INTO current_stats
+ *   FROM user_stats
+ *   WHERE user_id = NEW.user_id
+ *   FOR UPDATE;
+ *
+ *   IF NOT FOUND THEN
+ *     INSERT INTO user_stats (user_id, coins, tickets, exp, games_played)
+ *     VALUES (NEW.user_id, 0, 0, 0, 0)
+ *     ON CONFLICT (user_id) DO NOTHING;
+ *
+ *     SELECT * INTO current_stats
+ *     FROM user_stats
+ *     WHERE user_id = NEW.user_id
+ *     FOR UPDATE;
+ *   END IF;
+ *
+ *   new_coins   := GREATEST(0, LEAST(5000, current_stats.coins + NEW.amount));
+ *   new_tickets := GREATEST(0, current_stats.tickets + NEW.tickets_delta);
+ *   new_exp     := GREATEST(0, current_stats.exp + NEW.exp_delta);
+ *   new_games   := GREATEST(0, current_stats.games_played + NEW.plays_delta);
+ *
+ *   UPDATE user_stats
+ *   SET coins        = new_coins,
+ *       tickets      = new_tickets,
+ *       exp          = new_exp,
+ *       games_played = new_games,
+ *       updated_at   = now()
+ *   WHERE user_id = NEW.user_id;
+ *
+ *   NEW.balance_after := new_coins;
+ *   RETURN NEW;
+ * END;
+ * $$ LANGUAGE plpgsql;
+ *
+ * CREATE TRIGGER trigger_user_stats_from_transactions
+ * AFTER INSERT ON transactions
+ * FOR EACH ROW
+ * EXECUTE FUNCTION apply_wallet_transaction();
+ *
+ * 위 스키마/트리거는 예시이며, 실제 레포의 마이그레이션 파일(예: migrations/*.sql)에
+ * 맞춰 조정해야 한다.
+ *
+ *
+ * 6. API Contract (클라이언트 관점 정리)
+ * --------------------------------------
  * - 요청:
  *     POST /api/wallet
  *     Content-Type: application/json
@@ -754,23 +843,22 @@ export async function onRequestPost(context: {
  *       exp: number        // 경험치
  *     }
  *
- * - 응답 (에러 예시):
- *
- *     // INVALID_USER (HTTP 400)
+ * - 에러 응답:
+ *   - INVALID_USER (HTTP 400)
  *     {
  *       ok: false,
  *       error: "INVALID_USER",
  *       message: "유효하지 않은 사용자 식별자"
  *     }
  *
- *     // UNSUPPORTED_ACTION (HTTP 400)
+ *   - UNSUPPORTED_ACTION (HTTP 400)
  *     {
  *       ok: false,
  *       error: "UNSUPPORTED_ACTION",
  *       message: "지원하지 않는 action 입니다."
  *     }
  *
- *     // SERVER_ERROR (HTTP 500)
+ *   - SERVER_ERROR (HTTP 500)
  *     {
  *       ok: false,
  *       error: "SERVER_ERROR",
@@ -778,7 +866,7 @@ export async function onRequestPost(context: {
  *     }
  *
  *
- * 6. 유지보수 시 주의할 점
+ * 7. 유지보수 시 주의할 점
  * ------------------------
  * - badRequest 를 다시 외부 모듈에서 import 하도록 바꾸려면,
  *   `_utils/json.ts` 에 해당 export 가 실제로 존재하는지 반드시 확인해야 한다.
@@ -811,7 +899,7 @@ export async function onRequestPost(context: {
  *       game / tier / level 에 따른 가중치를 추가하는 방식으로 확장하면 된다.
  *
  *
- * 7. 향후 확장 아이디어
+ * 8. 향후 확장 아이디어
  * ---------------------
  * - 추가 action:
  *     * RESET         : 개발용/테스트용으로 특정 유저의 stats 를 초기화
@@ -836,5 +924,5 @@ export async function onRequestPost(context: {
  * 이 파일은 “회원가입 유저 정보(유저 가입 정보, 게임 플레이로 얻은 경험치,
  * 포인트, 티켓 등) 인식, 식별, 계정 반영 정상 작동”을 목표로 하는
  * 최종 통합 버전 wallet API 구현이며, user_stats + transactions + 트리거 구조에
- * 맞춰 풀 체인이 완성되도록 설계되었다.
+ * 맞춰 풀 체인이 완성되도록 설계된 C안 구현이다.
  */

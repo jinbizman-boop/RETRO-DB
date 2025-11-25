@@ -15,6 +15,7 @@
 --      * user_stats: coins + tickets + exp + games_played
 --      * transactions: meta / game / exp_delta / tickets_delta / plays_delta / reason
 --      * apply_wallet_transaction(): coins + exp + tickets + games_played 동시 갱신
+--  - v_user_profile, v_recent_events는 새 wallet 구조(exp/tickets/plays)를 포함하도록 확장.
 
 BEGIN;
 
@@ -131,7 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_token  ON sessions(token);
 -- ──────────────────────────────────────────────────────────────────────────────
 -- User stats / wallet snapshot
 --  - xp / level: 기존 구조 유지 (xp 기반 레벨)
---  - coins / tickets / exp / games_played: wallet C안에서 사용
+--  - coins / tickets / exp / games_played: wallet C안에서 사용 (정식 지갑 스냅샷)
 -- ──────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS user_stats (
   user_id        UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -139,9 +140,9 @@ CREATE TABLE IF NOT EXISTS user_stats (
   level          INT GENERATED ALWAYS AS (GREATEST(1, (xp/1000)::INT + 1)) STORED,
   coins          BIGINT NOT NULL DEFAULT 0 CHECK (coins >= 0),
   -- 새 필드: wallet C안용
-  exp            BIGINT NOT NULL DEFAULT 0,          -- 경험치 (wallet.ts 에서 사용)
-  tickets        BIGINT NOT NULL DEFAULT 0,          -- 티켓 개수
-  games_played   BIGINT NOT NULL DEFAULT 0,          -- 총 플레이 횟수
+  exp            BIGINT NOT NULL DEFAULT 0,
+  tickets        BIGINT NOT NULL DEFAULT 0,
+  games_played   BIGINT NOT NULL DEFAULT 0,
   last_login_at  TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -152,6 +153,38 @@ ALTER TABLE user_stats
   ADD COLUMN IF NOT EXISTS exp          BIGINT NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS tickets      BIGINT NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS games_played BIGINT NOT NULL DEFAULT 0;
+
+-- exp / tickets / games_played 음수 방지 제약 (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'user_stats'::regclass
+      AND conname = 'user_stats_exp_nonneg'
+  ) THEN
+    ALTER TABLE user_stats
+      ADD CONSTRAINT user_stats_exp_nonneg CHECK (exp >= 0);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'user_stats'::regclass
+      AND conname = 'user_stats_tickets_nonneg'
+  ) THEN
+    ALTER TABLE user_stats
+      ADD CONSTRAINT user_stats_tickets_nonneg CHECK (tickets >= 0);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'user_stats'::regclass
+      AND conname = 'user_stats_games_played_nonneg'
+  ) THEN
+    ALTER TABLE user_stats
+      ADD CONSTRAINT user_stats_games_played_nonneg CHECK (games_played >= 0);
+  END IF;
+END
+$$;
 
 -- xp → exp 1회 동기화 (exp가 0일 때만)
 DO $$
@@ -179,6 +212,11 @@ BEGIN
 END
 $$;
 
+-- user_stats 읽기 최적화를 위한 인덱스 (leaderboard/대시보드 용도)
+CREATE INDEX IF NOT EXISTS idx_user_stats_exp_desc      ON user_stats(exp DESC);
+CREATE INDEX IF NOT EXISTS idx_user_stats_coins_desc    ON user_stats(coins DESC);
+CREATE INDEX IF NOT EXISTS idx_user_stats_games_desc    ON user_stats(games_played DESC);
+
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Games catalog
 --  - slug unique with soft pattern check
@@ -192,7 +230,8 @@ CREATE TABLE IF NOT EXISTS games (
   CONSTRAINT games_slug_len_chk CHECK (length(slug) BETWEEN 1 AND 64),
   CONSTRAINT games_slug_pat_chk CHECK (slug ~ '^[a-z0-9_\-]+$')
 );
-CREATE INDEX IF NOT EXISTS idx_games_slug ON games(slug);
+CREATE INDEX IF NOT EXISTS idx_games_slug     ON games(slug);
+CREATE INDEX IF NOT EXISTS idx_games_category ON games(category);
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Individual play runs (scores are stored here)
@@ -394,7 +433,8 @@ CREATE TABLE IF NOT EXISTS daily_luck_spins (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, spin_date)
 );
-CREATE INDEX IF NOT EXISTS idx_spins_user ON daily_luck_spins(user_id);
+CREATE INDEX IF NOT EXISTS idx_spins_user      ON daily_luck_spins(user_id);
+CREATE INDEX IF NOT EXISTS idx_spins_spin_date ON daily_luck_spins(spin_date);
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Simple audit log for sensitive actions
@@ -426,6 +466,8 @@ DO UPDATE SET title = EXCLUDED.title, category = EXCLUDED.category;
 -- ──────────────────────────────────────────────────────────────────────────────
 
 -- v_user_profile: denormalized profile summary (as in original, kept stable)
+--  - wallet C안 필드(exp, tickets, games_played)를 함께 노출하여
+--    프론트/관리 대시보드에서 바로 사용할 수 있게 확장.
 CREATE OR REPLACE VIEW v_user_profile AS
 SELECT
   u.id,
@@ -436,9 +478,12 @@ SELECT
   s.xp,
   s.level,
   s.coins,
+  s.exp,
+  s.tickets,
+  s.games_played,
   s.last_login_at,
-  (SELECT COUNT(1)             FROM game_runs r WHERE r.user_id = u.id) AS total_runs,
-  (SELECT COALESCE(MAX(score),0) FROM game_runs r WHERE r.user_id = u.id) AS best_score_any
+  (SELECT COUNT(1)                FROM game_runs r WHERE r.user_id = u.id) AS total_runs,
+  (SELECT COALESCE(MAX(score),0)  FROM game_runs r WHERE r.user_id = u.id) AS best_score_any
 FROM users u
 LEFT JOIN user_stats s ON s.user_id = u.id;
 
@@ -461,6 +506,7 @@ FROM runs
 WHERE rn = 1;
 
 -- v_recent_events: last 50 wallet transactions by user (for quick feeds)
+--  - C안 확장 필드(reason, game, exp_delta, tickets_delta, plays_delta, meta)를 모두 포함.
 CREATE OR REPLACE VIEW v_recent_events AS
 SELECT
   t.user_id,
@@ -470,7 +516,13 @@ SELECT
   t.balance_after,
   t.ref_table,
   t.ref_id,
-  t.note
+  t.note,
+  t.reason,
+  t.game,
+  t.exp_delta,
+  t.tickets_delta,
+  t.plays_delta,
+  t.meta
 FROM transactions t
 ORDER BY t.created_at DESC
 LIMIT 5000;  -- “recent” for dashboards (scan friendly thanks to idx_txn_user_time)

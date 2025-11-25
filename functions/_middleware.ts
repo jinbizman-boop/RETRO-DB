@@ -1,6 +1,6 @@
 // functions/_middleware.ts
 // ───────────────────────────────────────────────────────────────
-// Global CORS middleware for Cloudflare Pages Functions
+// Global CORS + Auth propagation middleware for Cloudflare Pages Functions
 // - 기존 동작/계약 100% 유지
 // - VSCode 타입 에러 제거를 위한 로컬 타입 shim 포함
 // - 전역 CORS/보안 헤더 부착
@@ -8,16 +8,24 @@
 //   (본문은 절대 변경하지 않음)
 // - 추가: 인증된 계정일 경우, 해당 계정의 경험치/레벨/포인트/티켓 요약을
 //   응답 헤더(X-User-*)에만 부가 (본문/JSON 구조는 일절 변경 없음)
+// - ★ B안 적용: 인증이 성공한 경우, 다운스트림 Functions 로 전달되는
+//   Request 의 헤더에 `X-User-Id` 를 주입해서 /api/wallet 등에서
+//   즉시 userId 를 읽을 수 있도록 한다.
 // ───────────────────────────────────────────────────────────────
 
 // Minimal local shims (safe to keep even without @cloudflare/workers-types)
 type CfContext<E> = {
   request: Request;
   env: E;
-  next: () => Promise<Response>;
+  // B안 적용을 위해 실제 Cloudflare Pages 사양에 맞게 next 시그니처를 확장
+  // - next()                        → 기존과 동일
+  // - next(newRequest)              → 수정된 Request 전달
+  // - next({ request: newRequest }) → 옵션 객체 전달
+  next: (input?: Request | { request: Request }) => Promise<Response>;
   params?: Record<string, string>;
   data?: unknown;
 };
+
 type PagesFunction<E = unknown> = (ctx: CfContext<E>) => Response | Promise<Response>;
 
 // Optional DB health (headers only)
@@ -45,10 +53,12 @@ function toNumberSafe(v: unknown): number {
   }
   return 0;
 }
+
 function toNonNegativeInt(v: unknown): number {
   const n = Math.trunc(toNumberSafe(v));
   return n < 0 ? 0 : n;
 }
+
 function isMissingTable(err: any): boolean {
   const msg = String(err?.message ?? err).toLowerCase();
   return (
@@ -63,6 +73,11 @@ function isMissingTable(err: any): boolean {
  * 경험치/레벨/포인트/티켓을 숫자 형태로 반환.
  * - 테이블이 없거나 에러가 나면 조용히 0/기본값으로 fallback
  * - 본문(JSON)은 일절 건드리지 않고, 상위에서 헤더에만 반영하도록 설계
+ *
+ * NOTE:
+ *  - B안에서 Request 에 X-User-Id 를 주입하는 로직과 별개로,
+ *    이 함수는 여전히 requireUser 를 내부에서 호출한다.
+ *    (조금 중복이지만, 동작/구성은 그대로 유지하면서 B안만 추가 적용)
  */
 async function getUserStatsForHeaders(
   request: Request,
@@ -76,7 +91,15 @@ async function getUserStatsForHeaders(
 }> {
   try {
     const payload = await requireUser(request, env as DbEnv);
-    const userIdText = String(payload.sub ?? "").trim();
+
+    // Auth 페이로드에서 userId 후보들을 안전하게 추출
+    const raw =
+      (payload as any).sub ??
+      (payload as any).userId ??
+      (payload as any).id ??
+      "";
+    const userIdText = String(raw ?? "").trim();
+
     if (!userIdText) {
       return { userIdText: null, points: 0, exp: 0, level: 1, tickets: 0 };
     }
@@ -138,6 +161,44 @@ async function getUserStatsForHeaders(
   }
 }
 
+/**
+ * B안 핵심:
+ * - requireUser 로 인증이 성공한 경우, 유저 식별자를 추출하고
+ *   Request 헤더에 `X-User-Id` 를 주입한 새 Request 를 만들어 반환.
+ * - 인증이 실패하면 원본 Request 를 그대로 반환 (비인증 요청은 막지 않음).
+ */
+async function attachUserIdToRequest(
+  request: Request,
+  env: Partial<DbEnv>
+): Promise<{ requestForNext: Request; userIdText: string | null }> {
+  let userIdText: string | null = null;
+  let requestForNext = request;
+
+  try {
+    const payload = await requireUser(request, env as DbEnv);
+
+    const raw =
+      (payload as any).sub ??
+      (payload as any).userId ??
+      (payload as any).id ??
+      "";
+    const uid = String(raw ?? "").trim();
+
+    if (uid) {
+      userIdText = uid;
+      const headers = new Headers(request.headers);
+      // DOWNSTREAM Functions (예: /api/wallet) 에서 읽을 수 있도록 주입
+      headers.set("X-User-Id", uid);
+
+      requestForNext = new Request(request, { headers });
+    }
+  } catch {
+    // 비인증 요청은 전역 미들웨어에서 차단하지 않고, 그대로 패스
+  }
+
+  return { requestForNext, userIdText };
+}
+
 export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   request,
   env,
@@ -157,8 +218,25 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
     });
   }
 
-  // Downstream 실행
-  const res = await next();
+  const url = new URL(request.url);
+
+  // ─────────────────────────────────────────────────────────────
+  // B안: /api/* 경로에 대해서만, 다운스트림으로 전달되는 Request 에
+  //      `X-User-Id` 를 주입해서 /api/wallet 등의 엔드포인트가
+  //      공통 규칙으로 유저를 식별할 수 있도록 한다.
+  //      (비인증이면 그냥 원본 Request 로 통과)
+  // ─────────────────────────────────────────────────────────────
+  let requestForNext = request;
+  let userIdFromAuth: string | null = null;
+
+  if (url.pathname.startsWith("/api/")) {
+    const attached = await attachUserIdToRequest(request, env);
+    requestForNext = attached.requestForNext;
+    userIdFromAuth = attached.userIdText ?? null;
+  }
+
+  // Downstream 실행 (B안: 필요 시 수정된 Request 로 호출)
+  const res = await next(requestForNext);
 
   // 응답 헤더 병합(CORS는 라우트에서 이미 넣었으면 덮어쓰지 않음)
   const hdr = new Headers(res.headers);
@@ -181,7 +259,6 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
 
   // (옵션) Neon 헬스 프로브 — 쿼리로 명시적으로 요청된 경우에만
   try {
-    const url = new URL(request.url);
     const wantsDb =
       truthy(url.searchParams.get("db")) ||
       (url.searchParams.get("check") || "").toLowerCase() === "db";
@@ -196,9 +273,13 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
     // (추가) 인증된 계정의 경험치/포인트/티켓 요약을 헤더에만 부가
     // - /api/* 요청에 대해서만 동작 (정적 자산에는 부담 최소화)
     if (url.pathname.startsWith("/api/")) {
-      const stats = await getUserStatsForHeaders(request, env);
-      if (stats.userIdText) {
-        hdr.set("X-User-Id", stats.userIdText);
+      const stats = await getUserStatsForHeaders(requestForNext, env);
+
+      // B안에서 이미 attachUserIdToRequest 가 X-User-Id 를 헤더에 넣었다면
+      // 여기서도 동일 값을 한 번 더 세팅하되, 충돌 없이 오버라이드.
+      const effectiveUserId = stats.userIdText || userIdFromAuth;
+      if (effectiveUserId) {
+        hdr.set("X-User-Id", effectiveUserId);
         hdr.set("X-User-Points", String(stats.points));
         hdr.set("X-User-Exp", String(stats.exp));
         hdr.set("X-User-Level", String(stats.level));

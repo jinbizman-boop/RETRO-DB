@@ -21,14 +21,22 @@
  * 전제:
  *  - _middleware.ts 가 유저 식별(X-User-Id) 헤더를 자동 주입해야 정상동작
  *  - Cloudflare Pages Functions / Wrangler 빌드에서 단일 엔트리로 사용됨.
+ *
+ * 유저 식별 라인 맞추기 A/B 적용 개요:
+ *  - A안: JWT 토큰(requireUser)을 “정본(Single Source of Truth)”으로 사용하고,
+ *         여기서 나온 userId 를 cleanUserId 로 정규화하여 DB user_stats.user_id 에 사용.
+ *  - B안: 과거 클라이언트/미들웨어와의 호환을 위해 X-User-Id 헤더도 받아들이되,
+ *         존재하는 경우 JWT 기반 userId 와 cross-check 하여 가능한 한 일치시키고
+ *         둘 다 invalid 이면 INVALID_USER 로 처리.
  */
 
 import type { Env } from "./_utils/db";
 import { getSql } from "./_utils/db";
 import { json } from "./_utils/json";
+import { requireUser } from "./_utils/auth";
 
 /* ========================================================================== */
-/*  UserId Helper                                                             */
+/*  UserId Helpers                                                            */
 /* ========================================================================== */
 
 /**
@@ -45,7 +53,7 @@ import { json } from "./_utils/json";
  * 이 함수에서 "" 를 반환하면 "INVALID_USER" 로 처리한다.
  * 즉, 이 함수는 "사용할 수 있는 userId"만 통과시키는 필터 역할을 한다.
  */
-function cleanUserId(raw: string | null): string {
+function cleanUserId(raw: string | null | undefined): string {
   if (!raw) return "";
 
   const trimmed = raw.trim();
@@ -59,6 +67,69 @@ function cleanUserId(raw: string | null): string {
   if (!ok) return "";
 
   return trimmed;
+}
+
+/**
+ * resolveUserId
+ * -------------
+ * 유저 식별 라인 맞추기 A + B
+ *
+ * A안 (정본: JWT 기반):
+ *  - requireUser(request, env)를 호출해서 access token / 세션에서 payload.sub 를 얻고
+ *    cleanUserId 로 정규화한다.
+ *
+ * B안 (헤더 호환):
+ *  - request.headers.get("X-User-Id") 를 cleanUserId 로 정규화한다.
+ *
+ * 최종 로직:
+ *  1) JWT 기반 userId (fromToken)가 유효하면 우선 사용.
+ *  2) 헤더 기반 userId (fromHeader)가 유효한데, fromToken 이 비어 있으면 헤더 사용.
+ *  3) 둘 다 유효하지만 값이 다를 경우:
+ *     - 보안상 JWT 를 신뢰하고, 헤더 값은 무시한다.
+ *     - 필요 시 콘솔 로그 정도는 남길 수 있으나, API Contract 를 깨지 않기 위해
+ *       여기서는 조용히 fromToken 을 선택한다.
+ *  4) 둘 다 무효이면 null 반환 (caller 가 INVALID_USER 처리).
+ */
+async function resolveUserId(
+  request: Request,
+  env: Env
+): Promise<string | null> {
+  // B안: 헤더 기반
+  const headerRaw = request.headers.get("X-User-Id");
+  const fromHeader = cleanUserId(headerRaw);
+
+  // A안: JWT / 세션 기반 (정본)
+  let fromToken = "";
+  try {
+    const payload = await requireUser(request, env);
+    const tokenIdRaw =
+      (payload && (payload.sub as string)) ||
+      (payload && (payload.userId as string)) ||
+      (payload && (payload.id as string)) ||
+      "";
+    fromToken = cleanUserId(tokenIdRaw);
+  } catch {
+    // 비로그인 또는 토큰 오류 → 여기서 예외를 터뜨리지 않고, 헤더 경로(B안)로 fallback
+    fromToken = "";
+  }
+
+  // 1) 토큰 기반이 있으면 그것이 우선 (A안)
+  if (fromToken) {
+    // 헤더가 있고, 토큰과 다르다면 토큰을 신뢰 (헤더는 무시)
+    if (fromHeader && fromHeader !== fromToken) {
+      // 필요하다면 디버깅용 로그 정도는 남길 수 있음:
+      // console.warn("[wallet] X-User-Id header mismatch, using token subject");
+    }
+    return fromToken;
+  }
+
+  // 2) 토큰이 없고, 헤더만 유효하면 B안 경로 사용
+  if (fromHeader) {
+    return fromHeader;
+  }
+
+  // 3) 둘 다 무효 → INVALID_USER
+  return null;
 }
 
 /* ========================================================================== */
@@ -274,7 +345,10 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
  * - 기존 비즈니스 규칙:
  *     balance: reward 만큼 증가하되, [0, 5000] 범위를 벗어나지 않도록 clamp
  */
-function clampPoints(raw: number, currentBalance: number): {
+function clampPoints(
+  raw: number,
+  currentBalance: number
+): {
   nextBalance: number;
   delta: number;
 } {
@@ -425,21 +499,6 @@ async function applyGameReward(
   const { delta } = buildGameRewardDelta(userId, payload, snapshot);
 
   // 3) transactions INSERT
-  //
-  // DB 스키마 가정:
-  //   - amount        : delta.pointsDelta
-  //   - type          : 'game'
-  //   - reason        : delta.reason
-  //   - meta          : delta.meta (JSON)
-  //   - game          : delta.game
-  //   - exp_delta     : delta.expDelta
-  //   - tickets_delta : delta.ticketsDelta
-  //   - plays_delta   : delta.playsDelta
-  //
-  //   ※ DB 에서 amount 에 대한 CHECK 제약(예: amount <> 0)을 두고 있다면,
-  //      delta.pointsDelta === 0 인 상황에 대한 정책을 추가로 결정해야 한다.
-  //      현재 구현은 “실제 코인 변화량”을 그대로 amount 에 반영하며,
-  //      필요 시 DB 스키마/트리거에서 별도로 허용/보정하는 방향을 권장.
   const metaJson = JSON.stringify(delta.meta ?? {});
 
   await sql`
@@ -490,6 +549,11 @@ async function applyGameReward(
  * 클라이언트에서는 항상 credentials: "include" 로 호출하여
  * _middleware.ts 가 부여하는 X-User-Id 헤더를 함께 전달해야 한다.
  *
+ * 유저 식별 A/B 적용 후 실제 동작:
+ *  - 먼저 requireUser(request, env) 로 JWT/세션 기반 userId 를 구한다(A안).
+ *  - X-User-Id 헤더가 별도로 설정된 경우, cleanUserId 로 정규화하여 비교(B안).
+ *  - 둘 중 유효한 것을 고르고, 충돌 시 JWT 를 우선시한다.
+ *
  * 응답 공통 포맷:
  *  - 성공:
  *      {
@@ -518,16 +582,13 @@ export async function onRequestPost(context: {
 
   try {
     /* -------------------------------------------------------------- */
-    /* 1) User identification                                         */
+    /* 1) User identification (A + B 라인 맞추기)                      */
     /* -------------------------------------------------------------- */
 
-    // _middleware.ts 에서 세션/쿠키 기반으로 넣어주는 헤더
-    // 예: request.headers.set("X-User-Id", user.id);
-    const userIdHeader = request.headers.get("X-User-Id");
-    const userId = cleanUserId(userIdHeader);
+    const userId = await resolveUserId(request, env);
 
     if (!userId) {
-      // X-User-Id 가 없거나, cleanUserId 에서 무효 처리된 경우
+      // 유효한 유저 식별자를 찾지 못한 경우
       return badRequest({
         ok: false,
         error: "INVALID_USER",
@@ -610,7 +671,7 @@ export async function onRequestPost(context: {
 }
 
 /* ========================================================================== */
-/*  Implementation Notes (for maintainers) – C안 구조 설명                    */
+/*  Implementation Notes (for maintainers) – C안 + 유저 식별 A/B 정렬         */
 /* ========================================================================== */
 
 /**
@@ -636,55 +697,30 @@ export async function onRequestPost(context: {
  *     * user_stats 의 최종 결과를 읽어 클라이언트에 전달하는 프록시 역할이다.
  *
  *
- * 2. 과거 user_wallet / wallet_transaction 구조와의 차이
- * -----------------------------------------------------
- * - 과거 구조:
- *     * user_wallet           : 집계 + 현재 상태 테이블
- *     * wallet_transaction    : 트랜잭션 로그 테이블
- *     * wallet.ts 에서 직접 user_wallet UPDATE + wallet_transaction INSERT 처리
+ * 2. 유저 식별 라인 맞추기 (A안 + B안)
+ * -----------------------------------
+ * - A안(정본: JWT 기반):
+ *     * requireUser(request, env) 를 호출하여 access token / 세션의 payload 를 얻는다.
+ *     * payload.sub, payload.userId, payload.id 순으로 userId 후보를 찾는다.
+ *     * cleanUserId 로 정규화하여, 이 값이 있으면 무조건 우선 사용한다.
  *
- * - 현재 구조(C안):
- *     * user_stats            : 집계 + 현재 상태 테이블 (확장된 필드: exp, games_played)
- *     * transactions          : 범용 트랜잭션 테이블 (type, game, delta 컬럼 등)
- *     * 트리거(apply_wallet_transaction)가 transactions INSERT 를 받아 user_stats 를 갱신
- *     * wallet.ts 는 “delta 계산 + transactions INSERT + 최신 user_stats 조회”만 담당
+ * - B안(헤더 호환):
+ *     * request.headers.get("X-User-Id") 를 cleanUserId 로 정규화한다.
+ *     * 과거 미들웨어/클라이언트가 X-User-Id 를 직접 세팅하던 흐름을 보존한다.
  *
- * - 장점:
- *     * 트랜잭션 구조가 통일되어 게임 보상 외의 시스템 조정, 관리자 수동 조정도
- *       같은 테이블을 통해 기록 가능.
- *     * 트리거가 user_stats 를 일관되게 갱신하므로, 여러 엔드포인트에서
- *       transactions 를 INSERT 하더라도 최종 집계 로직이 한 곳에 모인다.
- *     * API 레벨 코드는 상대적으로 단순해지고, DB 스키마/트리거를 바꾸는 것만으로
- *       비즈니스 규칙을 중앙에서 제어할 수 있다.
+ * - resolveUserId 로직:
+ *     * fromToken(토큰 기반)이 있으면 → 정본으로 사용.
+ *         - fromHeader(헤더)가 있고 값이 달라도, 보안상 토큰을 신뢰한다.
+ *     * fromToken 이 없고, fromHeader 만 유효하면 → 헤더 기반으로 사용.
+ *     * 둘 다 무효이면 → null 을 반환하고, 상위에서 INVALID_USER 로 처리.
  *
- *
- * 3. UserId 처리 흐름
- * -------------------
- * - `_middleware.ts` 에서 세션/쿠키 기반으로 X-User-Id 를 헤더에 넣어준다.
- *   예: 로그인된 사용자의 userId 를 쿠키/세션에서 읽어와,
- *       request.headers.set("X-User-Id", userId) 형태로 주입.
- *
- * - 이 파일에서는 `cleanUserId()` 를 통해:
- *     * null/undefined → "" (무효)
- *     * 앞뒤 공백 제거
- *     * 허용되지 않는 문자 포함 시 "" 반환
- *     * 128자 초과 시 "" 반환
- *
- * - 결국 onRequestPost 안에서는:
- *
- *     const userIdHeader = request.headers.get("X-User-Id");
- *     const userId = cleanUserId(userIdHeader);
- *     if (!userId) {
- *       return badRequest({ ok:false, error:"INVALID_USER", ... });
- *     }
- *
- *   이런 패턴으로, 잘못된/누락된 유저 식별자는 일관되게 400 처리된다.
- *
- * - 이렇게 함으로써 DB user_stats / transactions 테이블에
- *   이상한 user_id (공백, 특수문자, 너무 긴 값 등)가 들어가는 것을 방지한다.
+ * - 이 구조를 통해:
+ *     * 새 아키텍처(_middleware.ts + auth utils)가 적용된 경로에서는 JWT 가 정본.
+ *     * 과거/임시 클라이언트는 여전히 X-User-Id 헤더만으로 동작 가능.
+ *     * DB user_stats.user_id 에는 항상 cleanUserId 로 정규화된 값이 들어간다.
  *
  *
- * 4. Wallet 동작 규칙 (비즈니스 로직 상세)
+ * 3. Wallet 동작 규칙 (비즈니스 로직 상세)
  * ---------------------------------------
  * - SYNC / SYNCWALLET:
  *   - getWalletSnapshot(env, userId)를 호출하여 user_stats 를 읽는다.
@@ -728,7 +764,7 @@ export async function onRequestPost(context: {
  *       클라이언트에 반환한다.
  *
  *
- * 5. DB 스키마/트리거 예시 (참고용, 실제 적용 시 마이그레이션에 사용)
+ * 4. DB 스키마/트리거 예시 (참고용, 실제 적용 시 마이그레이션에 사용)
  * ------------------------------------------------------------------
  *
  * -- user_stats 테이블
@@ -806,11 +842,8 @@ export async function onRequestPost(context: {
  * FOR EACH ROW
  * EXECUTE FUNCTION apply_wallet_transaction();
  *
- * 위 스키마/트리거는 예시이며, 실제 레포의 마이그레이션 파일(예: migrations/*.sql)에
- * 맞춰 조정해야 한다.
  *
- *
- * 6. API Contract (클라이언트 관점 정리)
+ * 5. API Contract (클라이언트 관점 정리)
  * --------------------------------------
  * - 요청:
  *     POST /api/wallet
@@ -866,7 +899,7 @@ export async function onRequestPost(context: {
  *     }
  *
  *
- * 7. 유지보수 시 주의할 점
+ * 6. 유지보수 시 주의할 점
  * ------------------------
  * - badRequest 를 다시 외부 모듈에서 import 하도록 바꾸려면,
  *   `_utils/json.ts` 에 해당 export 가 실제로 존재하는지 반드시 확인해야 한다.
@@ -899,7 +932,7 @@ export async function onRequestPost(context: {
  *       game / tier / level 에 따른 가중치를 추가하는 방식으로 확장하면 된다.
  *
  *
- * 8. 향후 확장 아이디어
+ * 7. 향후 확장 아이디어
  * ---------------------
  * - 추가 action:
  *     * RESET         : 개발용/테스트용으로 특정 유저의 stats 를 초기화
@@ -924,5 +957,5 @@ export async function onRequestPost(context: {
  * 이 파일은 “회원가입 유저 정보(유저 가입 정보, 게임 플레이로 얻은 경험치,
  * 포인트, 티켓 등) 인식, 식별, 계정 반영 정상 작동”을 목표로 하는
  * 최종 통합 버전 wallet API 구현이며, user_stats + transactions + 트리거 구조에
- * 맞춰 풀 체인이 완성되도록 설계된 C안 구현이다.
+ * 맞춰 풀 체인이 완성되도록 설계된 C안 구현 + 유저 식별 A/B 정렬 버전이다.
  */

@@ -1,49 +1,54 @@
 // functions/_middleware.ts
 // ───────────────────────────────────────────────────────────────
 // Global CORS + Auth propagation middleware for Cloudflare Pages Functions
+//
 // - 기존 동작/계약 100% 유지
 // - VSCode 타입 에러 제거를 위한 로컬 타입 shim 포함
 // - 전역 CORS/보안 헤더 부착
 // - ?db=1 또는 ?check=db 시, Neon DB 헬스 체크 결과를 헤더(X-DB-*)에만 기록
 //   (본문은 절대 변경하지 않음)
-// - 추가: 인증된 계정일 경우, 해당 계정의 경험치/레벨/포인트/티켓 요약을
+// - 인증된 계정일 경우, 해당 계정의 경험치/레벨/포인트/티켓 요약을
 //   응답 헤더(X-User-*)에만 부가 (본문/JSON 구조는 일절 변경 없음)
 // - ★ B안 적용: 인증이 성공한 경우, 다운스트림 Functions 로 전달되는
 //   Request 의 헤더에 `X-User-Id` 를 주입해서 /api/wallet 등에서
 //   즉시 userId 를 읽을 수 있도록 한다.
+// - DB 스키마: migrations/001_init.sql + wallet C안 구조의 user_stats 를 기준으로
+//   user_progress / wallet_balances 대신 user_stats 를 사용하도록 정합성 강화.
 // ───────────────────────────────────────────────────────────────
 
-// Minimal local shims (safe to keep even without @cloudflare/workers-types)
+// ───────────────────────── Local Cloudflare shims ──────────────────────
+// Minimal local shims (safe even without @cloudflare/workers-types)
 type CfContext<E> = {
   request: Request;
   env: E;
-  // B안 적용을 위해 실제 Cloudflare Pages 사양에 맞게 next 시그니처를 확장
-  // - next()                        → 기존과 동일
-  // - next(newRequest)              → 수정된 Request 전달
-  // - next({ request: newRequest }) → 옵션 객체 전달
+  // Cloudflare Pages: next() or next(newRequest | { request })
   next: (input?: Request | { request: Request }) => Promise<Response>;
   params?: Record<string, string>;
   data?: unknown;
 };
 
-type PagesFunction<E = unknown> = (ctx: CfContext<E>) => Response | Promise<Response>;
+type PagesFunction<E = unknown> = (
+  ctx: CfContext<E>
+) => Response | Promise<Response>;
 
-// Optional DB health (headers only)
+// ───────────────────────── Imports ─────────────────────────────────────
 import type { Env as DbEnv } from "./api/_utils/db";
 import { dbHealth, getSql } from "./api/_utils/db";
 import { requireUser } from "./api/_utils/auth";
 
-// Helpers (기존 방식 유지)
+// ───────────────────────── CORS Helpers ────────────────────────────────
 const ALLOW_ORIGIN = (env: any) => env.CORS_ORIGIN ?? "*";
 const ALLOW_METHODS = (env: any) =>
   env.CORS_METHODS ?? "GET,POST,PUT,DELETE,OPTIONS";
 const ALLOW_HEADERS = (env: any) =>
   env.CORS_HEADERS ?? "Content-Type,Authorization";
 
+// truthy-style query param parser
 const truthy = (v: string | null) =>
   !!v && ["1", "true", "yes", "y"].includes(v.trim().toLowerCase());
 
-// 숫자/에러 유틸 (auth/me.ts와 동일한 규칙 유지)
+// ───────────────────────── Numeric Helpers ─────────────────────────────
+// (auth/me.ts 와 동일한 규칙 최대한 유지)
 function toNumberSafe(v: unknown): number {
   if (typeof v === "number") return v;
   if (typeof v === "bigint") return Number(v);
@@ -59,36 +64,129 @@ function toNonNegativeInt(v: unknown): number {
   return n < 0 ? 0 : n;
 }
 
-function isMissingTable(err: any): boolean {
-  const msg = String(err?.message ?? err).toLowerCase();
+// ───────────────────────── Error Helpers ───────────────────────────────
+function isMissingTable(err: unknown): boolean {
+  const msg = String((err as any)?.message ?? err).toLowerCase();
   return (
     msg.includes("does not exist") ||
     msg.includes("unknown relation") ||
-    msg.includes("no such table")
+    msg.includes("no such table") ||
+    msg.includes("relation") && msg.includes("does not exist")
   );
 }
 
+// ───────────────────────── User Stats Helpers ──────────────────────────
+
+type UserHeaderStats = {
+  userIdText: string | null;
+  points: number;       // coins
+  exp: number;          // exp(또는 xp) 합산
+  level: number;        // level (없으면 exp 기반 산정)
+  tickets: number;      // tickets
+  gamesPlayed: number;  // games_played
+};
+
 /**
- * 인증된 유저에 대해 user_progress / wallet_balances를 조회하여
- * 경험치/레벨/포인트/티켓을 숫자 형태로 반환.
- * - 테이블이 없거나 에러가 나면 조용히 0/기본값으로 fallback
- * - 본문(JSON)은 일절 건드리지 않고, 상위에서 헤더에만 반영하도록 설계
+ * DB user_stats 스키마:
+ *   user_id (uuid PK)
+ *   xp bigint
+ *   level int (generated, 있을 수도/없을 수도 있음)
+ *   coins bigint
+ *   exp bigint
+ *   tickets bigint
+ *   games_played bigint
+ *
+ * 이 함수는 user_stats 기반으로:
+ *   - X-User-Points (coins)
+ *   - X-User-Exp    (exp/xp)
+ *   - X-User-Level  (level 또는 exp→계산)
+ *   - X-User-Tickets
+ *   - X-User-Games  (games_played; 헤더 이름은 아래에서 부여)
+ *
+ * 을 헤더에 넣기 위한 숫자들을 조회한다.
+ *
+ * 테이블이 없거나, 컬럼이 일부 없어도:
+ *   - 전부 0/기본값으로 조용히 fallback (미들웨어는 절대 본문/상태코드 안 바꿈)
+ */
+async function loadUserStatsFromDb(
+  userIdText: string,
+  env: Partial<DbEnv>
+): Promise<Omit<UserHeaderStats, "userIdText">> {
+  const sql = getSql(env as DbEnv);
+
+  let points = 0;
+  let exp = 0;
+  let level = 1;
+  let tickets = 0;
+  let gamesPlayed = 0;
+
+  try {
+    const rows = (await sql/* sql */`
+      select
+        coins,
+        exp,
+        xp,
+        level,
+        tickets,
+        games_played
+      from user_stats
+      where user_id = ${userIdText}::uuid
+      limit 1
+    `) as unknown as {
+      coins?: number | string | bigint | null;
+      exp?: number | string | bigint | null;
+      xp?: number | string | bigint | null;
+      level?: number | string | bigint | null;
+      tickets?: number | string | bigint | null;
+      games_played?: number | string | bigint | null;
+    }[];
+
+    if (rows && rows.length > 0) {
+      const r = rows[0];
+
+      points = toNonNegativeInt(r.coins ?? 0);
+      const expCandidate = r.exp ?? r.xp ?? 0;
+      exp = toNonNegativeInt(expCandidate);
+
+      // level 컬럼이 있으면 우선 사용, 없으면 exp 기반 계산
+      const lvl = r.level != null ? toNonNegativeInt(r.level) : 0;
+      level = lvl > 0 ? lvl : Math.max(1, Math.floor(exp / 1000) + 1);
+
+      tickets = toNonNegativeInt(r.tickets ?? 0);
+      gamesPlayed = toNonNegativeInt(r.games_played ?? 0);
+    }
+  } catch (e) {
+    if (!isMissingTable(e)) {
+      // user_stats 가 존재하지만 쿼리 에러가 나는 경우에도
+      // 미들웨어에서는 조용히 무시하고 기본값 유지
+    }
+  }
+
+  return {
+    points,
+    exp,
+    level,
+    tickets,
+    gamesPlayed,
+  };
+}
+
+/**
+ * 인증된 유저에 대해 user_stats 를 조회하여
+ * 경험치/레벨/포인트/티켓/플레이 횟수를 숫자 형태로 반환.
+ *
+ * - JWT 검증 실패 → 전부 0/기본값, userIdText = null
+ * - user_stats 테이블이나 컬럼이 없으면 → 전부 0/기본값 (조용히 무시)
  *
  * NOTE:
- *  - B안에서 Request 에 X-User-Id 를 주입하는 로직과 별개로,
- *    이 함수는 여전히 requireUser 를 내부에서 호출한다.
- *    (조금 중복이지만, 동작/구성은 그대로 유지하면서 B안만 추가 적용)
+ *  - 파라미터로 들어온 request 의 Authorization 헤더 기준으로 requireUser 를 호출.
+ *  - B안에서 X-User-Id 헤더는 attachUserIdToRequest 가 먼저 세팅하고,
+ *    여기서는 DB 조회/요약에만 집중한다.
  */
 async function getUserStatsForHeaders(
   request: Request,
   env: Partial<DbEnv>
-): Promise<{
-  userIdText: string | null;
-  points: number;
-  exp: number;
-  level: number;
-  tickets: number;
-}> {
+): Promise<UserHeaderStats> {
   try {
     const payload = await requireUser(request, env as DbEnv);
 
@@ -101,63 +199,31 @@ async function getUserStatsForHeaders(
     const userIdText = String(raw ?? "").trim();
 
     if (!userIdText) {
-      return { userIdText: null, points: 0, exp: 0, level: 1, tickets: 0 };
+      return {
+        userIdText: null,
+        points: 0,
+        exp: 0,
+        level: 1,
+        tickets: 0,
+        gamesPlayed: 0,
+      };
     }
 
-    const sql = getSql(env as DbEnv);
-    let points = 0;
-    let exp = 0;
-    let level = 1;
-    let tickets = 0;
-
-    // user_progress: 경험치/레벨/티켓
-    try {
-      const progRows = (await sql`
-        select exp, level, tickets
-        from user_progress
-        where user_id = ${userIdText}
-        limit 1
-      `) as unknown as {
-        exp: number | string | bigint | null;
-        level: number | string | bigint | null;
-        tickets: number | string | bigint | null;
-      }[];
-
-      if (progRows && progRows.length > 0) {
-        const p = progRows[0];
-        exp = toNonNegativeInt(p.exp);
-        level = toNonNegativeInt(p.level) || 1;
-        tickets = toNonNegativeInt(p.tickets);
-      }
-    } catch (e) {
-      if (!isMissingTable(e)) {
-        // 미들웨어는 계약을 깨지 않기 위해 에러를 다시 던지지 않고 무시
-        // (본문/응답코드에 영향 X, 헤더만 비어 있게 됨)
-      }
-    }
-
-    // wallet_balances: 포인트(지갑 잔액)
-    try {
-      const balRows = (await sql`
-        select balance
-        from wallet_balances
-        where user_id = ${userIdText}
-        limit 1
-      `) as unknown as { balance: number | string | bigint | null }[];
-
-      if (balRows && balRows.length > 0) {
-        points = toNonNegativeInt(balRows[0].balance);
-      }
-    } catch (e) {
-      if (!isMissingTable(e)) {
-        // 동일하게 조용히 무시
-      }
-    }
-
-    return { userIdText, points, exp, level, tickets };
+    const stats = await loadUserStatsFromDb(userIdText, env);
+    return {
+      userIdText,
+      ...stats,
+    };
   } catch {
     // 비인증 요청 또는 토큰 오류 등 — 전역 미들웨어에서는 강제 401로 바꾸지 않음
-    return { userIdText: null, points: 0, exp: 0, level: 1, tickets: 0 };
+    return {
+      userIdText: null,
+      points: 0,
+      exp: 0,
+      level: 1,
+      tickets: 0,
+      gamesPlayed: 0,
+    };
   }
 }
 
@@ -187,8 +253,9 @@ async function attachUserIdToRequest(
     if (uid) {
       userIdText = uid;
       const headers = new Headers(request.headers);
-      // DOWNSTREAM Functions (예: /api/wallet) 에서 읽을 수 있도록 주입
+      // Downstream Functions (예: /api/wallet) 에서 읽을 수 있도록 주입
       headers.set("X-User-Id", uid);
+      // JWT가 이미 Authorization 헤더에 있으므로 그대로 유지
 
       requestForNext = new Request(request, { headers });
     }
@@ -199,12 +266,14 @@ async function attachUserIdToRequest(
   return { requestForNext, userIdText };
 }
 
+// ───────────────────────── Main Middleware ─────────────────────────────
+
 export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   request,
   env,
   next,
 }) => {
-  // Preflight (unchanged)
+  // CORS preflight (기존 방식 그대로 유지)
   if (request.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -232,14 +301,15 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   if (url.pathname.startsWith("/api/")) {
     const attached = await attachUserIdToRequest(request, env);
     requestForNext = attached.requestForNext;
-    userIdFromAuth = attached.userIdText ?? null;
+    userIdFromAuth = attached.userIdText;
   }
 
-  // Downstream 실행 (B안: 필요 시 수정된 Request 로 호출)
-  const res = await next(requestForNext);
+  // Downstream 실행 (필요 시 수정된 Request 로 호출)
+  const res = await next(requestForNext instanceof Request ? requestForNext : { request: requestForNext });
 
   // 응답 헤더 병합(CORS는 라우트에서 이미 넣었으면 덮어쓰지 않음)
   const hdr = new Headers(res.headers);
+
   if (!hdr.has("Access-Control-Allow-Origin")) {
     hdr.set("Access-Control-Allow-Origin", ALLOW_ORIGIN(env));
   }
@@ -249,15 +319,18 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   if (!hdr.has("Access-Control-Allow-Headers")) {
     hdr.set("Access-Control-Allow-Headers", ALLOW_HEADERS(env));
   }
+  // Origin 별 응답 분기 지원
   hdr.set("Vary", "Origin");
 
   // 가벼운 보안 헤더
-  if (!hdr.has("X-Content-Type-Options"))
+  if (!hdr.has("X-Content-Type-Options")) {
     hdr.set("X-Content-Type-Options", "nosniff");
-  if (!hdr.has("Referrer-Policy"))
+  }
+  if (!hdr.has("Referrer-Policy")) {
     hdr.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  }
 
-  // (옵션) Neon 헬스 프로브 — 쿼리로 명시적으로 요청된 경우에만
+  // ───────────────────────── DB Health Probe ───────────────────────────
   try {
     const wantsDb =
       truthy(url.searchParams.get("db")) ||
@@ -267,16 +340,22 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
       const h = await dbHealth(env as DbEnv);
       hdr.set("X-DB-Ok", String(h.ok));
       hdr.set("X-DB-Took-ms", String(h.took_ms));
-      if (!h.ok) hdr.set("X-DB-Error", (h as any).error ?? "unknown");
+      if (!h.ok) {
+        hdr.set("X-DB-Error", (h as any).error ?? "unknown");
+      }
     }
+  } catch {
+    // DB health 체크 실패는 미들웨어에서 조용히 무시
+  }
 
-    // (추가) 인증된 계정의 경험치/포인트/티켓 요약을 헤더에만 부가
-    // - /api/* 요청에 대해서만 동작 (정적 자산에는 부담 최소화)
+  // ───────────────────────── User Header Stats ─────────────────────────
+  try {
+    // /api/* 요청에 대해서만 동작 (정적 자산에는 부담 최소화)
     if (url.pathname.startsWith("/api/")) {
+      // Authorization 기반으로 다시 한 번 stats 조회
+      // (JWT 검증 + user_stats 조회; 실패 시 조용히 기본값)
       const stats = await getUserStatsForHeaders(requestForNext, env);
 
-      // B안에서 이미 attachUserIdToRequest 가 X-User-Id 를 헤더에 넣었다면
-      // 여기서도 동일 값을 한 번 더 세팅하되, 충돌 없이 오버라이드.
       const effectiveUserId = stats.userIdText || userIdFromAuth;
       if (effectiveUserId) {
         hdr.set("X-User-Id", effectiveUserId);
@@ -284,11 +363,17 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
         hdr.set("X-User-Exp", String(stats.exp));
         hdr.set("X-User-Level", String(stats.level));
         hdr.set("X-User-Tickets", String(stats.tickets));
+        hdr.set("X-User-Games", String(stats.gamesPlayed));
       }
     }
   } catch {
     // 미들웨어는 절대로 본문/계약을 깨지 않게 조용히 무시
   }
 
-  return new Response(res.body, { status: res.status, headers: hdr });
+  // 본문/상태코드는 그대로 유지, 헤더만 교체
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: hdr,
+  });
 };

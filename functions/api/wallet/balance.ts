@@ -1,18 +1,24 @@
 // C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\wallet\balance.ts
 //
-// ✅ Fix summary
+// ✅ Fix / Upgrade summary
 // - ts(2304) Cannot find name 'PagesFunction'  → tiny ambient 타입으로 해결(에디터 전용)
 // - ts(7031) request/env implicitly any        → 핸들러 파라미터 타입 명시
-// - 기존 외부 계약 100% 유지:
+//
+// - **외부 계약 100% 유지**
 //     • 메서드: GET
 //     • 입력: query.userId
 //     • 응답: { ok: true, balance }
-// - 🔥 내부 동작 강화/정합화:
-//     • 주 지갑 소스: migrations/001_init.sql 의 user_stats.coins
-//     • 보조/레거시: wallet_balances (있으면 fallback)
-//     • userId 우선순위: X-User-Id 헤더(미들웨어가 넣어준 UUID) → query.userId
-//     • UUID 형식 검증, bigint → number 안전 변환, 음수 방지
+//
+// - 🔥 내부 동작 강화/정합화 (지금까지 설계한 전체 흐름과 일치):
+//     • 1차 소스: user_stats.coins  (게임/상점 → transactions → apply_wallet_transaction 트리거 반영)
+//     • 2차 소스(fallback): wallet_balances.balance (구 스키마 호환용)
+//     • userId 우선순위: X-User-Id 헤더(미들웨어에서 넣어준 UUID) → query.userId
+//     • UUID 형식 검증, bigint/문자열 → number 안전 변환, 음수 방지
+//     • user_stats 가 없거나 row 가 없으면 자동으로 0 반환
+//     • 가능한 경우 exp / tickets / games_played / last_login_at / updated_at 을 헤더로 노출
+//     • user_stats.coins 와 wallet_balances.balance 가 동시에 존재할 경우 drift 여부를 헤더로만 표기
 //     • 초기 상태 내성(테이블 미존재 시 0 반환), 운영 헤더 유지/보강
+//
 
 /* ───── Minimal Cloudflare Pages ambient types (type-checker only) ───── */
 type CfEventLike<E> = {
@@ -38,23 +44,35 @@ import { getSql, type Env } from "../_utils/db";
  * - 입력: query.userId
  * - 응답 스키마: { ok: true, balance }
  *
- * 🔥 내부 정합:
+ * 🔥 내부 정합 (Wallet-C 아키텍처 기준):
  * - user_stats.coins 를 "진짜 지갑 잔액" 으로 사용
- * - wallet_balances 는 있으면 fallback 전용 (구 스키마 호환)
+ * - wallet_balances 는 있으면 fallback + consistency 체크용
  * - userId:
  *    1) X-User-Id / x-user-id (미들웨어에서 JWT 기반 주입, UUID users.id)
  *    2) query.userId
  */
 
-/* ───────── helpers ───────── */
+/* ───────── helpers: userId / 숫자 변환 / 에러 타입 ───────── */
 
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function safeNormalizeStr(v: string): string {
+  const trimmed = v.trim();
+  try {
+    return trimmed.normalize("NFKC");
+  } catch {
+    return trimmed;
+  }
+}
+
 function resolveUserId(req: Request, queryUserId: string | null): string | null {
   const headerId =
-    req.headers.get("X-User-Id") || req.headers.get("x-user-id") || "";
-  const candidate = (headerId || queryUserId || "").trim().normalize("NFKC");
+    req.headers.get("X-User-Id") ||
+    req.headers.get("x-user-id") ||
+    "";
+
+  const candidate = safeNormalizeStr(headerId || queryUserId || "");
   if (!candidate) return null;
   if (!UUID_V4_REGEX.test(candidate)) return null;
   return candidate;
@@ -67,6 +85,7 @@ function toNonNegativeNumber(v: any): number {
   else if (typeof v === "bigint") n = Number(v);
   else if (typeof v === "string") n = Number(v);
   else n = 0;
+
   if (!Number.isFinite(n)) n = 0;
   if (n < 0) n = 0;
   // 너무 큰 값은 JS safe integer 범위로 방어적 클램프
@@ -84,6 +103,162 @@ function isMissingTable(err: any): boolean {
   );
 }
 
+/* ───────── 타입: 내부 조회 결과 구조 ───────── */
+
+type StatsSource = "user_stats" | "wallet_balances" | "none";
+
+type UserStatsRow = {
+  coins?: number | string | bigint | null;
+  exp?: number | string | bigint | null;
+  tickets?: number | string | bigint | null;
+  games_played?: number | string | bigint | null;
+  last_login_at?: string | Date | null;
+  updated_at?: string | Date | null;
+};
+
+type WalletBalanceRow = {
+  balance?: number | string | bigint | null;
+};
+
+/* ───────── user_stats 조회 (canonical) ───────── */
+
+async function fetchFromUserStats(
+  sql: ReturnType<typeof getSql>,
+  userId: string
+): Promise<{
+  found: boolean;
+  coins: number;
+  exp: number;
+  tickets: number;
+  gamesPlayed: number;
+  lastLoginAt: string | null;
+  updatedAt: string | null;
+}> {
+  try {
+    const rows = (await sql/* sql */ `
+      select
+        coins,
+        exp,
+        tickets,
+        games_played,
+        last_login_at,
+        updated_at
+      from user_stats
+      where user_id = ${userId}::uuid
+      limit 1
+    `) as UserStatsRow[];
+
+    if (!rows || rows.length === 0) {
+      // row 자체가 없으면 "0" 잔액을 canonical 로 취급 (게으른 초기화)
+      return {
+        found: false,
+        coins: 0,
+        exp: 0,
+        tickets: 0,
+        gamesPlayed: 0,
+        lastLoginAt: null,
+        updatedAt: null,
+      };
+    }
+
+    const r = rows[0];
+    const coins = toNonNegativeNumber(r.coins ?? 0);
+    const exp = toNonNegativeNumber(r.exp ?? 0);
+    const tickets = toNonNegativeNumber(r.tickets ?? 0);
+    const gamesPlayed = toNonNegativeNumber(r.games_played ?? 0);
+
+    const lastLoginAt =
+      r.last_login_at instanceof Date
+        ? r.last_login_at.toISOString()
+        : r.last_login_at
+        ? String(r.last_login_at)
+        : null;
+
+    const updatedAt =
+      r.updated_at instanceof Date
+        ? r.updated_at.toISOString()
+        : r.updated_at
+        ? String(r.updated_at)
+        : null;
+
+    return {
+      found: true,
+      coins,
+      exp,
+      tickets,
+      gamesPlayed,
+      lastLoginAt,
+      updatedAt,
+    };
+  } catch (e) {
+    if (isMissingTable(e)) {
+      // user_stats 테이블이 아예 없는 경우 → 0 잔액 + not found
+      return {
+        found: false,
+        coins: 0,
+        exp: 0,
+        tickets: 0,
+        gamesPlayed: 0,
+        lastLoginAt: null,
+        updatedAt: null,
+      };
+    }
+    // 기타 에러는 상위로 던져서 클라이언트에 전달 (운영 이슈 인지)
+    throw e;
+  }
+}
+
+/* ───────── wallet_balances 조회 (fallback) ───────── */
+
+async function ensureWalletBalancesSchema(
+  sql: ReturnType<typeof getSql>
+): Promise<void> {
+  try {
+    await sql/* sql */ `
+      create table if not exists wallet_balances(
+        user_id text primary key,
+        balance bigint not null default 0
+      )
+    `;
+    await sql/* sql */ `
+      create index if not exists wallet_balances_user_idx
+      on wallet_balances (user_id)
+    `;
+  } catch (e) {
+    if (!isMissingTable(e)) {
+      // 초기 경쟁상태/권한 문제 등은 무시하고 계속 진행
+      // (단, 실제 조회 시 에러는 다시 한 번 확인)
+    }
+  }
+}
+
+async function fetchFromWalletBalances(
+  sql: ReturnType<typeof getSql>,
+  userId: string
+): Promise<{ found: boolean; balance: number }> {
+  try {
+    const rows = (await sql/* sql */ `
+      select balance
+      from wallet_balances
+      where user_id = ${userId}
+      limit 1
+    `) as WalletBalanceRow[];
+
+    if (!rows || rows.length === 0) {
+      return { found: false, balance: 0 };
+    }
+
+    const bal = toNonNegativeNumber(rows[0].balance ?? 0);
+    return { found: true, balance: bal };
+  } catch (e) {
+    if (isMissingTable(e)) {
+      // 스키마 자체가 없으면 0 반환
+      return { found: false, balance: 0 };
+    }
+    throw e;
+  }
+}
+
 /* ───────── handler ───────── */
 export const onRequest: PagesFunction<Env> = async ({
   request,
@@ -92,7 +267,10 @@ export const onRequest: PagesFunction<Env> = async ({
   request: Request;
   env: Env;
 }) => {
+  // CORS preflight
   if (request.method === "OPTIONS") return preflight(env.CORS_ORIGIN);
+
+  // GET only
   if (request.method !== "GET") {
     return withCORS(
       json({ error: "Method Not Allowed" }, { status: 405 }),
@@ -118,90 +296,83 @@ export const onRequest: PagesFunction<Env> = async ({
     const sql = getSql(env);
 
     let balanceNum = 0;
-    let usedSource: "user_stats" | "wallet_balances" | "none" = "none";
+    let usedSource: StatsSource = "none";
     let expNum = 0;
     let ticketsNum = 0;
     let gamesPlayedNum = 0;
+    let lastLoginAt: string | null = null;
+    let statsUpdatedAt: string | null = null;
+
+    let legacyBalance = 0;
+    let legacyFound = false;
+    let driftFlag: string | null = null;
 
     // ─────────────────────────────────────────────
     // 1) canonical: user_stats 기반 지갑 잔액 조회
-    //    - coins: 잔액
-    //    - exp / tickets / games_played 도 함께 조회해서
-    //      헤더에만 노출 (JSON 계약은 그대로).
     // ─────────────────────────────────────────────
-    try {
-      const rows = (await sql/* sql */ `
-        select
-          coins,
-          exp,
-          tickets,
-          games_played
-        from user_stats
-        where user_id = ${userId}::uuid
-        limit 1
-      `) as {
-        coins?: number | string | bigint | null;
-        exp?: number | string | bigint | null;
-        tickets?: number | string | bigint | null;
-        games_played?: number | string | bigint | null;
-      }[];
+    const stats = await fetchFromUserStats(sql, userId);
 
-      if (rows && rows.length > 0) {
-        const r = rows[0];
-        balanceNum = toNonNegativeNumber(r.coins ?? 0);
-        expNum = toNonNegativeNumber(r.exp ?? 0);
-        ticketsNum = toNonNegativeNumber(r.tickets ?? 0);
-        gamesPlayedNum = toNonNegativeNumber(r.games_played ?? 0);
-        usedSource = "user_stats";
-      }
-    } catch (e) {
-      if (!isMissingTable(e)) {
-        // user_stats 가 있는데 에러면 그대로 던져서 클라이언트에 전달
-        throw e;
-      }
-      // user_stats 테이블 자체가 없으면 legacy fallback 으로 진행
+    if (stats.found) {
+      balanceNum = stats.coins;
+      expNum = stats.exp;
+      ticketsNum = stats.tickets;
+      gamesPlayedNum = stats.gamesPlayed;
+      lastLoginAt = stats.lastLoginAt;
+      statsUpdatedAt = stats.updatedAt;
+      usedSource = "user_stats";
     }
 
     // ─────────────────────────────────────────────
     // 2) fallback: wallet_balances (구 스키마 호환)
-    //    - 새 코드에서는 더 이상 여기에 write 하지 않지만,
-    //      이전 배포/DB 구조까지 고려한 안전장치로 유지.
+    //    - user_stats 에 row 가 없거나, 또는 drift 체크용으로만 사용
     // ─────────────────────────────────────────────
-    if (usedSource === "none") {
-      try {
-        await sql/* sql */ `
-          create table if not exists wallet_balances(
-            user_id text primary key,
-            balance bigint not null default 0
-          )
-        `;
-        await sql/* sql */ `
-          create index if not exists wallet_balances_user_idx
-          on wallet_balances (user_id)
-        `;
-      } catch (e) {
-        if (!isMissingTable(e)) {
-          // 초기 경쟁상태 등은 무시하고 계속 진행
-        }
-      }
+    await ensureWalletBalancesSchema(sql);
 
-      try {
-        const rows = await sql/* sql */ `
-          select balance
-          from wallet_balances
-          where user_id = ${userId}
-          limit 1
-        `;
-        balanceNum = (rows as any[]).length
-          ? toNonNegativeNumber((rows as any[])[0].balance)
-          : 0;
+    const wallet = await fetchFromWalletBalances(sql, userId);
+    legacyBalance = wallet.balance;
+    legacyFound = wallet.found;
+
+    if (usedSource === "none") {
+      // user_stats row 자체가 없으면, wallet_balances 를 대신 사용
+      if (legacyFound) {
+        balanceNum = legacyBalance;
         usedSource = "wallet_balances";
-      } catch (e) {
-        if (!isMissingTable(e)) throw e;
-        balanceNum = 0; // 테이블이 아직 없으면 0으로 응답
+      } else {
+        // 둘 다 없으면 0 (신규 계정 등)
+        balanceNum = 0;
         usedSource = "none";
       }
+    } else {
+      // 양쪽 다 있는 경우 drift 여부를 헤더로만 표기
+      if (legacyFound && legacyBalance !== balanceNum) {
+        if (legacyBalance < balanceNum) {
+          driftFlag = "stats_gt_wallet";
+        } else if (legacyBalance > balanceNum) {
+          driftFlag = "wallet_gt_stats";
+        }
+      }
     }
+
+    // ─────────────────────────────────────────────
+    // 3) 응답: 기존과 동일하게 { ok: true, balance }
+    //    + 헤더로 상세 상태 제공
+    // ─────────────────────────────────────────────
+    const tookMs = Math.round(performance.now() - t0);
+
+    const headers: Record<string, string> = {
+      "Cache-Control": "no-store",
+      "X-Wallet-User": userId,
+      "X-Wallet-Source": usedSource,
+      "X-Wallet-Exp": String(expNum),
+      "X-Wallet-Tickets": String(ticketsNum),
+      "X-Wallet-Games": String(gamesPlayedNum),
+      "X-Wallet-Took-ms": String(tookMs),
+    };
+
+    if (lastLoginAt) headers["X-Wallet-Last-Login-At"] = lastLoginAt;
+    if (statsUpdatedAt) headers["X-Wallet-Stats-Updated-At"] = statsUpdatedAt;
+    if (legacyFound) headers["X-Wallet-Legacy-Balance"] = String(legacyBalance);
+    if (driftFlag) headers["X-Wallet-Drift"] = driftFlag;
 
     return withCORS(
       json(
@@ -209,17 +380,7 @@ export const onRequest: PagesFunction<Env> = async ({
           ok: true,
           balance: balanceNum,
         },
-        {
-          headers: {
-            "Cache-Control": "no-store",
-            "X-Wallet-User": userId,
-            "X-Wallet-Source": usedSource,
-            "X-Wallet-Exp": String(expNum),
-            "X-Wallet-Tickets": String(ticketsNum),
-            "X-Wallet-Games": String(gamesPlayedNum),
-            "X-Wallet-Took-ms": String(Math.round(performance.now() - t0)),
-          },
-        }
+        { headers }
       ),
       env.CORS_ORIGIN
     );

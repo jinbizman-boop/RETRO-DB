@@ -3,7 +3,7 @@
 import { json, readJSON } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";
 import { getSql, type Env } from "../_utils/db";
-import { validateSignup } from "../_utils/schema/auth";
+import { validateSignup, type SignupPayload } from "../_utils/schema/auth";
 import * as Rate from "../_utils/rate-limit";
 
 /**
@@ -12,11 +12,12 @@ import * as Rate from "../_utils/rate-limit";
  * - ts(7031) request/env 암시적 any → 핸들러 인자 타입 명시
  *
  * DB 스키마 정합 메모
- * - migrations/001_init.sql 기반 users (UUID PK, citext email/username)와
- *   이 signup API를 완전히 일치시키기 위해:
- *   • 별도의 users 테이블 생성 X (create table if not exists 제거)
- *   • 기존 users 테이블에 password_hash, gender, birth, phone, agree_at 등만 보강
- *   • user_stats 에 가입 시점에 row 생성 (coins/exp/tickets/games_played 기본값 0)
+ * - migrations/001_init.sql 기반 users (UUID PK, citext email/username)를 기본으로,
+ *   • 별도의 users 테이블 생성 X
+ *   • migrations/005_user_profile_and_progress.sql 에서
+ *     password_hash, gender, birth, phone, agree_at 등 컬럼을 정식 추가
+ *   • 여기서는 컬럼 보강 DDL을 "이중 안전망"으로 유지 (alter table if not exists)
+ *   • user_stats / user_progress 에 가입 시점 row 생성 (경험치/포인트/티켓/게임 카운트 기본값 0)
  *   • audit_logs 에 signup 이벤트 기록 (선택적, 스키마 있으면 활용)
  */
 
@@ -66,7 +67,11 @@ function isUniqueUsernameError(err: unknown): boolean {
   );
 }
 
-/* ───────── Helpers: payload 정규화 ───────── */
+/* ───────── [LEGACY] Helpers: payload 정규화 ─────────
+ * validateSignup 가 모든 가입 필드(email/password/username/gender/birth/phone/agree)를
+ * 정규화/검증하도록 고도화되었기 때문에, 아래 헬퍼들은 더 이상 직접 사용하지 않음.
+ * 다만, 기존 구성/배치를 최대한 유지하기 위해 남겨둔 상태(호환 목적).
+ */
 function normalizeString(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
@@ -160,31 +165,29 @@ export const onRequest: PagesFunction<Env> = async ({
   try {
     const body = await readJSON(request);
 
-    // 이메일/비밀번호는 기존 Zod 스키마(validateSignup)로 검증 (소문자/trim 정규화 포함)
-    const { email, password } = validateSignup(body);
-
-    // 나머지 필드는 optional + 서버에서 최소한만 정규화 (프론트 UI 그대로 유지)
-    const username = normalizeString((body as any).username);
-    const gender = normalizeGender((body as any).gender);
-    const birth = normalizeBirth((body as any).birth);
-    const phone = normalizePhone((body as any).phone);
-    const agreed = normalizeAgree((body as any).agree);
-
-    if (!agreed) {
-      // 프론트의 "약관 동의가 필요합니다." 와 매핑될 코드
-      return withCORS(
-        json({ error: "agree_required" }, { status: 400 }),
-        env.CORS_ORIGIN
-      );
-    }
+    // ─────────────────────────────────────────────────────────────
+    // 이메일/비밀번호 + 추가 필드는 고도화된 validateSignup 이 모두 처리
+    //   - email/password/username/gender/birth/phone/agree 검증/정규화
+    //   - agree=false 인 경우 validateSignup 내부에서 terms_not_agreed 로 에러 발생
+    // ─────────────────────────────────────────────────────────────
+    const payload: SignupPayload = validateSignup(body);
+    const {
+      email,
+      password,
+      username,
+      gender,
+      birth,
+      phone,
+      agree,
+    } = payload;
 
     const sql = getSql(env);
     const { ip, ua } = getClientMeta(request);
 
     // ─────────────────────────────────────────────────────────────
-    // users / user_stats / audit_logs 스키마 보강
-    //  - migrations/001_init.sql 의 users( UUID PK )를 기준으로
-    //  - 여기서는 컬럼만 추가 (create table 하지 않음)
+    // users / user_stats / user_progress / audit_logs 스키마 보강
+    //  - users 컬럼은 migrations/005_user_profile_and_progress.sql 에서
+    //    이미 추가되지만, 여기서도 alter table if not exists 로 이중 안전망 유지
     // ─────────────────────────────────────────────────────────────
 
     // users: password_hash 및 회원정보 컬럼 보강
@@ -193,6 +196,11 @@ export const onRequest: PagesFunction<Env> = async ({
     await sql/* sql */`alter table users add column if not exists birth date`;
     await sql/* sql */`alter table users add column if not exists phone text`;
     await sql/* sql */`alter table users add column if not exists agree_at timestamptz`;
+    await sql/* sql */`alter table users add column if not exists avatar text`;
+    await sql/* sql */`alter table users add column if not exists failed_attempts int not null default 0`;
+    await sql/* sql */`alter table users add column if not exists locked_until timestamptz`;
+    await sql/* sql */`alter table users add column if not exists last_login_at timestamptz`;
+
     // display_name 은 001_init.sql 에 이미 존재. username 과 별도로 사용 가능.
 
     // 인덱스 보강 (이미 migrations 에도 있지만 idempotent)
@@ -205,27 +213,27 @@ export const onRequest: PagesFunction<Env> = async ({
     // user_stats: 가입 시점에 기본 row 를 넣기 위해, 테이블/컬럼 보강
     await sql/* sql */`
       create table if not exists user_stats (
-        user_id     uuid primary key references users(id) on delete cascade,
-        xp          bigint not null default 0,
-        level       int generated always as (greatest(1, (xp/1000)::int + 1)) stored,
-        coins       bigint not null default 0,
-        exp         bigint not null default 0,
-        tickets     bigint not null default 0,
-        games_played bigint not null default 0,
+        user_id       uuid primary key references users(id) on delete cascade,
+        xp            bigint not null default 0,
+        level         int generated always as (greatest(1, (xp/1000)::int + 1)) stored,
+        coins         bigint not null default 0,
+        exp           bigint not null default 0,
+        tickets       bigint not null default 0,
+        games_played  bigint not null default 0,
         last_login_at timestamptz,
-        created_at  timestamptz not null default now(),
-        updated_at  timestamptz not null default now()
+        created_at    timestamptz not null default now(),
+        updated_at    timestamptz not null default now()
       )
     `;
 
     await sql/* sql */`
       alter table user_stats
-        add column if not exists coins        bigint not null default 0,
-        add column if not exists exp          bigint not null default 0,
-        add column if not exists tickets      bigint not null default 0,
-        add column if not exists games_played bigint not null default 0,
-        add column if not exists created_at   timestamptz not null default now(),
-        add column if not exists updated_at   timestamptz not null default now()
+        add column if not exists coins         bigint not null default 0,
+        add column if not exists exp           bigint not null default 0,
+        add column if not exists tickets       bigint not null default 0,
+        add column if not exists games_played  bigint not null default 0,
+        add column if not exists created_at    timestamptz not null default now(),
+        add column if not exists updated_at    timestamptz not null default now()
     `;
 
     await sql/* sql */`
@@ -272,7 +280,8 @@ export const onRequest: PagesFunction<Env> = async ({
       do $$
       begin
         if not exists (
-          select 1 from pg_trigger
+          select 1
+          from pg_trigger
           where tgname = 'user_stats_set_updated_at'
         ) then
           create trigger user_stats_set_updated_at
@@ -308,7 +317,7 @@ export const onRequest: PagesFunction<Env> = async ({
           ${gender},
           ${birth},
           ${phone},
-          ${agreed ? nowIso : null}
+          ${agree ? nowIso : null}
         )
         returning id
       `;
@@ -319,6 +328,13 @@ export const onRequest: PagesFunction<Env> = async ({
       await sql/* sql */`
         insert into user_stats (user_id)
         values (${userId}::uuid)
+        on conflict (user_id) do nothing
+      `;
+
+      // user_progress 기본 row 생성 (exp/level/tickets = 0/1/0)
+      await sql/* sql */`
+        insert into user_progress (user_id)
+        values (${userId})
         on conflict (user_id) do nothing
       `;
 

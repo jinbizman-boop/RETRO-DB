@@ -10,10 +10,11 @@
 // - 인증된 계정일 경우, 해당 계정의 경험치/레벨/포인트/티켓 요약을
 //   응답 헤더(X-User-*)에만 부가 (본문/JSON 구조는 일절 변경 없음)
 // - ★ B안 적용: 인증이 성공한 경우, 다운스트림 Functions 로 전달되는
-//   Request 의 헤더에 `X-User-Id` 를 주입해서 /api/wallet 등에서
+//   Request 의 헤더에 `X-User-Id` 를 주입해서 /api/wallet, /api/games 등에서
 //   즉시 userId 를 읽을 수 있도록 한다.
 // - DB 스키마: migrations/001_init.sql + wallet C안 구조의 user_stats 를 기준으로
 //   user_progress / wallet_balances 대신 user_stats 를 사용하도록 정합성 강화.
+// - 프론트엔드에서 커스텀 헤더를 읽을 수 있도록 Access-Control-Expose-Headers 추가.
 // ───────────────────────────────────────────────────────────────
 
 // ───────────────────────── Local Cloudflare shims ──────────────────────
@@ -41,7 +42,18 @@ const ALLOW_ORIGIN = (env: any) => env.CORS_ORIGIN ?? "*";
 const ALLOW_METHODS = (env: any) =>
   env.CORS_METHODS ?? "GET,POST,PUT,DELETE,OPTIONS";
 const ALLOW_HEADERS = (env: any) =>
-  env.CORS_HEADERS ?? "Content-Type,Authorization";
+  env.CORS_HEADERS ??
+  "Content-Type,Authorization,X-Requested-With,X-User-Id,Idempotency-Key";
+const EXPOSE_HEADERS =
+  "X-DB-Ok,X-DB-Took-ms,X-DB-Error," +
+  "X-User-Id,X-User-Points,X-User-Exp,X-User-Level,X-User-Tickets,X-User-Games," +
+  "X-Wallet-User,X-Wallet-Source,X-Wallet-Delta,X-Wallet-Balance," +
+  "X-Inventory-User,X-Inventory-Count,X-Inventory-Limit,X-Inventory-Source," +
+  "X-Score-Took-ms,X-Signup-Took-ms,X-Login-Took-ms," +
+  "X-Redeem-User,X-Redeem-Item,X-Redeem-Delta,X-Redeem-Source,X-Redeem-Cost-Coins," +
+  "X-Redeem-Idempotent,X-Redeem-Took-ms," +
+  "X-Wallet-Exp,X-Wallet-Tickets,X-Wallet-Games," +
+  "X-Wallet-Type,X-Wallet-Game,X-Wallet-Exp-Delta,X-Wallet-Tickets-Delta,X-Wallet-Plays-Delta";
 
 // truthy-style query param parser
 const truthy = (v: string | null) =>
@@ -71,7 +83,7 @@ function isMissingTable(err: unknown): boolean {
     msg.includes("does not exist") ||
     msg.includes("unknown relation") ||
     msg.includes("no such table") ||
-    msg.includes("relation") && msg.includes("does not exist")
+    (msg.includes("relation") && msg.includes("does not exist"))
   );
 }
 
@@ -79,11 +91,11 @@ function isMissingTable(err: unknown): boolean {
 
 type UserHeaderStats = {
   userIdText: string | null;
-  points: number;       // coins
-  exp: number;          // exp(또는 xp) 합산
-  level: number;        // level (없으면 exp 기반 산정)
-  tickets: number;      // tickets
-  gamesPlayed: number;  // games_played
+  points: number; // coins
+  exp: number; // exp(또는 xp) 합산
+  level: number; // level (없으면 exp 기반 산정)
+  tickets: number; // tickets
+  gamesPlayed: number; // games_played
 };
 
 /**
@@ -121,7 +133,7 @@ async function loadUserStatsFromDb(
   let gamesPlayed = 0;
 
   try {
-    const rows = (await sql/* sql */`
+    const rows = (await sql/* sql */ `
       select
         coins,
         exp,
@@ -132,7 +144,7 @@ async function loadUserStatsFromDb(
       from user_stats
       where user_id = ${userIdText}::uuid
       limit 1
-    `) as unknown as {
+    `) as {
       coins?: number | string | bigint | null;
       exp?: number | string | bigint | null;
       xp?: number | string | bigint | null;
@@ -145,6 +157,8 @@ async function loadUserStatsFromDb(
       const r = rows[0];
 
       points = toNonNegativeInt(r.coins ?? 0);
+
+      // exp 우선, 없으면 xp 사용
       const expCandidate = r.exp ?? r.xp ?? 0;
       exp = toNonNegativeInt(expCandidate);
 
@@ -232,6 +246,14 @@ async function getUserStatsForHeaders(
  * - requireUser 로 인증이 성공한 경우, 유저 식별자를 추출하고
  *   Request 헤더에 `X-User-Id` 를 주입한 새 Request 를 만들어 반환.
  * - 인증이 실패하면 원본 Request 를 그대로 반환 (비인증 요청은 막지 않음).
+ *
+ * 주입된 X-User-Id 는:
+ *   - /api/wallet/balance.ts
+ *   - /api/wallet/inventory.ts
+ *   - /api/wallet/redeem.ts
+ *   - /api/games/score.ts
+ *   - /api/wallet/transaction.ts
+ * 등에서 공통으로 사용된다.
  */
 async function attachUserIdToRequest(
   request: Request,
@@ -255,8 +277,9 @@ async function attachUserIdToRequest(
       const headers = new Headers(request.headers);
       // Downstream Functions (예: /api/wallet) 에서 읽을 수 있도록 주입
       headers.set("X-User-Id", uid);
-      // JWT가 이미 Authorization 헤더에 있으므로 그대로 유지
+      // Authorization 헤더는 그대로 유지 (JWT 토큰)
 
+      // 새 Request 인스턴스 생성
       requestForNext = new Request(request, { headers });
     }
   } catch {
@@ -275,15 +298,18 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
 }) => {
   // CORS preflight (기존 방식 그대로 유지)
   if (request.method === "OPTIONS") {
+    const hdr = new Headers();
+    hdr.set("Access-Control-Allow-Origin", ALLOW_ORIGIN(env));
+    hdr.set("Access-Control-Allow-Methods", ALLOW_METHODS(env));
+    hdr.set("Access-Control-Allow-Headers", ALLOW_HEADERS(env));
+    hdr.set("Access-Control-Max-Age", "86400");
+    hdr.set("X-Content-Type-Options", "nosniff");
+    hdr.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    hdr.set("Access-Control-Expose-Headers", EXPOSE_HEADERS);
+    hdr.set("Vary", "Origin");
+
     return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": ALLOW_ORIGIN(env),
-        "Access-Control-Allow-Methods": ALLOW_METHODS(env),
-        "Access-Control-Allow-Headers": ALLOW_HEADERS(env),
-        "Access-Control-Max-Age": "86400",
-        "X-Content-Type-Options": "nosniff",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-      },
+      headers: hdr,
     });
   }
 
@@ -305,7 +331,9 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   }
 
   // Downstream 실행 (필요 시 수정된 Request 로 호출)
-  const res = await next(requestForNext instanceof Request ? requestForNext : { request: requestForNext });
+  const res = await next(
+    requestForNext instanceof Request ? requestForNext : { request: requestForNext }
+  );
 
   // 응답 헤더 병합(CORS는 라우트에서 이미 넣었으면 덮어쓰지 않음)
   const hdr = new Headers(res.headers);
@@ -319,6 +347,21 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   if (!hdr.has("Access-Control-Allow-Headers")) {
     hdr.set("Access-Control-Allow-Headers", ALLOW_HEADERS(env));
   }
+
+  // 프론트에서 X-User-*, X-Wallet-* 등을 읽을 수 있도록 노출
+  if (!hdr.has("Access-Control-Expose-Headers")) {
+    hdr.set("Access-Control-Expose-Headers", EXPOSE_HEADERS);
+  } else {
+    // 기존 값에 우리 헤더를 append 하되 중복은 대충 허용 (브라우저가 dedupe)
+    const existing = hdr.get("Access-Control-Expose-Headers") || "";
+    if (!existing.includes("X-User-Id")) {
+      hdr.set(
+        "Access-Control-Expose-Headers",
+        existing + "," + EXPOSE_HEADERS
+      );
+    }
+  }
+
   // Origin 별 응답 분기 지원
   hdr.set("Vary", "Origin");
 

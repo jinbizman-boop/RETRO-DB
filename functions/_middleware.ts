@@ -15,6 +15,7 @@
 // - DB 스키마: migrations/001_init.sql + wallet C안 구조의 user_stats 를 기준으로
 //   user_progress / wallet_balances 대신 user_stats 를 사용하도록 정합성 강화.
 // - 프론트엔드에서 커스텀 헤더를 읽을 수 있도록 Access-Control-Expose-Headers 추가.
+// - 이 미들웨어는 “절대” 본문(body)나 status 코드를 변경하지 않고, 헤더만 얹는다.
 // ───────────────────────────────────────────────────────────────
 
 // ───────────────────────── Local Cloudflare shims ──────────────────────
@@ -36,6 +37,7 @@ type PagesFunction<E = unknown> = (
 import type { Env as DbEnv } from "./api/_utils/db";
 import { dbHealth, getSql } from "./api/_utils/db";
 import { requireUser } from "./api/_utils/auth";
+import { ensureUserStatsRow } from "./api/_utils/progression";
 
 // ───────────────────────── CORS Helpers ────────────────────────────────
 const ALLOW_ORIGIN = (env: any) => env.CORS_ORIGIN ?? "*";
@@ -44,16 +46,74 @@ const ALLOW_METHODS = (env: any) =>
 const ALLOW_HEADERS = (env: any) =>
   env.CORS_HEADERS ??
   "Content-Type,Authorization,X-Requested-With,X-User-Id,Idempotency-Key";
+
+// 프론트에서 사용할 수 있는 모든 커스텀 헤더를 한 곳에 모아둔다.
+// (API 레벨에서 추가된 헤더는 여기에도 반드시 반영해줘야 프론트가 읽을 수 있음)
 const EXPOSE_HEADERS =
-  "X-DB-Ok,X-DB-Took-ms,X-DB-Error," +
-  "X-User-Id,X-User-Points,X-User-Exp,X-User-Level,X-User-Tickets,X-User-Games," +
-  "X-Wallet-User,X-Wallet-Source,X-Wallet-Delta,X-Wallet-Balance," +
-  "X-Inventory-User,X-Inventory-Count,X-Inventory-Limit,X-Inventory-Source," +
-  "X-Score-Took-ms,X-Signup-Took-ms,X-Login-Took-ms," +
-  "X-Redeem-User,X-Redeem-Item,X-Redeem-Delta,X-Redeem-Source,X-Redeem-Cost-Coins," +
-  "X-Redeem-Idempotent,X-Redeem-Took-ms," +
-  "X-Wallet-Exp,X-Wallet-Tickets,X-Wallet-Games," +
-  "X-Wallet-Type,X-Wallet-Game,X-Wallet-Exp-Delta,X-Wallet-Tickets-Delta,X-Wallet-Plays-Delta";
+  [
+    // DB / 헬스체크
+    "X-DB-Ok",
+    "X-DB-Took-ms",
+    "X-DB-Error",
+
+    // User stats (전역 요약)
+    "X-User-Id",
+    "X-User-Points",
+    "X-User-Exp",
+    "X-User-Level",
+    "X-User-Tickets",
+    "X-User-Games",
+
+    // Wallet / Transactions
+    "X-Wallet-User",
+    "X-Wallet-Source",
+    "X-Wallet-Delta",
+    "X-Wallet-Balance",
+    "X-Wallet-Type",
+    "X-Wallet-Game",
+    "X-Wallet-Exp-Delta",
+    "X-Wallet-Tickets-Delta",
+    "X-Wallet-Plays-Delta",
+    "X-Wallet-Exp",
+    "X-Wallet-Tickets",
+    "X-Wallet-Games",
+    "X-Wallet-Idempotent",
+    "X-Wallet-Ref-Table",
+    "X-Wallet-Ref-Id",
+    "X-Wallet-Took-ms",
+
+    // Inventory / Shop / Redeem
+    "X-Inventory-User",
+    "X-Inventory-Count",
+    "X-Inventory-Limit",
+    "X-Inventory-Source",
+    "X-Redeem-User",
+    "X-Redeem-Item",
+    "X-Redeem-Delta",
+    "X-Redeem-Source",
+    "X-Redeem-Cost-Coins",
+    "X-Redeem-Idempotent",
+    "X-Redeem-Took-ms",
+
+    // Auth / Score / Signup / Login 등 처리시간
+    "X-Score-Took-ms",
+    "X-Signup-Took-ms",
+    "X-Login-Took-ms",
+    "X-Me-Took-ms",
+
+    // Specials (events / rewards)
+    "X-Reward-Status",
+    "X-Reward-Coins",
+    "X-Reward-Exp",
+    "X-Reward-Tickets",
+    "X-Reward-Took-ms",
+    "X-Events-Limit",
+    "X-Events-Status",
+    "X-Events-Took-ms",
+    "X-Events-Active-Count",
+    "X-Events-Upcoming-Count",
+    "X-Events-Past-Count",
+  ].join(",");
 
 // truthy-style query param parser
 const truthy = (v: string | null) =>
@@ -62,7 +122,7 @@ const truthy = (v: string | null) =>
 // ───────────────────────── Numeric Helpers ─────────────────────────────
 // (auth/me.ts 와 동일한 규칙 최대한 유지)
 function toNumberSafe(v: unknown): number {
-  if (typeof v === "number") return v;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   if (typeof v === "bigint") return Number(v);
   if (typeof v === "string") {
     const n = Number(v);
@@ -74,6 +134,23 @@ function toNumberSafe(v: unknown): number {
 function toNonNegativeInt(v: unknown): number {
   const n = Math.trunc(toNumberSafe(v));
   return n < 0 ? 0 : n;
+}
+
+// ───────────────────────── Level Helper (exp → level) ──────────────────
+/**
+ * 경험치(exp) 기반 레벨 산정
+ * - exp 0~999      → 1
+ * - exp 1000~1999  → 2
+ * - ...
+ * - 상한 999 레벨로 클램프
+ * (auth/me.ts 의 computeLevelFromExp 와 동일한 정책 유지)
+ */
+function computeLevelFromExp(exp: number): number {
+  if (!Number.isFinite(exp) || exp <= 0) return 1;
+  const base = Math.floor(exp / 1000) + 1;
+  if (base < 1) return 1;
+  if (base > 999) return 999;
+  return base;
 }
 
 // ───────────────────────── Error Helpers ───────────────────────────────
@@ -100,13 +177,13 @@ type UserHeaderStats = {
 
 /**
  * DB user_stats 스키마:
- *   user_id (uuid PK)
- *   xp bigint
- *   level int (generated, 있을 수도/없을 수도 있음)
+ *   user_id uuid primary key
  *   coins bigint
  *   exp bigint
+ *   xp bigint (과거 호환용, 있으면 exp 대신 사용 가능)
  *   tickets bigint
  *   games_played bigint
+ *   updated_at timestamptz
  *
  * 이 함수는 user_stats 기반으로:
  *   - X-User-Points (coins)
@@ -131,6 +208,16 @@ async function loadUserStatsFromDb(
   let level = 1;
   let tickets = 0;
   let gamesPlayed = 0;
+
+  // user_stats row 가 없으면 트랜잭션 계층에서 만들기도 하지만,
+  // 여기서는 미리 ensureUserStatsRow 로 row 를 보장해둔다.
+  try {
+    await ensureUserStatsRow(sql as any, userIdText);
+  } catch (e) {
+    if (isMissingTable(e)) {
+      // user_stats 테이블 자체가 아직 없는 경우 → 아래 select 에서 다시 한 번 safe fail
+    }
+  }
 
   try {
     const rows = (await sql/* sql */ `
@@ -164,7 +251,7 @@ async function loadUserStatsFromDb(
 
       // level 컬럼이 있으면 우선 사용, 없으면 exp 기반 계산
       const lvl = r.level != null ? toNonNegativeInt(r.level) : 0;
-      level = lvl > 0 ? lvl : Math.max(1, Math.floor(exp / 1000) + 1);
+      level = lvl > 0 ? lvl : computeLevelFromExp(exp);
 
       tickets = toNonNegativeInt(r.tickets ?? 0);
       gamesPlayed = toNonNegativeInt(r.games_played ?? 0);
@@ -248,11 +335,10 @@ async function getUserStatsForHeaders(
  * - 인증이 실패하면 원본 Request 를 그대로 반환 (비인증 요청은 막지 않음).
  *
  * 주입된 X-User-Id 는:
- *   - /api/wallet/balance.ts
- *   - /api/wallet/inventory.ts
- *   - /api/wallet/redeem.ts
+ *   - /api/wallet/transaction.ts
  *   - /api/games/score.ts
  *   - /api/wallet/transaction.ts
+ *   - /api/wallet/xxx.ts (balace/inventory/redeem 등)
  * 등에서 공통으로 사용된다.
  */
 async function attachUserIdToRequest(
@@ -395,7 +481,7 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   try {
     // /api/* 요청에 대해서만 동작 (정적 자산에는 부담 최소화)
     if (url.pathname.startsWith("/api/")) {
-      // Authorization 기반으로 다시 한 번 stats 조회
+      // Authorization 기반으로 stats 조회
       // (JWT 검증 + user_stats 조회; 실패 시 조용히 기본값)
       const stats = await getUserStatsForHeaders(requestForNext, env);
 

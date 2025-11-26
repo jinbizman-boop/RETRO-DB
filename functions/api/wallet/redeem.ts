@@ -1,4 +1,4 @@
-// C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\wallet\redeem.ts
+// functions/api/wallet/redeem.ts
 //
 // ✅ Fix summary
 // - ts(2304) Cannot find name 'PagesFunction'  → tiny ambient types for CF Pages (editor-only)
@@ -8,17 +8,29 @@
 //     • 입력: { userId, itemId, qty }  // qty 미지정 시 1
 //     • 응답: { ok: true }
 //
-// 🔥 내부 동작/지갑·인벤토리 정합 강화
-// - Canonical 인벤토리: migrations/003_shop_effects.sql 기준 user_inventory + shop_items
-//     • user_inventory(user_id UUID, item_id UUID, qty INT >= 0, …)
-//     • shop_items(id UUID, sku TEXT, …)
-//     → 클라이언트에는 item_id = shop_items.sku (없으면 id::text) 로 노출/연계
+// 🔥 내부 동작/지갑·인벤토리·효과 정합 강화 (Wallet-C 아키텍처 대응)
+// - Canonical 인벤토리/효과:
+//     • user_inventory(user_id UUID, item_id UUID, qty INT >= 0 …)
+//     • shop_items(id UUID, sku TEXT, price_coins NUMERIC, item_type, effect_key, effect_value, effect_duration_minutes …)
+//     • user_effects(user_id UUID, effect_key TEXT, value NUMERIC, expires_at …)
+//     → 클라이언트 itemId: shop_items.sku (없으면 id::text)
 // - Legacy fallback: wallet_items(user_id TEXT, item_id TEXT, qty INT)
+// - Coins/Wallet 정합:
+//     • transactions 테이블 + apply_wallet_transaction() 트리거 사용
+//     • type = 'spend', amount = -총코인사용량
+//     • user_stats.coins 잔액이 부족하면 트리거에서 예외 → 400 + "insufficient_funds"
 // - userId 우선순위:
 //     1) 미들웨어가 넣어주는 X-User-Id 헤더 (users.id UUID)
 //     2) body.userId
 //   → 최종적으로 UUID 형식이 아니면 400("Invalid userId")
 // - qty: int32 범위로 보정 후, 1 이상 필수 (0/음수는 에러)
+// - 멱등키(Idempotency-Key) 지원:
+//     • 동일 Idempotency-Key 로 재호출 시, transactions on conflict 로 중복 차단
+//     • 두 번째 호출에서는 인벤토리/효과/주문도 스킵 → “한 번만 적용” 보장
+//
+// NOTE:
+// - shop_items / user_inventory / user_effects / transactions 가 아직 없는 환경에서는
+//   기존 wallet_items 기반 동작으로 graceful fallback 합니다.
 
 
 // ───── Minimal Cloudflare Pages ambient types (type-checker only) ─────
@@ -40,20 +52,17 @@ import { withCORS, preflight } from "../_utils/cors";
 import { getSql, type Env } from "../_utils/db";
 import * as Rate from "../_utils/rate-limit";
 
-/**
- * 계약 유지:
- * - 라우트/메서드 동일(POST)
- * - 입력: { userId, itemId, qty }  // qty 미지정 시 기본 1
- * - 응답: { ok: true }
- *
- * 보강:
- * - Rate limit(429)
- * - userId: X-User-Id 헤더 + body.userId → UUID 형식 검증 (users.id와 정합)
- * - itemId: shop_items.sku 혹은 shop_items.id::text 와 매칭
- * - canonical 인벤토리: user_inventory(user_id, item_id, qty) upsert
- * - user_inventory/shops 미구성 환경에서는 기존 wallet_items 로 graceful fallback
- * - 운영 헤더: X-Redeem-*, 처리시간 등
- */
+/* ───────── types ───────── */
+
+type ShopItemRow = {
+  id: string;                       // UUID::text
+  sku: string | null;
+  price_coins: number | string | null;
+  item_type: string | null;         // cosmetic/effect/consumable/…
+  effect_key: string | null;        // 'coins_multiplier' 등
+  effect_value: number | string | null;
+  effect_duration_minutes: number | string | null;
+};
 
 /* ───────── helpers ───────── */
 
@@ -82,10 +91,7 @@ function cleanItemKey(v: unknown): string {
     .normalize("NFKC");
   if (!s) throw new Error("Invalid itemId");
   // SKU-ish or UUID-ish 아무거나 허용 (실제 매칭은 DB에서 처리)
-  if (
-    /^[a-z0-9_\-.:]{1,64}$/.test(s) ||
-    UUID_V4_REGEX.test(s)
-  ) {
+  if (/^[a-z0-9_\-.:]{1,64}$/.test(s) || UUID_V4_REGEX.test(s)) {
     return s;
   }
   throw new Error("Invalid itemId");
@@ -101,6 +107,20 @@ function toInt32(n: unknown, fallback = 1): number {
   return v;
 }
 
+function toNonNegativeInt(v: any): number {
+  let n: number;
+  if (typeof v === "number") n = v;
+  else if (typeof v === "bigint") n = Number(v);
+  else if (typeof v === "string") n = Number(v);
+  else n = 0;
+
+  if (!Number.isFinite(n)) n = 0;
+  n = Math.floor(n);
+  if (n < 0) n = 0;
+  if (n > Number.MAX_SAFE_INTEGER) n = Number.MAX_SAFE_INTEGER;
+  return n;
+}
+
 function isMissingTable(err: any): boolean {
   const msg = String(err?.message ?? err).toLowerCase();
   return (
@@ -111,7 +131,27 @@ function isMissingTable(err: any): boolean {
   );
 }
 
+function isInsufficientBalanceError(err: any): boolean {
+  const msg = String(err?.message ?? err).toLowerCase();
+  // apply_wallet_transaction() 에서 던지는 예외 메시지 일부 패턴
+  return (
+    msg.includes("insufficient balance") ||
+    (msg.includes("insufficient") && msg.includes("balance"))
+  );
+}
+
+// 중복 호출 방지를 위한 멱등 키
+function getIdemKey(req: Request): string | null {
+  return (
+    req.headers.get("Idempotency-Key") ||
+    req.headers.get("idempotency-key") ||
+    req.headers.get("X-Idempotency-Key") ||
+    req.headers.get("x-idempotency-key")
+  );
+}
+
 /* ───────── handler ───────── */
+
 export const onRequest: PagesFunction<Env> = async ({
   request,
   env,
@@ -148,57 +188,173 @@ export const onRequest: PagesFunction<Env> = async ({
 
     const qtyRaw = toInt32((body as any)?.qty, 1); // 원본 계약: 기본 1
     if (qtyRaw <= 0) {
-      // 음수/0 수량은 인벤토리 일관성을 위해 허용하지 않음
+      // 음수/0 수량은 인벤토리/지갑 일관성을 위해 허용하지 않음
       throw new Error("qty must be positive");
     }
     const qty = qtyRaw;
 
     const sql = getSql(env);
+    const idem = getIdemKey(request);
 
     let appliedQty = qty;
     let appliedItemKey = itemKey;
     let source: "user_inventory" | "wallet_items" = "user_inventory";
+    let costCoins = 0;
 
     // ─────────────────────────────────────────────
-    // 1) canonical 인벤토리: user_inventory + shop_items
-    //    - itemKey 를 shop_items.sku 또는 shop_items.id::text 로 매칭
-    //    - user_inventory(user_id UUID, item_id UUID)에 upsert
+    // 1) Canonical 경로: shop_items + user_inventory + user_effects + transactions
     // ─────────────────────────────────────────────
     try {
       const rowsItem = (await sql/* sql */ `
         select
-          id::text as id,
-          sku
+          id::text                 as id,
+          sku,
+          price_coins,
+          item_type,
+          effect_key,
+          effect_value,
+          effect_duration_minutes
         from shop_items
         where
           lower(sku) = ${itemKey}
           or id::text = ${itemKey}
         limit 1
-      `) as { id: string; sku: string | null }[];
+      `) as ShopItemRow[];
 
       if (!rowsItem || rowsItem.length === 0) {
-        // shop_items 은 있지만 해당 item 이 없다 → legacy wallet_items 로 fallback
+        // shop_items 는 있지만 해당 item 이 없다 → legacy wallet_items 로 fallback
         source = "wallet_items";
         throw new Error("NO_CANONICAL_ITEM_FALLBACK");
       }
 
-      const itemRow = rowsItem[0];
-      const itemIdUuid = itemRow.id; // UUID text
-      appliedItemKey = (itemRow.sku && itemRow.sku.trim()) || itemIdUuid;
+      const item = rowsItem[0];
+      const itemIdUuid = item.id; // UUID::text
+      const skuSafe = (item.sku && item.sku.trim()) || itemIdUuid;
 
-      // upsert into user_inventory
-      await sql/* sql */ `
-        insert into user_inventory(user_id, item_id, qty)
-        values(${userId}::uuid, ${itemIdUuid}::uuid, ${qty})
-        on conflict (user_id, item_id)
-        do update set
-          qty = GREATEST(0, user_inventory.qty + ${qty}),
-          updated_at = now()
-      `;
+      // 가격 계산 (NULL/음수는 0으로 처리 = 무료 아이템)
+      const unitPriceCoins = toNonNegativeInt(item.price_coins ?? 0);
+      const totalPriceCoins = toNonNegativeInt(unitPriceCoins * qty);
+
+      costCoins = totalPriceCoins;
+      appliedItemKey = skuSafe;
+
+      // 1-1) Coins 차감: transactions + apply_wallet_transaction()
+      //      - type = 'spend', amount = -총코인사용량
+      //      - Idempotency-Key 가 있으면 on conflict 로 중복 방지
+      let shouldApplyInventoryAndEffect = true;
+
+      if (totalPriceCoins > 0) {
+        const meta = {
+          kind: "shop_redeem",
+          item_id: itemIdUuid,
+          sku: skuSafe,
+          qty,
+          unit_price_coins: unitPriceCoins,
+          total_price_coins: totalPriceCoins,
+        };
+
+        let txRows: any[] = [];
+
+        if (idem) {
+          txRows = await sql/* sql */ `
+            insert into transactions (
+              user_id,
+              type,
+              amount,
+              ref_table,
+              ref_id,
+              note,
+              idempotency_key,
+              meta
+            )
+            values (
+              ${userId}::uuid,
+              'spend',
+              ${-totalPriceCoins},
+              'shop_items',
+              ${itemIdUuid}::uuid,
+              'shop_redeem',
+              ${idem},
+              ${JSON.stringify(meta)}::jsonb
+            )
+            on conflict (idempotency_key) do nothing
+            returning id
+          `;
+        } else {
+          txRows = await sql/* sql */ `
+            insert into transactions (
+              user_id,
+              type,
+              amount,
+              ref_table,
+              ref_id,
+              note,
+              meta
+            )
+            values (
+              ${userId}::uuid,
+              'spend',
+              ${-totalPriceCoins},
+              'shop_items',
+              ${itemIdUuid}::uuid,
+              'shop_redeem',
+              ${JSON.stringify(meta)}::jsonb
+            )
+            returning id
+          `;
+        }
+
+        // 멱등 키가 있고, 이미 처리된 요청이면 인벤토리/효과는 다시 적용하지 않는다.
+        if (idem && (!txRows || txRows.length === 0)) {
+          shouldApplyInventoryAndEffect = false;
+        }
+      }
+
+      // 1-2) 인벤토리 지급 (coins 차감이 실제로 적용된 경우에만)
+      if (shouldApplyInventoryAndEffect) {
+        await sql/* sql */ `
+          insert into user_inventory(user_id, item_id, qty)
+          values(${userId}::uuid, ${itemIdUuid}::uuid, ${qty})
+          on conflict (user_id, item_id)
+          do update set
+            qty = GREATEST(0, user_inventory.qty + ${qty}),
+            updated_at = now()
+        `;
+      }
+
+      // 1-3) 계정 효과 적용 (effect_key/value 가 있는 경우)
+      if (shouldApplyInventoryAndEffect && item.effect_key && item.effect_value != null) {
+        const effectKey = item.effect_key.trim();
+        const effectValueNum = Number(item.effect_value);
+        const durationMinRaw =
+          typeof item.effect_duration_minutes === "number"
+            ? item.effect_duration_minutes
+            : Number(item.effect_duration_minutes ?? 0);
+        const durationMin =
+          Number.isFinite(durationMinRaw) && durationMinRaw > 0
+            ? Math.floor(durationMinRaw)
+            : 0;
+
+        let expiresAt: string | null = null;
+        if (durationMin > 0) {
+          expiresAt = new Date(Date.now() + durationMin * 60_000).toISOString();
+        }
+
+        await sql/* sql */ `
+          insert into user_effects(user_id, effect_key, value, expires_at)
+          values (${userId}::uuid, ${effectKey}, ${effectValueNum}, ${expiresAt})
+          on conflict (user_id, effect_key)
+          do update set
+            value      = EXCLUDED.value,
+            expires_at = EXCLUDED.expires_at,
+            updated_at = now()
+        `;
+      }
+
       source = "user_inventory";
     } catch (e: any) {
-      // user_inventory/shop_items 스키마가 아직 없거나,
-      // 위에서 NO_CANONICAL_ITEM_FALLBACK 를 던진 경우 → legacy wallet_items 로 graceful fallback
+      // user_inventory / shop_items / user_effects 스키마가 없거나
+      // NO_CANONICAL_ITEM_FALLBACK 신호인 경우 → legacy wallet_items 로 graceful fallback
       const msg = String(e?.message ?? "");
       if (!isMissingTable(e) && !msg.includes("NO_CANONICAL_ITEM_FALLBACK")) {
         // 진짜 오류는 그대로 노출
@@ -206,17 +362,18 @@ export const onRequest: PagesFunction<Env> = async ({
       }
 
       // ─────────────────────────────────────────────
-      // 2) legacy fallback: wallet_items (구 구조)
-      //    - 기존 코드와 동일한 테이블/동작
+      // 2) Legacy fallback: wallet_items (구 구조)
+      //    - 기존 코드와 동일한 테이블/동작(단순 가산)
+      //    - coins 차감이나 효과 적용은 수행하지 않음
       // ─────────────────────────────────────────────
       source = "wallet_items";
 
       try {
         await sql/* sql */ `
           create table if not exists wallet_items(
-            user_id text not null,
-            item_id text not null,
-            qty int not null default 0,
+            user_id   text not null,
+            item_id   text not null,
+            qty       int  not null default 0,
             updated_at timestamptz not null default now(),
             primary key(user_id, item_id)
           )
@@ -249,11 +406,12 @@ export const onRequest: PagesFunction<Env> = async ({
           updated_at = now()
       `;
       appliedItemKey = itemKey;
+      costCoins = 0; // legacy 모드에서는 코인 차감 없음
     }
 
     return withCORS(
       json(
-        { ok: true }, // 계약 유지
+        { ok: true }, // 외부 계약 유지
         {
           headers: {
             "Cache-Control": "no-store",
@@ -261,6 +419,8 @@ export const onRequest: PagesFunction<Env> = async ({
             "X-Redeem-Item": appliedItemKey,
             "X-Redeem-Delta": String(appliedQty),
             "X-Redeem-Source": source,
+            "X-Redeem-Cost-Coins": String(costCoins),
+            "X-Redeem-Idempotent": idem ? "1" : "0",
             "X-Redeem-Took-ms": String(Math.round(performance.now() - t0)),
           },
         }
@@ -268,6 +428,17 @@ export const onRequest: PagesFunction<Env> = async ({
       env.CORS_ORIGIN
     );
   } catch (e: any) {
+    if (isInsufficientBalanceError(e)) {
+      // 지갑 잔액 부족 시 조금 더 명확한 코드로 응답
+      return withCORS(
+        json(
+          { error: "insufficient_funds" },
+          { status: 400, headers: { "Cache-Control": "no-store" } }
+        ),
+        env.CORS_ORIGIN
+      );
+    }
+
     return withCORS(
       json(
         { error: String(e?.message || e) },

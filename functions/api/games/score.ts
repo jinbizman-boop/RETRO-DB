@@ -4,12 +4,13 @@
 // - 기존 기능/계약(POST /api/games/score → { ok:true }) 100% 유지
 // - VS Code TS 오류(ts2304 PagesFunction / ts7031 implicit any) 제거
 // - 입력 정규화/범위 검증, 멱등키 지원, 인덱스, 캐시 차단 헤더, 레이트리밋 연동 유지
-// - 🔥 강화: 새 DB 스키마와 완전 정합
-//   • migrations/game_runs.sql 의 game_runs 테이블에 정식 런 기록 저장
-//   • games(slug)와 연결 (존재 안 하면 안전한 upsert)
-//   • migrations/001_init.sql 의 transactions + apply_wallet_transaction 트리거와 연동
-//     → 게임 점수에 따라 coins/exp/games_played 자동 갱신 (user_stats)
-//   • userId 는 우선 X-User-Id 헤더(미들웨어) → body.userId 순으로 사용
+// - 🔥 강화(지금까지 설계한 내용 전부 반영):
+//   • _utils/schema/games.ts 의 확장된 validateScore( difficulty/mode/playTime 등 ) 활용
+//   • migrations/game_runs.sql 의 game_runs 스키마에 맞춰 런 기록 저장
+//   • migrations/003_shop_effects.sql 의 user_effects( coins/xp multiplier ) 적용
+//   • migrations/001_init.sql + 006_wallet_inventory_bridge.sql 의 transactions 경로 사용
+//     → apply_wallet_transaction 트리거를 통해 user_stats / wallet 계정에 코인/경험치/티켓 반영
+//   • userId 는 X-User-Id 헤더(우선) → body.userId 순으로 사용 (UUID v4 강제)
 //   • 모든 강화는 “추가 동작”일 뿐, 기존 응답 계약/형식은 변경 없음
 
 import { json, readJSON } from "../_utils/json";
@@ -34,26 +35,44 @@ type PagesFunction<E = unknown> = (
 
 /* ───────── helpers: user/game/score 정규화 ───────── */
 
-// userId 우선순위: X-User-Id 헤더(미들웨어) → body.userId
 // UUID 기반 users.id 와 정합되도록 엄격히 제한
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// game_runs.sql 의 slug 체크와 동일(소문자 시작, 숫자/언더스코어/하이픈 1~64자)
+const GAME_SLUG_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+// userId 우선순위: X-User-Id 헤더(미들웨어) → body.userId
 function resolveUserId(req: Request, bodyUserId: unknown): string {
   const headerId =
-    req.headers.get("X-User-Id") || req.headers.get("x-user-id") || "";
-  const candidate = (headerId || String(bodyUserId ?? "")).trim().normalize("NFKC");
-  if (!candidate) throw new Error("Missing userId");
-  if (!UUID_V4_REGEX.test(candidate)) {
+    req.headers.get("X-User-Id") ||
+    req.headers.get("x-user-id") ||
+    "";
+
+  const candidate = (headerId || String(bodyUserId ?? "")).trim();
+  let normalized = candidate;
+  try {
+    normalized = normalized.normalize("NFKC");
+  } catch {
+    // ignore
+  }
+
+  if (!normalized) throw new Error("Missing userId");
+  if (!UUID_V4_REGEX.test(normalized)) {
     // 지금 스키마는 UUID users.id 기준으로 동작하므로 uuid 강제
     throw new Error("Invalid userId");
   }
-  return candidate;
+  return normalized;
 }
 
-function cleanGame(v: string): string {
-  const s = (v || "").trim().toLowerCase().normalize("NFKC");
-  if (!/^[a-z0-9_\-]{1,64}$/.test(s)) {
+function cleanGameSlug(v: string): string {
+  let s = (v || "").trim().toLowerCase();
+  try {
+    s = s.normalize("NFKC");
+  } catch {
+    // ignore
+  }
+  if (!GAME_SLUG_REGEX.test(s)) {
     throw new Error("Invalid game");
   }
   return s;
@@ -101,22 +120,199 @@ function getClientMeta(req: Request) {
   return { ip, ua };
 }
 
-// 점수 → 보상 변환 (간단 정책)
-// - exp: score / 10
-// - coins: score / 50 (최대 5000)
-// - tickets: 매우 큰 점수에만 보너스 1장
-function computeRewards(score: number): {
+/* ───────── 점수 → 기본 보상 계산 ───────── */
+
+type Difficulty = "easy" | "normal" | "hard" | "extreme" | null;
+
+function difficultyMultiplier(diff: Difficulty): number {
+  switch (diff) {
+    case "easy":
+      return 0.8;
+    case "normal":
+      return 1.0;
+    case "hard":
+      return 1.2;
+    case "extreme":
+      return 1.5;
+    default:
+      return 1.0;
+  }
+}
+
+// 점수 → 코인/경험치/티켓 기본 값
+function computeBaseRewards(score: number, diff: Difficulty): {
+  baseCoins: number;
+  baseExp: number;
+  baseTickets: number;
+} {
+  const s = Math.max(0, score);
+  const mul = difficultyMultiplier(diff);
+
+  // 아주 단순한 정책(서비스에 맞게 이후 조정 가능)
+  let exp = Math.max(1, Math.floor((s / 10) * mul));
+  let coins = Math.max(0, Math.floor((s / 50) * mul));
+  let tickets = s >= 100_000 ? 1 : 0;
+
+  // 안전 상한 (BIGINT/UX용)
+  if (exp > 9_000_000_000) exp = 9_000_000_000;
+  if (coins > 9_000_000_000) coins = 9_000_000_000;
+
+  return {
+    baseCoins: coins,
+    baseExp: exp,
+    baseTickets: tickets,
+  };
+}
+
+/* ───────── user_effects(버프) 적용 ───────── */
+
+// 003_shop_effects.sql 에 정의된 효과 키 예시:
+//  - 'coins_multiplier' : 코인 x2, x3 ...
+//  - 'xp_multiplier'    : 경험치 x2 ...
+//  - (필요하면 'tickets_multiplier' 같은 키도 확장 가능)
+
+type EffectRow = {
+  effect_key: string;
+  value: any;
+};
+
+async function loadActiveEffects(
+  sql: ReturnType<typeof getSql>,
+  userId: string
+): Promise<EffectRow[]> {
+  try {
+    const rows = await sql/* sql */ `
+      select effect_key, value
+      from user_effects
+      where user_id = ${userId}::uuid
+        and (expires_at is null or expires_at > now())
+    `;
+    return rows as EffectRow[];
+  } catch (e) {
+    if (isMissingTable(e)) {
+      // user_effects 테이블이 아직 없거나 미적용 → 조용히 기본 보상만 사용
+      return [];
+    }
+    // 기타 에러도 게임 진행 자체를 막지 않도록 여기서는 empty 로 처리
+    return [];
+  }
+}
+
+function applyEffectMultipliers(
+  base: { baseCoins: number; baseExp: number; baseTickets: number },
+  effects: EffectRow[]
+): {
   coinsDelta: number;
   expDelta: number;
   ticketsDelta: number;
+  snapshot: {
+    coinsMultiplier: number;
+    xpMultiplier: number;
+    ticketsMultiplier: number;
+    appliedKeys: string[];
+  };
 } {
-  const expDelta = Math.max(1, Math.floor(score / 10));
-  let coinsDelta = Math.max(0, Math.floor(score / 50));
-  if (coinsDelta > 5000) coinsDelta = 5000;
+  if (!effects.length) {
+    return {
+      coinsDelta: base.baseCoins,
+      expDelta: base.baseExp,
+      ticketsDelta: base.baseTickets,
+      snapshot: {
+        coinsMultiplier: 1,
+        xpMultiplier: 1,
+        ticketsMultiplier: 1,
+        appliedKeys: [],
+      },
+    };
+  }
 
-  const ticketsDelta = score >= 100000 ? 1 : 0;
+  let coinsMul = 1;
+  let xpMul = 1;
+  let ticketsMul = 1;
+  const keys: string[] = [];
 
-  return { coinsDelta, expDelta, ticketsDelta };
+  for (const row of effects) {
+    const key = String(row.effect_key || "").trim();
+    const vRaw = Number(row.value);
+    if (!Number.isFinite(vRaw)) continue;
+    const v = Math.max(0, Math.min(vRaw, 10)); // 최소 0, 최대 10배 정도로 클램프
+
+    if (key === "coins_multiplier") {
+      coinsMul *= v;
+      keys.push(key);
+    } else if (key === "xp_multiplier") {
+      xpMul *= v;
+      keys.push(key);
+    } else if (key === "tickets_multiplier") {
+      ticketsMul *= v;
+      keys.push(key);
+    }
+  }
+
+  // 곱셈이 0이나 비정상으로 가는것 방지
+  if (!Number.isFinite(coinsMul) || coinsMul <= 0) coinsMul = 1;
+  if (!Number.isFinite(xpMul) || xpMul <= 0) xpMul = 1;
+  if (!Number.isFinite(ticketsMul) || ticketsMul <= 0) ticketsMul = 1;
+
+  let coins = Math.round(base.baseCoins * coinsMul);
+  let exp = Math.round(base.baseExp * xpMul);
+  let tickets = Math.round(base.baseTickets * ticketsMul);
+
+  // 안전 상한
+  if (coins > 9_000_000_000) coins = 9_000_000_000;
+  if (exp > 9_000_000_000) exp = 9_000_000_000;
+  if (tickets > 10_000) tickets = 10_000;
+
+  return {
+    coinsDelta: coins,
+    expDelta: exp,
+    ticketsDelta: tickets,
+    snapshot: {
+      coinsMultiplier: coinsMul,
+      xpMultiplier: xpMul,
+      ticketsMultiplier: ticketsMul,
+      appliedKeys: keys,
+    },
+  };
+}
+
+async function computeRewardsWithEffects(
+  sql: ReturnType<typeof getSql>,
+  userId: string,
+  score: number,
+  difficulty: Difficulty
+): Promise<{
+  coinsDelta: number;
+  expDelta: number;
+  ticketsDelta: number;
+  snapshot: {
+    baseCoins: number;
+    baseExp: number;
+    baseTickets: number;
+    coinsMultiplier: number;
+    xpMultiplier: number;
+    ticketsMultiplier: number;
+    appliedKeys: string[];
+  };
+}> {
+  const base = computeBaseRewards(score, difficulty);
+  const effects = await loadActiveEffects(sql, userId);
+  const applied = applyEffectMultipliers(base, effects);
+
+  return {
+    coinsDelta: applied.coinsDelta,
+    expDelta: applied.expDelta,
+    ticketsDelta: applied.ticketsDelta,
+    snapshot: {
+      baseCoins: base.baseCoins,
+      baseExp: base.baseExp,
+      baseTickets: base.baseTickets,
+      coinsMultiplier: applied.snapshot.coinsMultiplier,
+      xpMultiplier: applied.snapshot.xpMultiplier,
+      ticketsMultiplier: applied.snapshot.ticketsMultiplier,
+      appliedKeys: applied.snapshot.appliedKeys,
+    },
+  };
 }
 
 /* ───────── Handler ───────── */
@@ -151,22 +347,38 @@ export const onRequest: PagesFunction<Env> = async ({
 
   try {
     const body = await readJSON(request);
-    // 원래 스키마 검증(계약 유지)
-    const data = validateScore(body);
 
-    // 추가 서버측 방어(형식/범위 보정)
-    const userId = resolveUserId(request, (data as any).userId);
-    const gameSlug = cleanGame((data as any).game);
-    const score = toSafeScore((data as any).score);
+    // ──────────────────────────────────────────────────────────
+    // 1) 입력 검증/정규화 (schema/games.ts 확장 버전)
+    // ──────────────────────────────────────────────────────────
+    const validated = validateScore(body);
+    const {
+      userId: bodyUserId,
+      game,
+      slug,
+      score: rawScore,
+      difficulty,
+      mode,
+      playTimeMs,
+      deviceHint,
+      startedAt,
+      finishedAt,
+      raw,
+    } = validated as any;
+
+    // 서버 쪽에서 최종 userId/slug/score 강제 정규화
+    const userId = resolveUserId(request, bodyUserId);
+    const gameSlug = cleanGameSlug(slug || game);
+    const score = toSafeScore(rawScore);
+
     const idem = getIdemKey(request);
     const { ip, ua } = getClientMeta(request);
-
     const sql = getSql(env);
 
-    // ─────────────────────────────────────────────────────────────
-    // 1) 기존 game_scores 테이블 (과거 코드와 완전 호환용)
-    //    - 기존 기능/페이지들이 game_scores 를 보고 있다면 그대로 유지
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // 2) 기존 game_scores 테이블 (구 레거시 호환용)
+    //    - 기존 페이지/랭킹이 game_scores 를 참고한다면 계속 동작
+    // ──────────────────────────────────────────────────────────
     try {
       await sql/* sql */ `
         create table if not exists game_scores(
@@ -188,7 +400,7 @@ export const onRequest: PagesFunction<Env> = async ({
       `;
     } catch (e) {
       if (!isMissingTable(e)) {
-        // 스키마 경쟁 등 비치명적이면 무시 — 아래 canonical 경로는 계속 진행
+        // 스키마 경쟁 등 비치명 오류 → canonical 경로는 계속 진행
       }
     }
 
@@ -211,12 +423,12 @@ export const onRequest: PagesFunction<Env> = async ({
       }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 2) 새 스키마 기반 canonical 경로
-    //    - games(slug) / game_runs / transactions / user_stats 연계
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // 3) 새 canonical 경로
+    //    - game_runs + games + transactions + user_effects
+    // ──────────────────────────────────────────────────────────
     try {
-      // 2-1) games(slug) upsert
+      // 3-1) games(slug) upsert (있으면 재활용)
       let gameId: string | null = null;
       try {
         const rows = await sql/* sql */ `
@@ -244,113 +456,173 @@ export const onRequest: PagesFunction<Env> = async ({
         }
       }
 
-      // game_runs / transactions 가 존재하지 않으면 여기서 더 진행하지 않음
-      if (!gameId) {
-        // games 테이블이 없으면 canonical path 를 건너뜀
-        // (기존 game_scores 는 이미 기록됨)
-      } else {
-        // 2-2) game_runs 에 플레이 기록 저장
-        let runId: string | null = null;
-        const runMetadata = {
-          ip,
-          ua,
-          game: gameSlug,
-          score,
-          source: "api/games/score",
-        };
+      // 3-2) game_runs 에 플레이 기록 저장
+      let runId: string | null = null;
+      const started =
+        startedAt instanceof Date
+          ? startedAt
+          : startedAt
+          ? new Date(startedAt)
+          : new Date();
+      const finished =
+        finishedAt instanceof Date
+          ? finishedAt
+          : finishedAt
+          ? new Date(finishedAt)
+          : null;
 
-        try {
-          const rows = await sql/* sql */ `
-            insert into game_runs (user_id, game_id, score, metadata)
-            values (${userId}::uuid, ${gameId}::uuid, ${score}, ${JSON.stringify(
-              runMetadata
-            )}::jsonb)
-            returning id
-          `;
-          if (rows && rows.length > 0) {
-            runId = String(rows[0].id);
-          }
-        } catch (e) {
-          if (!isMissingTable(e)) throw e;
+      const runMetadata = {
+        // validateScore 확장 필드
+        difficulty,
+        mode,
+        playTimeMs,
+        deviceHint,
+        // 기타 컨텍스트
+        game: gameSlug,
+        score,
+        ip,
+        ua,
+        startedAt: started.toISOString(),
+        finishedAt: finished ? finished.toISOString() : null,
+        source: "api/games/score",
+        rawPayload: raw ?? body, // 디버깅용 스냅샷
+      };
+
+      try {
+        // game_runs.sql 스키마(user_id, slug, score, started_at, finished_at, metadata, client_ip, device_hint)
+        const rows = await sql/* sql */ `
+          insert into game_runs (
+            user_id,
+            slug,
+            score,
+            started_at,
+            finished_at,
+            metadata,
+            client_ip,
+            device_hint
+          )
+          values (
+            ${userId}::uuid,
+            ${gameSlug},
+            ${score},
+            ${started},
+            ${finished},
+            ${JSON.stringify(runMetadata)}::jsonb,
+            ${ip},
+            ${deviceHint ?? null}
+          )
+          returning id
+        `;
+        if (rows && rows.length > 0) {
+          runId = String(rows[0].id);
         }
+      } catch (e) {
+        if (!isMissingTable(e)) throw e;
+      }
 
-        // 2-3) wallet C안: transactions 에 기록 → trigger 로 user_stats 갱신
+      // 3-3) 점수 → 보상 계산(난이도 + user_effects 버프까지 반영)
+      const reward = await computeRewardsWithEffects(
+        sql,
+        userId,
+        score,
+        difficulty as Difficulty
+      );
+
+      const coinsDelta = reward.coinsDelta;
+      const expDelta = reward.expDelta;
+      const ticketsDelta = reward.ticketsDelta;
+
+      // 보상이 전혀 없다면 transactions 삽입은 스킵(단순 기록만 필요하다면 여기서 정책 변경 가능)
+      if (coinsDelta !== 0 || expDelta !== 0 || ticketsDelta !== 0) {
+        // 3-4) transactions 기록 → apply_wallet_transaction 트리거로 user_stats / wallet 반영
         try {
-          const { coinsDelta, expDelta, ticketsDelta } = computeRewards(score);
+          const txMeta = {
+            score,
+            game: gameSlug,
+            run_id: runId,
+            ip,
+            ua,
+            rewards: {
+              coinsDelta,
+              expDelta,
+              ticketsDelta,
+            },
+            rewardBase: {
+              baseCoins: reward.snapshot.baseCoins,
+              baseExp: reward.snapshot.baseExp,
+              baseTickets: reward.snapshot.baseTickets,
+            },
+            effects: {
+              coinsMultiplier: reward.snapshot.coinsMultiplier,
+              xpMultiplier: reward.snapshot.xpMultiplier,
+              ticketsMultiplier: reward.snapshot.ticketsMultiplier,
+              appliedKeys: reward.snapshot.appliedKeys,
+            },
+          };
 
-          if (coinsDelta !== 0 || expDelta !== 0 || ticketsDelta !== 0) {
-            const txPayload = {
-              score,
-              game: gameSlug,
-              run_id: runId,
-              ip,
-              ua,
-            };
-
-            if (idem) {
-              await sql/* sql */ `
-                insert into transactions (
-                  user_id,
-                  type,
-                  amount,
-                  exp_delta,
-                  tickets_delta,
-                  plays_delta,
-                  reason,
-                  game,
-                  ref_table,
-                  ref_id,
-                  idempotency_key,
-                  meta
-                )
-                values (
-                  ${userId}::uuid,
-                  'game',
-                  ${coinsDelta},
-                  ${expDelta},
-                  ${ticketsDelta},
-                  1,
-                  'game_score',
-                  ${gameSlug},
-                  ${runId ? "game_runs" : null},
-                  ${runId ? `${runId}::uuid` : null},
-                  ${idem},
-                  ${JSON.stringify(txPayload)}::jsonb
-                )
-                on conflict (idempotency_key) do nothing
-              `;
-            } else {
-              await sql/* sql */ `
-                insert into transactions (
-                  user_id,
-                  type,
-                  amount,
-                  exp_delta,
-                  tickets_delta,
-                  plays_delta,
-                  reason,
-                  game,
-                  ref_table,
-                  ref_id,
-                  meta
-                )
-                values (
-                  ${userId}::uuid,
-                  'game',
-                  ${coinsDelta},
-                  ${expDelta},
-                  ${ticketsDelta},
-                  1,
-                  'game_score',
-                  ${gameSlug},
-                  ${runId ? "game_runs" : null},
-                  ${runId ? `${runId}::uuid` : null},
-                  ${JSON.stringify(txPayload)}::jsonb
-                )
-              `;
-            }
-            // apply_wallet_transaction 트리거가 user_stats(coins/exp/tickets/games_played)를 자동 갱신
+          if (idem) {
+            await sql/* sql */ `
+              insert into transactions (
+                user_id,
+                type,
+                amount,
+                exp_delta,
+                tickets_delta,
+                plays_delta,
+                reason,
+                game,
+                ref_table,
+                ref_id,
+                idempotency_key,
+                meta
+              )
+              values (
+                ${userId}::uuid,
+                'game',
+                ${coinsDelta},
+                ${expDelta},
+                ${ticketsDelta},
+                1,
+                'game_score',
+                ${gameSlug},
+                ${runId ? "game_runs" : null},
+                ${runId ? `${runId}::uuid` : null},
+                ${idem},
+                ${JSON.stringify(txMeta)}::jsonb
+              )
+              on conflict (idempotency_key) do nothing
+            `;
+          } else {
+            await sql/* sql */ `
+              insert into transactions (
+                user_id,
+                type,
+                amount,
+                exp_delta,
+                tickets_delta,
+                plays_delta,
+                reason,
+                game,
+                ref_table,
+                ref_id,
+                meta
+              )
+              values (
+                ${userId}::uuid,
+                'game',
+                ${coinsDelta},
+                ${expDelta},
+                ${ticketsDelta},
+                1,
+                'game_score',
+                ${gameSlug},
+                ${runId ? "game_runs" : null},
+                ${runId ? `${runId}::uuid` : null},
+                ${JSON.stringify(txMeta)}::jsonb
+              )
+            `;
           }
+          // apply_wallet_transaction 트리거(001 + 006)에서 user_stats / wallet_balances / user_progress 등을 실제 갱신
         } catch (e) {
           if (!isMissingTable(e)) {
             // transactions 스키마 문제는 게임 기록 자체를 실패시키지 않는다
@@ -361,9 +633,9 @@ export const onRequest: PagesFunction<Env> = async ({
       // canonical 경로 전체 실패는 조용히 무시 (기존 계약 유지)
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 응답: 기존과 동일하게 { ok: true } + 헤더만 추가
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // 4) 응답: 기존과 동일하게 { ok: true } + 헤더만 추가
+    // ──────────────────────────────────────────────────────────
     return withCORS(
       json(
         { ok: true },

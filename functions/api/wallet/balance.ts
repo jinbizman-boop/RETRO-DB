@@ -10,7 +10,9 @@
 //     • 응답: { ok: true, balance }
 //
 // - 🔥 내부 동작 강화/정합화 (지금까지 설계한 전체 흐름과 일치):
-//     • 1차 소스: user_stats.coins  (게임/상점 → transactions → apply_wallet_transaction 트리거 반영)
+//     • 캐논 소스: user_stats.coins
+//         - 게임 보상: /api/games/score → transactions → apply_wallet_transaction 트리거
+//         - 상점 결제: /api/wallet/transaction, 향후 /api/shop/* → transactions 경로
 //     • 2차 소스(fallback): wallet_balances.balance (구 스키마 호환용)
 //     • userId 우선순위: X-User-Id 헤더(미들웨어에서 넣어준 UUID) → query.userId
 //     • UUID 형식 검증, bigint/문자열 → number 안전 변환, 음수 방지
@@ -19,6 +21,25 @@
 //     • user_stats.coins 와 wallet_balances.balance 가 동시에 존재할 경우 drift 여부를 헤더로만 표기
 //     • 초기 상태 내성(테이블 미존재 시 0 반환), 운영 헤더 유지/보강
 //
+// - 🌐 미들웨어 연동(B안)
+//     • functions/_middleware.ts 가 인증 성공 시 Request 헤더에 X-User-Id 를 주입
+//     • 이 엔드포인트는 해당 헤더를 최우선으로 사용 → 프론트가 userId 를 굳이 query 에 넣지 않아도 됨
+//
+// - 📊 헤더 요약 (프론트가 계정 상태를 바로 그릴 수 있도록):
+//     • X-Wallet-User           : UUID (user_stats.user_id)
+//     • X-Wallet-Source         : 'user_stats' | 'wallet_balances' | 'none'
+//     • X-Wallet-Balance        : 최종 잔액(캐논 기준)
+//     • X-Wallet-Legacy-Balance : wallet_balances 기준 잔액(있는 경우)
+//     • X-Wallet-Exp            : user_stats.exp (없으면 0)
+//     • X-Wallet-Tickets        : user_stats.tickets (없으면 0)
+//     • X-Wallet-Games          : user_stats.games_played (없으면 0)
+//     • X-Wallet-Last-Login-At  : user_stats.last_login_at
+//     • X-Wallet-Stats-Updated-At : user_stats.updated_at
+//     • X-Wallet-Drift          : 'stats_gt_wallet' | 'wallet_gt_stats' (둘 다 존재하고 값 다를 때)
+//     • X-Wallet-Stats-Json     : { balance, exp, tickets, games } JSON 문자열
+//     • X-Wallet-Took-ms        : 처리 시간(ms)
+//
+//  ※ 본문(JSON)은 { ok: true, balance } 그대로 유지. 프론트/게임 로직은 기존 코드 그대로 사용 가능.
 
 /* ───── Minimal Cloudflare Pages ambient types (type-checker only) ───── */
 type CfEventLike<E> = {
@@ -38,25 +59,16 @@ import { json } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";
 import { getSql, type Env } from "../_utils/db";
 
-/**
- * 계약 유지:
- * - 라우트/메서드: GET
- * - 입력: query.userId
- * - 응답 스키마: { ok: true, balance }
- *
- * 🔥 내부 정합 (Wallet-C 아키텍처 기준):
- * - user_stats.coins 를 "진짜 지갑 잔액" 으로 사용
- * - wallet_balances 는 있으면 fallback + consistency 체크용
- * - userId:
- *    1) X-User-Id / x-user-id (미들웨어에서 JWT 기반 주입, UUID users.id)
- *    2) query.userId
- */
-
 /* ───────── helpers: userId / 숫자 변환 / 에러 타입 ───────── */
 
+// users.id = UUID (001_init.sql 기준)
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/**
+ * 문자열 안전 정규화
+ * - trim + NFKC
+ */
 function safeNormalizeStr(v: string): string {
   const trimmed = v.trim();
   try {
@@ -66,6 +78,12 @@ function safeNormalizeStr(v: string): string {
   }
 }
 
+/**
+ * userId 결정 로직
+ *  1) X-User-Id / x-user-id 헤더 (미들웨어가 JWT 기반으로 주입)
+ *  2) query.userId
+ * 둘 중 하나도 없으면 null, 형식 오류(UUID 미일치)여도 null.
+ */
 function resolveUserId(req: Request, queryUserId: string | null): string | null {
   const headerId =
     req.headers.get("X-User-Id") ||
@@ -78,8 +96,14 @@ function resolveUserId(req: Request, queryUserId: string | null): string | null 
   return candidate;
 }
 
+/**
+ * 모든 숫자 입력을 JS number 로 안전 변환
+ * - bigint, string 모두 처리
+ * - NaN/Infinity → 0
+ * - 음수 → 0
+ * - 너무 큰 값 → Number.MAX_SAFE_INTEGER 로 클램프
+ */
 function toNonNegativeNumber(v: any): number {
-  // bigint/문자열 모두 수용하여 안전 변환, 음수는 0으로 바운드
   let n: number;
   if (typeof v === "number") n = v;
   else if (typeof v === "bigint") n = Number(v);
@@ -88,11 +112,36 @@ function toNonNegativeNumber(v: any): number {
 
   if (!Number.isFinite(n)) n = 0;
   if (n < 0) n = 0;
-  // 너무 큰 값은 JS safe integer 범위로 방어적 클램프
   if (n > Number.MAX_SAFE_INTEGER) n = Number.MAX_SAFE_INTEGER;
   return Math.floor(n);
 }
 
+/**
+ * Date/타임스탬프 컬럼을 ISO 문자열 또는 null 로 변환
+ */
+function toIsoOrNull(v: unknown): string | null {
+  if (!v) return null;
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    return v.toISOString();
+  }
+  if (typeof v === "string") {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+  try {
+    const d = new Date(String(v));
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * relation / table 미존재 여부
+ */
 function isMissingTable(err: any): boolean {
   const msg = String(err?.message ?? err).toLowerCase();
   return (
@@ -110,6 +159,7 @@ type StatsSource = "user_stats" | "wallet_balances" | "none";
 type UserStatsRow = {
   coins?: number | string | bigint | null;
   exp?: number | string | bigint | null;
+  xp?: number | string | bigint | null;
   tickets?: number | string | bigint | null;
   games_played?: number | string | bigint | null;
   last_login_at?: string | Date | null;
@@ -120,8 +170,11 @@ type WalletBalanceRow = {
   balance?: number | string | bigint | null;
 };
 
-/* ───────── user_stats 조회 (canonical) ───────── */
-
+/* ───────── user_stats 조회 (canonical) ─────────
+ * 001_init.sql + 003_shop_effects.sql + wallet C안 설계에서 정의한
+ * user_stats 를 단일 소스 오브 트루스로 사용:
+ *   coins, exp/xp, tickets, games_played, last_login_at, updated_at
+ */
 async function fetchFromUserStats(
   sql: ReturnType<typeof getSql>,
   userId: string
@@ -139,6 +192,7 @@ async function fetchFromUserStats(
       select
         coins,
         exp,
+        xp,
         tickets,
         games_played,
         last_login_at,
@@ -162,24 +216,19 @@ async function fetchFromUserStats(
     }
 
     const r = rows[0];
+
+    // coins: 실제 지갑 잔액
     const coins = toNonNegativeNumber(r.coins ?? 0);
-    const exp = toNonNegativeNumber(r.exp ?? 0);
+
+    // exp: exp 컬럼 우선, 없으면 xp 컬럼 fallback
+    const expCandidate = r.exp ?? r.xp ?? 0;
+    const exp = toNonNegativeNumber(expCandidate);
+
     const tickets = toNonNegativeNumber(r.tickets ?? 0);
     const gamesPlayed = toNonNegativeNumber(r.games_played ?? 0);
 
-    const lastLoginAt =
-      r.last_login_at instanceof Date
-        ? r.last_login_at.toISOString()
-        : r.last_login_at
-        ? String(r.last_login_at)
-        : null;
-
-    const updatedAt =
-      r.updated_at instanceof Date
-        ? r.updated_at.toISOString()
-        : r.updated_at
-        ? String(r.updated_at)
-        : null;
+    const lastLoginAt = toIsoOrNull(r.last_login_at ?? null);
+    const updatedAt = toIsoOrNull(r.updated_at ?? null);
 
     return {
       found: true,
@@ -208,8 +257,17 @@ async function fetchFromUserStats(
   }
 }
 
-/* ───────── wallet_balances 조회 (fallback) ───────── */
+/* ───────── wallet_balances 조회 (fallback) ─────────
+ * 과거 버전 및 일부 도구에서 사용하던 간단한 지갑 테이블.
+ * 지금은 user_stats 가 캐논이지만:
+ *   - user_stats row 가 아직 없는 계정
+ *   - 마이그레이션 전 데이터
+ * 에 대해서 안전하게 fallback 용도로만 사용한다.
+ */
 
+/**
+ * wallet_balances 최소 스키마 보강
+ */
 async function ensureWalletBalancesSchema(
   sql: ReturnType<typeof getSql>
 ): Promise<void> {
@@ -227,11 +285,14 @@ async function ensureWalletBalancesSchema(
   } catch (e) {
     if (!isMissingTable(e)) {
       // 초기 경쟁상태/권한 문제 등은 무시하고 계속 진행
-      // (단, 실제 조회 시 에러는 다시 한 번 확인)
+      // (실제 조회 시 에러는 다시 한 번 확인)
     }
   }
 }
 
+/**
+ * wallet_balances 로부터 잔액 조회
+ */
 async function fetchFromWalletBalances(
   sql: ReturnType<typeof getSql>,
   userId: string
@@ -259,7 +320,16 @@ async function fetchFromWalletBalances(
   }
 }
 
-/* ───────── handler ───────── */
+/* ───────── handler ─────────
+ *
+ * 1) CORS preflight 처리
+ * 2) GET 메서드만 허용
+ * 3) userId 결정(X-User-Id 헤더 → query.userId)
+ * 4) user_stats 기반 잔액/스탯 조회
+ * 5) wallet_balances fallback 및 drift 체크
+ * 6) { ok: true, balance } + 부가 헤더 반환
+ */
+
 export const onRequest: PagesFunction<Env> = async ({
   request,
   env,
@@ -324,7 +394,7 @@ export const onRequest: PagesFunction<Env> = async ({
 
     // ─────────────────────────────────────────────
     // 2) fallback: wallet_balances (구 스키마 호환)
-    //    - user_stats 에 row 가 없거나, 또는 drift 체크용으로만 사용
+    //    - user_stats 에 row 가 없거나, 또는 drift 체크용
     // ─────────────────────────────────────────────
     await ensureWalletBalancesSchema(sql);
 
@@ -343,7 +413,7 @@ export const onRequest: PagesFunction<Env> = async ({
         usedSource = "none";
       }
     } else {
-      // 양쪽 다 있는 경우 drift 여부를 헤더로만 표기
+      // 양쪽 다 있는 경우 drift 여부를 헤더로만 표기 (본문/계약은 변경 없음)
       if (legacyFound && legacyBalance !== balanceNum) {
         if (legacyBalance < balanceNum) {
           driftFlag = "stats_gt_wallet";
@@ -361,8 +431,11 @@ export const onRequest: PagesFunction<Env> = async ({
 
     const headers: Record<string, string> = {
       "Cache-Control": "no-store",
+      // 캐논 유저/소스
       "X-Wallet-User": userId,
       "X-Wallet-Source": usedSource,
+      // 캐논 잔액/스탯
+      "X-Wallet-Balance": String(balanceNum),
       "X-Wallet-Exp": String(expNum),
       "X-Wallet-Tickets": String(ticketsNum),
       "X-Wallet-Games": String(gamesPlayedNum),
@@ -373,6 +446,20 @@ export const onRequest: PagesFunction<Env> = async ({
     if (statsUpdatedAt) headers["X-Wallet-Stats-Updated-At"] = statsUpdatedAt;
     if (legacyFound) headers["X-Wallet-Legacy-Balance"] = String(legacyBalance);
     if (driftFlag) headers["X-Wallet-Drift"] = driftFlag;
+
+    // 프론트에서 한 번에 파싱하기 좋은 JSON 요약(선택적 사용)
+    try {
+      const summary = {
+        balance: balanceNum,
+        exp: expNum,
+        tickets: ticketsNum,
+        gamesPlayed: gamesPlayedNum,
+        source: usedSource,
+      };
+      headers["X-Wallet-Stats-Json"] = JSON.stringify(summary);
+    } catch {
+      // JSON stringify 실패는 무시
+    }
 
     return withCORS(
       json(

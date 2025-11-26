@@ -3,6 +3,8 @@
 // RETRO-GAMES Cloudflare 로그인 API (강화 버전)
 // 로그인.html과 완전 호환 + signup.ts와 정합성 강화
 // email 또는 username 모두 지원
+// - users 스키마는 migrations 기반(001 + 005)과 일치
+// - 계정 잠금, 실패횟수, last_login_at, user_stats 연동
 // ------------------------------------------------------------
 
 import { json, readJSON } from "../_utils/json";
@@ -85,7 +87,7 @@ function extractLoginPayload(body: unknown): {
     toStringOrNull(b?.identifier) ||
     toStringOrNull(b?.id);
 
-  // Email 로그인
+  // Email 로그인 (validateLogin 사용: email 정규화 + 강한 패스워드 검증 재사용)
   if (rawEmail && rawEmail.includes("@")) {
     const { email, password } = validateLogin({
       email: rawEmail,
@@ -98,6 +100,8 @@ function extractLoginPayload(body: unknown): {
   if (rawUsername) {
     const username = rawUsername.trim();
     if (!username.length) throw new Error("username_required");
+    // username 은 signup 시 normalizeUsername 을 거치지만,
+    // 로그인에서는 사용자가 입력한 원문을 그대로 비교 (CITEXT 로 case-insensitive 보완)
     return { email: null, username, password: pw };
   }
 
@@ -142,40 +146,120 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     const sql = getSql(env);
 
     /* ────────────────────────────────────────────────────────
-        users TABLE SCHEMA (signup.ts와 완전 정합)
+        users TABLE SCHEMA 보강 (migrations/001 + 005 와 정합)
+        - 여기서는 create table X, alter table only (이중 안전망)
+    ───────────────────────────────────────────────────────── */
+    await sql`alter table users add column if not exists password_hash   text`;
+    await sql`alter table users add column if not exists gender          text`;
+    await sql`alter table users add column if not exists birth           date`;
+    await sql`alter table users add column if not exists phone           text`;
+    await sql`alter table users add column if not exists agree_at        timestamptz`;
+    await sql`alter table users add column if not exists avatar          text`;
+    await sql`alter table users add column if not exists failed_attempts int not null default 0`;
+    await sql`alter table users add column if not exists locked_until    timestamptz`;
+    await sql`alter table users add column if not exists last_login_at   timestamptz`;
+    await sql`alter table users add column if not exists created_at      timestamptz not null default now()`;
+
+    await sql`create index if not exists users_email_idx on users(email)`;
+    await sql`
+      create unique index if not exists users_username_idx
+      on users(username) where username is not null
+    `;
+
+    /* ────────────────────────────────────────────────────────
+        user_stats / user_progress 테이블(로그인 시점 row 보정)
+        - signup 이전 가입자도 로그인 순간 기본 row 를 확보
     ───────────────────────────────────────────────────────── */
     await sql`
-      create table if not exists users(
-        id             bigserial primary key,
-        email          text unique not null,
-        password_hash  text not null,
-        username       text,
-        gender         text,
-        birth          date,
-        phone          text,
-        agree_at       timestamptz,
-        avatar         text,
-        failed_attempts int not null default 0,
-        locked_until   timestamptz,
-        last_login_at  timestamptz,
-        created_at     timestamptz not null default now()
+      create table if not exists user_stats (
+        user_id       uuid primary key references users(id) on delete cascade,
+        xp            bigint not null default 0,
+        level         int generated always as (greatest(1, (xp/1000)::int + 1)) stored,
+        coins         bigint not null default 0,
+        exp           bigint not null default 0,
+        tickets       bigint not null default 0,
+        games_played  bigint not null default 0,
+        last_login_at timestamptz,
+        created_at    timestamptz not null default now(),
+        updated_at    timestamptz not null default now()
       )
     `;
 
-    // column 보강 (이미 있으면 skip)
-    await sql`alter table users add column if not exists username text`;
-    await sql`alter table users add column if not exists gender text`;
-    await sql`alter table users add column if not exists birth date`;
-    await sql`alter table users add column if not exists phone text`;
-    await sql`alter table users add column if not exists agree_at timestamptz`;
-    await sql`alter table users add column if not exists avatar text`;
-    await sql`alter table users add column if not exists failed_attempts int not null default 0`;
-    await sql`alter table users add column if not exists locked_until timestamptz`;
-    await sql`alter table users add column if not exists last_login_at timestamptz`;
-    await sql`alter table users add column if not exists created_at timestamptz not null default now()`;
+    await sql`
+      alter table user_stats
+        add column if not exists coins         bigint not null default 0,
+        add column if not exists exp           bigint not null default 0,
+        add column if not exists tickets       bigint not null default 0,
+        add column if not exists games_played  bigint not null default 0,
+        add column if not exists created_at    timestamptz not null default now(),
+        add column if not exists updated_at    timestamptz not null default now()
+    `;
 
-    await sql`create index if not exists users_email_idx on users(email)`;
-    await sql`create unique index if not exists users_username_idx on users(username) where username is not null`;
+    await sql`
+      do $$
+      begin
+        if not exists (
+          select 1 from pg_constraint
+          where conrelid = 'user_stats'::regclass
+          and conname = 'user_stats_coins_nonneg'
+        ) then
+          alter table user_stats
+            add constraint user_stats_coins_nonneg check (coins >= 0);
+        end if;
+        if not exists (
+          select 1 from pg_constraint
+          where conrelid = 'user_stats'::regclass
+          and conname = 'user_stats_exp_nonneg'
+        ) then
+          alter table user_stats
+            add constraint user_stats_exp_nonneg check (exp >= 0);
+        end if;
+        if not exists (
+          select 1 from pg_constraint
+          where conrelid = 'user_stats'::regclass
+          and conname = 'user_stats_tickets_nonneg'
+        ) then
+          alter table user_stats
+            add constraint user_stats_tickets_nonneg check (tickets >= 0);
+        end if;
+        if not exists (
+          select 1 from pg_constraint
+          where conrelid = 'user_stats'::regclass
+          and conname = 'user_stats_games_played_nonneg'
+        ) then
+          alter table user_stats
+            add constraint user_stats_games_played_nonneg check (games_played >= 0);
+        end if;
+      end
+      $$;
+    `;
+
+    await sql`
+      do $$
+      begin
+        if not exists (
+          select 1
+          from pg_trigger
+          where tgname = 'user_stats_set_updated_at'
+        ) then
+          create trigger user_stats_set_updated_at
+          before update on user_stats
+          for each row execute function set_updated_at();
+        end if;
+      end
+      $$;
+    `;
+
+    // user_progress 존재 보장 (migrations/005_user_profile_and_progress.sql 과 호환)
+    await sql`
+      create table if not exists user_progress (
+        user_id    text primary key,
+        exp        bigint      not null default 0,
+        level      int         not null default 1,
+        tickets    bigint      not null default 0,
+        updated_at timestamptz not null default now()
+      )
+    `;
 
     /* ────────────────────────────────────────────────────────
         사용자 조회
@@ -254,6 +338,9 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
 
     /* ────────────────────────────────────────────────────────
         로그인 성공 처리
+        - users.last_login_at 갱신
+        - user_stats.last_login_at upsert
+        - user_progress 기본 row 보정
     ───────────────────────────────────────────────────────── */
     await sql`
       update users
@@ -261,6 +348,21 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
           locked_until    = null,
           last_login_at   = now()
       where id = ${uid}
+    `;
+
+    // user_stats: 기존 row 없으면 생성, 있으면 last_login_at 업데이트
+    await sql`
+      insert into user_stats (user_id, last_login_at)
+      values (${uid}::uuid, now())
+      on conflict (user_id) do update
+        set last_login_at = excluded.last_login_at
+    `;
+
+    // user_progress: 기존 row 없으면 기본값(0/1/0)으로 생성
+    await sql`
+      insert into user_progress (user_id)
+      values (${uid})
+      on conflict (user_id) do nothing
     `;
 
     const token = await jwtSign(

@@ -8,16 +8,38 @@
 // - TS 에디터 오류 제거(ts2304, ts7031 등)
 // - 레이트리밋, 멱등키(Idempotency-Key) 동작 유지/강화
 //
-// 🔥 스키마 / 시스템 정합 강화
-// - 더 이상 wallet_balances / wallet_tx 별도 테이블 사용하지 않음
-// - migrations/001_init.sql 기준 canonical 스키마 사용:
+// 🔥 Wallet-C 스키마 / 시스템 정합 강화 (회원별 코인/경험치/티켓 일관 반영)
+// - canonical 스키마 (migrations/001_init.sql, 005/006 확장 기준):
 //     • transactions 테이블 + apply_wallet_transaction BEFORE INSERT 트리거
-//     • user_stats(coins, exp, tickets, games_played) 자동 갱신
-// - userId 소스:
+//     • user_stats(coins, exp, tickets, games_played, updated_at) 자동 갱신
+// - 더 이상 wallet_balances / wallet_tx 별도 테이블 사용 ❌
+// - userId 소스 / 정규화:
 //     • 1순위: _middleware.ts 가 주입한 X-User-Id 헤더 (UUID users.id)
-//     • 2순위: body.userId (백업용, 없어도 헤더만으로 동작)
-// - amount > 0 → type 'earn', amount < 0 → type 'spend'
-// - tickets / exp / plays_delta 는 기본 0, 필요 시 body에서 확장 가능(옵셔널)
+//     • 2순위: body.userId (validateTransaction 결과)
+//     • 최종 UUID 형식 강제 (불일치/누락 시 400)
+// - amount 계정 효과:
+//     • amount > 0  → type 'earn'  (코인 획득)
+//     • amount < 0  → type 'spend' (코인 사용)
+//     • amount = 0  → 에러("amount cannot be zero")  (무의미한 트랜잭션 차단)
+// - exp / tickets / plays_delta 확장:
+//     • body.expDelta / ticketsDelta / playsDelta 로 전달 가능(선택)
+//     • toDeltaInt 로 안전 정수화 후, transactions.exp_delta / tickets_delta / plays_delta 에 반영
+//     • 트리거가 user_stats.xp / coins / tickets / games_played 에 반영
+// - game, reason, meta 확장:
+//     • game: 랭킹 기록/로그 집계용 식별자 (소문자 64자 이내)
+//     • reason: 짧은 설명 문자열(120자 이내), 제어문자 제거
+//     • meta: JSONB (ip, ua, caller 정보 + 클라이언트가 보내는 추가 필드)
+//
+// - 멱등키(Idempotency-Key) 지원:
+//     • transactions.idempotency_key unique
+//     • 같은 키로 재호출 시 on conflict do nothing → double spend 방지
+//     • balance_after 를 반환받으면 X-Wallet-Balance 헤더에 노출
+//
+// - 오류 매핑:
+//     • 스키마 미초기화: "Wallet schema is not initialized..." (400)
+//     • 잔액 부족: apply_wallet_transaction 에서 던지는 에러 패턴 인식 후,
+//                 { error: "insufficient_funds" } (400) 로 통일
+//     • 나머지는 { error: message } 400 으로 그대로 전달
 
 
 // ───── Minimal Cloudflare Pages ambient types (type-checker only) ─────
@@ -40,7 +62,7 @@ import { getSql, type Env } from "../_utils/db";
 import { validateTransaction } from "../_utils/schema/wallet";
 import * as Rate from "../_utils/rate-limit";
 
-/* ───────── helpers ───────── */
+/* ───────── constants / helpers ───────── */
 
 // users.id = UUID (001_init.sql 기반) 이므로, UUID 강제
 const UUID_V4_REGEX =
@@ -62,8 +84,10 @@ function resolveUserId(req: Request, bodyUserId: unknown): string {
   return candidate;
 }
 
-// 과거 버전과 이름을 맞추기 위해 toBigIntSafe 이름 유지
-// 실제로는 JS number를 bigint 문자열로 안전히 변환하는 역할
+/**
+ * 과거 버전과 이름을 맞추기 위해 toBigIntSafe 이름 유지
+ * 실제로는 JS number를 bigint 문자열로 안전히 변환하는 역할
+ */
 function toBigIntSafe(n: any): bigint {
   const x = Number(n);
   if (!Number.isFinite(x)) throw new Error("Invalid amount");
@@ -77,6 +101,12 @@ function toBigIntSafe(n: any): bigint {
   return BigInt(Math.trunc(clamped));
 }
 
+/**
+ * reason 문자열 정규화
+ * - trim + NFKC
+ * - 제어문자 제거
+ * - 최대 120자 제한
+ */
 function cleanReason(v: string | undefined): string | null {
   if (!v) return null;
   const s = v
@@ -88,6 +118,20 @@ function cleanReason(v: string | undefined): string | null {
   return s.length > 120 ? s.slice(0, 120) : s;
 }
 
+/**
+ * 게임 ID 정규화
+ * - 소문자, 길이 64자 제한
+ */
+function cleanGameId(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim().toLowerCase();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 64);
+}
+
+/**
+ * 멱등키(Idempotency-Key) 추출
+ */
 function getIdemKey(req: Request): string | null {
   return (
     req.headers.get("Idempotency-Key") ||
@@ -97,6 +141,9 @@ function getIdemKey(req: Request): string | null {
   );
 }
 
+/**
+ * relation / table 미존재 여부
+ */
 function isMissingTable(err: any): boolean {
   const msg = String(err?.message ?? err).toLowerCase();
   return (
@@ -107,7 +154,9 @@ function isMissingTable(err: any): boolean {
   );
 }
 
-// exp/tickets/plays_delta 등의 정수 보정
+/**
+ * exp/tickets/plays_delta 등의 정수 보정
+ */
 function toDeltaInt(v: any): number {
   if (v === null || v === undefined) return 0;
   const n = Number(v);
@@ -119,11 +168,14 @@ function toDeltaInt(v: any): number {
   return i;
 }
 
-// 간단 meta sanitization
+/**
+ * meta JSONB 보정
+ * - 순수 JSON만 허용
+ * - 순환참조/함수 등 있으면 빈 객체로 대체
+ */
 function sanitizeMeta(meta: any): Record<string, unknown> {
   if (!meta || typeof meta !== "object") return {};
   try {
-    // 순수 JSON 객체만 허용 (순환참조 방지)
     JSON.stringify(meta);
     return meta as Record<string, unknown>;
   } catch {
@@ -131,6 +183,9 @@ function sanitizeMeta(meta: any): Record<string, unknown> {
   }
 }
 
+/**
+ * 클라이언트 메타: ip / user-agent
+ */
 function getClientMeta(req: Request) {
   const headers = req.headers;
   const ip =
@@ -142,7 +197,19 @@ function getClientMeta(req: Request) {
   return { ip, ua };
 }
 
+/**
+ * apply_wallet_transaction() 트리거가 던지는 "잔액 부족" 에러 판별
+ */
+function isInsufficientBalanceError(err: any): boolean {
+  const msg = String(err?.message ?? err).toLowerCase();
+  return (
+    msg.includes("insufficient balance") ||
+    (msg.includes("insufficient") && msg.includes("balance"))
+  );
+}
+
 /* ───────── handler ───────── */
+
 export const onRequest: PagesFunction<Env> = async ({
   request,
   env,
@@ -174,7 +241,7 @@ export const onRequest: PagesFunction<Env> = async ({
   try {
     const body = await readJSON(request);
 
-    // 1차: 기존 스키마 검증(계약 유지)
+    // 1차: 기존 스키마 검증(계약 유지) — userId/amount/reason 기본 정합성 확보
     const {
       userId: rawUser,
       amount: rawAmount,
@@ -184,10 +251,15 @@ export const onRequest: PagesFunction<Env> = async ({
     // 2차: 서버측 보수적 정규화
     const userId = resolveUserId(request, rawUser);
     const amountBig = toBigIntSafe(rawAmount); // bigint
+
+    if (amountBig === 0n) {
+      // 0 금액 트랜잭션은 의미가 없으므로 거부
+      throw new Error("amount cannot be zero");
+    }
+
     const reason = cleanReason(rawReason ?? undefined);
 
     // txn_type: amount 부호에 따라 earn / spend
-    // (구매 등 특수 케이스는 추후 전용 엔드포인트 사용 권장)
     const txType: "earn" | "spend" =
       amountBig >= 0n ? "earn" : ("spend" as const);
 
@@ -195,12 +267,11 @@ export const onRequest: PagesFunction<Env> = async ({
     const expDelta = toDeltaInt((body as any).expDelta);
     const ticketsDelta = toDeltaInt((body as any).ticketsDelta);
     const playsDelta = toDeltaInt((body as any).playsDelta);
-    const game =
-      typeof (body as any).game === "string"
-        ? (body as any).game.trim().toLowerCase().slice(0, 64)
-        : null;
+    const game = cleanGameId((body as any).game);
+
     const clientMeta = getClientMeta(request);
     const userMeta = sanitizeMeta((body as any).meta);
+
     const meta = {
       ...userMeta,
       source: "api/wallet/transaction",
@@ -215,6 +286,7 @@ export const onRequest: PagesFunction<Env> = async ({
     const note = reason;
 
     let balanceAfter: number | null = null;
+    let usedIdempotent = false;
 
     try {
       if (idem) {
@@ -253,9 +325,12 @@ export const onRequest: PagesFunction<Env> = async ({
           on conflict (idempotency_key) do nothing
           returning balance_after
         `;
+        usedIdempotent = true;
+
         if (rows && rows.length > 0 && rows[0].balance_after != null) {
           balanceAfter = Number(rows[0].balance_after);
         }
+        // rows.length === 0 인 경우: 이미 처리된 멱등키 → 재호출을 무시하고 ok: true 반환
       } else {
         const rows = await sql/* sql */ `
           insert into transactions (
@@ -295,29 +370,46 @@ export const onRequest: PagesFunction<Env> = async ({
       // apply_wallet_transaction BEFORE INSERT 트리거가
       // user_stats(coins, exp, tickets, games_played)를 자동 갱신한다.
     } catch (e) {
-      // 스키마 문제(테이블/컬럼 없음)면 그대로 에러를 던져서 상위 catch → 400
+      // 스키마 문제(테이블/컬럼 없음)면 명시적인 에러 메시지로 반환
       if (isMissingTable(e)) {
         throw new Error(
           "Wallet schema is not initialized. Run DB migrations for transactions/user_stats."
         );
       }
-      // 그 외 예외(잔액 부족 등)는 그대로 상위로 올려서 클라이언트에 메시지 전달
+      // 잔액 부족 에러는 공통 코드로 매핑
+      if (isInsufficientBalanceError(e)) {
+        return withCORS(
+          json(
+            { error: "insufficient_funds" },
+            { status: 400, headers: { "Cache-Control": "no-store" } }
+          ),
+          env.CORS_ORIGIN
+        );
+      }
+      // 그 외 예외(제약조건 위반 등)는 그대로 상위로
       throw e;
     }
 
+    const tookMs = Math.round(performance.now() - t0);
+
     return withCORS(
       json(
-        { ok: true }, // 계약 유지
+        { ok: true }, // 외부 계약 유지
         {
           headers: {
             "Cache-Control": "no-store",
             "X-Wallet-User": userId,
             "X-Wallet-Delta": amountBig.toString(),
-            "X-Wallet-Idempotent": String(Boolean(idem)),
+            "X-Wallet-Idempotent": String(usedIdempotent),
             ...(balanceAfter !== null
               ? { "X-Wallet-Balance": String(balanceAfter) }
               : {}),
-            "X-Wallet-Took-ms": String(Math.round(performance.now() - t0)),
+            "X-Wallet-Type": txType,
+            "X-Wallet-Game": game || "",
+            "X-Wallet-Exp-Delta": String(expDelta),
+            "X-Wallet-Tickets-Delta": String(ticketsDelta),
+            "X-Wallet-Plays-Delta": String(playsDelta),
+            "X-Wallet-Took-ms": String(tookMs),
           },
         }
       ),

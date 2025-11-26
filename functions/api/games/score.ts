@@ -1,6 +1,6 @@
 // C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\games\score.ts
 //
-// ✅ 목표
+// ✅ 목표 (기존 주석 + 강화 버전)
 // - 기존 기능/계약(POST /api/games/score → { ok:true }) 100% 유지
 // - VS Code TS 오류(ts2304 PagesFunction / ts7031 implicit any) 제거
 // - 입력 정규화/범위 검증, 멱등키 지원, 인덱스, 캐시 차단 헤더, 레이트리밋 연동 유지
@@ -10,16 +10,30 @@
 //   • migrations/003_shop_effects.sql 의 user_effects( coins/xp multiplier ) 적용
 //   • migrations/001_init.sql + 006_wallet_inventory_bridge.sql 의 transactions 경로 사용
 //     → apply_wallet_transaction 트리거를 통해 user_stats / wallet 계정에 코인/경험치/티켓 반영
+//   • progression.ts 의 computeGameProgressionDelta / applyProgressionDeltaDb 활용
+//     → 보상 정책/계정 반영 로직을 중앙화
 //   • userId 는 X-User-Id 헤더(우선) → body.userId 순으로 사용 (UUID v4 강제)
 //   • 모든 강화는 “추가 동작”일 뿐, 기존 응답 계약/형식은 변경 없음
+//
+// ───────────────────────────────────────────────────────────────
 
 import { json, readJSON } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";
 import { getSql, type Env } from "../_utils/db";
 import { validateScore } from "../_utils/schema/games";
 import * as Rate from "../_utils/rate-limit";
+import {
+  computeGameProgressionDelta,
+  applyProgressionDeltaDb,
+  type ProgressionDelta,
+} from "../_utils/progression";
 
 /* ───────── Minimal Cloudflare Pages ambient types (editor-only) ───────── */
+/**
+ * VSCode / TS 언어 서버에서 functions 디렉토리의 타입 오류를 없애기 위해
+ * Cloudflare PagesFunction 과 거의 동일한 최소 타입을 정의한다.
+ * (실제 런타임에서는 Cloudflare 가 주입하는 타입을 사용)
+ */
 type CfEventLike<E> = {
   request: Request;
   env: E;
@@ -28,6 +42,7 @@ type CfEventLike<E> = {
   next?(): Promise<Response>;
   data?: Record<string, unknown>;
 };
+
 type PagesFunction<E = unknown> = (
   ctx: CfEventLike<E>
 ) => Promise<Response> | Response;
@@ -42,7 +57,13 @@ const UUID_V4_REGEX =
 // game_runs.sql 의 slug 체크와 동일(소문자 시작, 숫자/언더스코어/하이픈 1~64자)
 const GAME_SLUG_REGEX = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 
-// userId 우선순위: X-User-Id 헤더(미들웨어) → body.userId
+/**
+ * userId 우선순위:
+ *  1) X-User-Id 헤더 (미들웨어에서 JWT → UUID 로 세팅)
+ *  2) body.userId (백워드 호환용)
+ *
+ * 둘 중 하나는 반드시 UUID v4 형식이어야 한다.
+ */
 function resolveUserId(req: Request, bodyUserId: unknown): string {
   const headerId =
     req.headers.get("X-User-Id") ||
@@ -54,7 +75,7 @@ function resolveUserId(req: Request, bodyUserId: unknown): string {
   try {
     normalized = normalized.normalize("NFKC");
   } catch {
-    // ignore
+    // 일부 런타임에서 normalize 미지원 시 조용히 무시
   }
 
   if (!normalized) throw new Error("Missing userId");
@@ -65,6 +86,13 @@ function resolveUserId(req: Request, bodyUserId: unknown): string {
   return normalized;
 }
 
+/**
+ * game slug 정규화:
+ * - 소문자
+ * - 좌우 공백 제거
+ * - NFKC 정규화
+ * - 정규식(GAME_SLUG_REGEX)에 맞는지 검증
+ */
 function cleanGameSlug(v: string): string {
   let s = (v || "").trim().toLowerCase();
   try {
@@ -78,8 +106,13 @@ function cleanGameSlug(v: string): string {
   return s;
 }
 
+/**
+ * score 를 int4 범위로 안전하게 클램프.
+ * - NaN/Infinity → 에러
+ * - 음수 → 0
+ * - 상한: 2_147_483_647
+ */
 function toSafeScore(n: any): number {
-  // 정수/범위 보정: 0 ~ 2_147_483_647 (int4 상한)
   const x = Number(n);
   if (!Number.isFinite(x)) throw new Error("Invalid score");
   const i = Math.floor(x);
@@ -88,7 +121,10 @@ function toSafeScore(n: any): number {
   return i;
 }
 
-// 중복 제출 방지용 멱등 키(선택)
+/**
+ * 중복 제출 방지용 멱등 키(선택)
+ * - 헤더 이름 다양한 케이스 수용
+ */
 function getIdemKey(req: Request): string | null {
   return (
     req.headers.get("Idempotency-Key") ||
@@ -98,17 +134,23 @@ function getIdemKey(req: Request): string | null {
   );
 }
 
-// 초기 상태에서도 안전하게 동작하도록 "테이블 없음" 감지
+/**
+ * 초기 상태에서도 안전하게 동작하도록 "테이블 없음" 감지
+ * - Neon / Postgres 에서 relation missing 관련 에러 메시지 패턴에 대응
+ */
 function isMissingTable(err: any): boolean {
   const msg = String(err?.message ?? err).toLowerCase();
   return (
     msg.includes("does not exist") ||
     msg.includes("unknown relation") ||
-    msg.includes("no such table")
+    msg.includes("no such table") ||
+    msg.includes("undefined_table")
   );
 }
 
-// 클라이언트 메타데이터 (ip/ua) — game_runs.metadata / transactions.meta 에 기록
+/**
+ * 클라이언트 메타데이터 (ip/ua) — game_runs.metadata / transactions.meta 에 기록
+ */
 function getClientMeta(req: Request) {
   const headers = req.headers;
   const ip =
@@ -120,62 +162,51 @@ function getClientMeta(req: Request) {
   return { ip, ua };
 }
 
-/* ───────── 점수 → 기본 보상 계산 ───────── */
+/* ───────── 난이도 타입 / 변환 헬퍼 ───────── */
 
 type Difficulty = "easy" | "normal" | "hard" | "extreme" | null;
 
-function difficultyMultiplier(diff: Difficulty): number {
-  switch (diff) {
-    case "easy":
-      return 0.8;
-    case "normal":
-      return 1.0;
-    case "hard":
-      return 1.2;
-    case "extreme":
-      return 1.5;
-    default:
-      return 1.0;
+/**
+ * validateScore 에서 넘어오는 difficulty 가 string | undefined 일 수 있으므로
+ * 내부에서 안전하게 캐스팅해주는 헬퍼.
+ */
+function toDifficulty(raw: any): Difficulty {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (s === "easy" || s === "normal" || s === "hard" || s === "extreme") {
+    return s;
   }
-}
-
-// 점수 → 코인/경험치/티켓 기본 값
-function computeBaseRewards(score: number, diff: Difficulty): {
-  baseCoins: number;
-  baseExp: number;
-  baseTickets: number;
-} {
-  const s = Math.max(0, score);
-  const mul = difficultyMultiplier(diff);
-
-  // 아주 단순한 정책(서비스에 맞게 이후 조정 가능)
-  let exp = Math.max(1, Math.floor((s / 10) * mul));
-  let coins = Math.max(0, Math.floor((s / 50) * mul));
-  let tickets = s >= 100_000 ? 1 : 0;
-
-  // 안전 상한 (BIGINT/UX용)
-  if (exp > 9_000_000_000) exp = 9_000_000_000;
-  if (coins > 9_000_000_000) coins = 9_000_000_000;
-
-  return {
-    baseCoins: coins,
-    baseExp: exp,
-    baseTickets: tickets,
-  };
+  return null;
 }
 
 /* ───────── user_effects(버프) 적용 ───────── */
 
-// 003_shop_effects.sql 에 정의된 효과 키 예시:
-//  - 'coins_multiplier' : 코인 x2, x3 ...
-//  - 'xp_multiplier'    : 경험치 x2 ...
-//  - (필요하면 'tickets_multiplier' 같은 키도 확장 가능)
+/**
+ * 003_shop_effects.sql 에 정의된 효과 키 예시:
+ *  - 'coins_multiplier' : 코인 x2, x3 ...
+ *  - 'xp_multiplier'    : 경험치 x2 ...
+ *  - 'tickets_multiplier': 티켓 x2 ...
+ *
+ * 예시 스키마(요약):
+ *  create table user_effects(
+ *    id bigserial primary key,
+ *    user_id uuid not null,
+ *    effect_key text not null,
+ *    value numeric not null,
+ *    expires_at timestamptz,
+ *    created_at timestamptz not null default now()
+ *  );
+ */
 
 type EffectRow = {
   effect_key: string;
-  value: any;
+  value: unknown;
 };
 
+/**
+ * 활성화된(만료되지 않은) user_effects 로우들을 전부 읽어온다.
+ * - 테이블이 없으면 조용히 빈 배열 반환(초기 상태 호환용)
+ */
 async function loadActiveEffects(
   sql: ReturnType<typeof getSql>,
   userId: string
@@ -187,7 +218,7 @@ async function loadActiveEffects(
       where user_id = ${userId}::uuid
         and (expires_at is null or expires_at > now())
     `;
-    return rows as EffectRow[];
+    return (rows as any[]) as EffectRow[];
   } catch (e) {
     if (isMissingTable(e)) {
       // user_effects 테이블이 아직 없거나 미적용 → 조용히 기본 보상만 사용
@@ -198,6 +229,11 @@ async function loadActiveEffects(
   }
 }
 
+/**
+ * baseCoins/baseExp/baseTickets 를 기반으로 user_effects 의 multiplier 를 적용.
+ * - coins_multiplier / xp_multiplier / tickets_multiplier 를 모두 곱한 뒤 최종 보상 계산
+ * - multiplier 는 0~10 사이로 클램프
+ */
 function applyEffectMultipliers(
   base: { baseCoins: number; baseExp: number; baseTickets: number },
   effects: EffectRow[]
@@ -235,7 +271,9 @@ function applyEffectMultipliers(
     const key = String(row.effect_key || "").trim();
     const vRaw = Number(row.value);
     if (!Number.isFinite(vRaw)) continue;
-    const v = Math.max(0, Math.min(vRaw, 10)); // 최소 0, 최대 10배 정도로 클램프
+
+    // 0배~10배 사이에서 안전하게 클램프
+    const v = Math.max(0, Math.min(vRaw, 10));
 
     if (key === "coins_multiplier") {
       coinsMul *= v;
@@ -258,9 +296,10 @@ function applyEffectMultipliers(
   let exp = Math.round(base.baseExp * xpMul);
   let tickets = Math.round(base.baseTickets * ticketsMul);
 
-  // 안전 상한
-  if (coins > 9_000_000_000) coins = 9_000_000_000;
-  if (exp > 9_000_000_000) exp = 9_000_000_000;
+  // 안전 상한 (BIGINT + UX 관점)
+  const MAX_BIG_INTISH = 9_000_000_000;
+  if (coins > MAX_BIG_INTISH) coins = MAX_BIG_INTISH;
+  if (exp > MAX_BIG_INTISH) exp = MAX_BIG_INTISH;
   if (tickets > 10_000) tickets = 10_000;
 
   return {
@@ -276,15 +315,22 @@ function applyEffectMultipliers(
   };
 }
 
+/**
+ * progression.ts 기반 보상 + user_effects multiplier 를 한 번에 계산하는 헬퍼.
+ * - 1단계: computeGameProgressionDelta 로 "게임 기본 보상" 산출
+ * - 2단계: basePoints/baseExp/baseTickets 를 숫자로 변환
+ * - 3단계: loadActiveEffects + applyEffectMultipliers 로 버프 적용
+ * - 4단계: 최종 coinsDelta/expDelta/ticketsDelta 와 snapshot 반환
+ */
 async function computeRewardsWithEffects(
   sql: ReturnType<typeof getSql>,
   userId: string,
+  gameSlug: string,
   score: number,
-  difficulty: Difficulty
+  difficulty: Difficulty,
+  extraMeta: Record<string, unknown>
 ): Promise<{
-  coinsDelta: number;
-  expDelta: number;
-  ticketsDelta: number;
+  finalDelta: ProgressionDelta;
   snapshot: {
     baseCoins: number;
     baseExp: number;
@@ -295,24 +341,279 @@ async function computeRewardsWithEffects(
     appliedKeys: string[];
   };
 }> {
-  const base = computeBaseRewards(score, difficulty);
-  const effects = await loadActiveEffects(sql, userId);
-  const applied = applyEffectMultipliers(base, effects);
+  // 1) progression.ts 의 기본 보상 계산
+  const baseDelta = computeGameProgressionDelta({
+    userId,
+    game: gameSlug,
+    score,
+    meta: {
+      difficulty,
+      ...extraMeta,
+    },
+  });
 
-  return {
-    coinsDelta: applied.coinsDelta,
+  // progression.ts 의 델타는 number | bigint 이므로 숫자로 안전하게 변환
+  const baseCoins = Number(baseDelta.pointsDelta ?? 0);
+  const baseExp = Number(baseDelta.expDelta ?? 0);
+  const baseTickets = Number(baseDelta.ticketsDelta ?? 0);
+
+  // 2) 활성 user_effects 조회
+  const effects = await loadActiveEffects(sql, userId);
+
+  // 3) multiplier 적용
+  const applied = applyEffectMultipliers(
+    {
+      baseCoins,
+      baseExp,
+      baseTickets,
+    },
+    effects
+  );
+
+  // 4) 최종 델타 구성 (playsDelta 는 progression 기본값 유지)
+  const finalDelta: ProgressionDelta = {
+    userId,
+    pointsDelta: applied.coinsDelta,
     expDelta: applied.expDelta,
     ticketsDelta: applied.ticketsDelta,
+    playsDelta: baseDelta.playsDelta ?? 1,
+    reason: baseDelta.reason || `play_${gameSlug}`,
+    refTable: baseDelta.refTable ?? null,
+    refId: baseDelta.refId ?? null,
+    idempotencyKey: baseDelta.idempotencyKey ?? null,
+    meta: {
+      ...(baseDelta.meta ?? {}),
+      difficulty,
+      appliedEffects: applied.snapshot.appliedKeys,
+    },
+  };
+
+  return {
+    finalDelta,
     snapshot: {
-      baseCoins: base.baseCoins,
-      baseExp: base.baseExp,
-      baseTickets: base.baseTickets,
+      baseCoins,
+      baseExp,
+      baseTickets,
       coinsMultiplier: applied.snapshot.coinsMultiplier,
       xpMultiplier: applied.snapshot.xpMultiplier,
       ticketsMultiplier: applied.snapshot.ticketsMultiplier,
       appliedKeys: applied.snapshot.appliedKeys,
     },
   };
+}
+
+/* ───────── legacy game_scores 스키마 보장 ───────── */
+
+/**
+ * 기존 public/user-retro-games.html 등에서 사용하는 레거시 랭킹/통계는
+ * game_scores 테이블을 참고할 수 있으므로
+ * 새로운 canonical 경로(game_runs + transactions)와 별개로 계속 유지한다.
+ */
+async function ensureLegacyGameScoresSchema(
+  sql: ReturnType<typeof getSql>
+): Promise<void> {
+  try {
+    await sql/* sql */ `
+      create table if not exists game_scores(
+        id bigserial primary key,
+        user_id text not null,
+        game text not null,
+        score int not null,
+        created_at timestamptz not null default now(),
+        idempotency_key text unique
+      )
+    `;
+    await sql/* sql */ `
+      create index if not exists game_scores_user_created
+      on game_scores (user_id, created_at desc)
+    `;
+    await sql/* sql */ `
+      create index if not exists game_scores_game_user_score_created
+      on game_scores (game, user_id, score desc, created_at asc)
+    `;
+  } catch (e) {
+    if (!isMissingTable(e)) {
+      // 스키마 경쟁 등 비치명 오류 → canonical 경로는 계속 진행
+    }
+  }
+}
+
+/**
+ * 레거시 game_scores 에 점수를 기록.
+ * - 멱등 키가 있으면 on conflict(idempotency_key) do nothing 으로 중복 방지
+ * - 이 단계 실패는 전체 API 실패로 이어지지 않게 조용히 무시
+ */
+async function insertLegacyGameScore(
+  sql: ReturnType<typeof getSql>,
+  params: { userId: string; gameSlug: string; score: number; idem: string | null }
+): Promise<void> {
+  const { userId, gameSlug, score, idem } = params;
+
+  try {
+    if (idem) {
+      await sql/* sql */ `
+        insert into game_scores (user_id, game, score, idempotency_key)
+        values (${userId}, ${gameSlug}, ${score}, ${idem})
+        on conflict (idempotency_key) do nothing
+      `;
+    } else {
+      await sql/* sql */ `
+        insert into game_scores (user_id, game, score)
+        values (${userId}, ${gameSlug}, ${score})
+      `;
+    }
+  } catch (e) {
+    if (!isMissingTable(e)) {
+      // game_scores 삽입 실패도 전체 API 실패로 만들지 않고 무시
+    }
+  }
+}
+
+/* ───────── games / game_runs canonical 스키마 연동 ───────── */
+
+/**
+ * games(slug) row 를 보장하고, id 를 반환.
+ * - 이미 존재하면 select 로 가져오고
+ * - 없으면 insert on conflict 로 생성
+ */
+async function ensureGameRow(
+  sql: ReturnType<typeof getSql>,
+  gameSlug: string
+): Promise<string | null> {
+  let gameId: string | null = null;
+
+  // 1) 이미 있는지 확인
+  try {
+    const rows = await sql/* sql */ `
+      select id from games where slug = ${gameSlug} limit 1
+    `;
+    if (rows && rows.length > 0) {
+      return String(rows[0].id);
+    }
+  } catch (e) {
+    if (!isMissingTable(e)) throw e;
+    // games 테이블이 없다면 아래 insert 부분에서 다시 처리 시도
+  }
+
+  // 2) 없으면 insert
+  try {
+    const title = gameSlug.replace(/[-_]/g, " ").toUpperCase();
+    const rows = await sql/* sql */ `
+      insert into games (slug, title, category)
+      values (${gameSlug}, ${title}, 'arcade')
+      on conflict (slug) do update set title = excluded.title
+      returning id
+    `;
+    if (rows && rows.length > 0) {
+      gameId = String(rows[0].id);
+    }
+  } catch (e) {
+    if (!isMissingTable(e)) throw e;
+  }
+
+  return gameId;
+}
+
+/**
+ * game_runs 에 이번 플레이 기록을 남기고 id 를 반환.
+ * - startedAt/finishedAt 은 validateScore 가 넘겨주는 값 기준으로 변환
+ * - metadata 에는 difficulty/mode/playTimeMs/deviceHint/ip/ua/rawPayload 등을 저장
+ */
+async function insertGameRun(
+  sql: ReturnType<typeof getSql>,
+  params: {
+    userId: string;
+    gameSlug: string;
+    score: number;
+    difficulty: Difficulty;
+    mode: string | null;
+    playTimeMs: number | null;
+    deviceHint: string | null;
+    startedAt: unknown;
+    finishedAt: unknown;
+    ip: string | null;
+    ua: string | null;
+    rawPayload: unknown;
+  }
+): Promise<string | null> {
+  const {
+    userId,
+    gameSlug,
+    score,
+    difficulty,
+    mode,
+    playTimeMs,
+    deviceHint,
+    startedAt,
+    finishedAt,
+    ip,
+    ua,
+    rawPayload,
+  } = params;
+
+  let runId: string | null = null;
+
+  const started =
+    startedAt instanceof Date
+      ? startedAt
+      : startedAt
+      ? new Date(startedAt)
+      : new Date();
+  const finished =
+    finishedAt instanceof Date
+      ? finishedAt
+      : finishedAt
+      ? new Date(finishedAt)
+      : null;
+
+  const runMetadata = {
+    difficulty,
+    mode,
+    playTimeMs,
+    deviceHint,
+    game: gameSlug,
+    score,
+    ip,
+    ua,
+    startedAt: started.toISOString(),
+    finishedAt: finished ? finished.toISOString() : null,
+    source: "api/games/score",
+    rawPayload,
+  };
+
+  try {
+    // game_runs.sql 스키마(user_id, slug, score, started_at, finished_at, metadata, client_ip, device_hint)
+    const rows = await sql/* sql */ `
+      insert into game_runs (
+        user_id,
+        slug,
+        score,
+        started_at,
+        finished_at,
+        metadata,
+        client_ip,
+        device_hint
+      )
+      values (
+        ${userId}::uuid,
+        ${gameSlug},
+        ${score},
+        ${started},
+        ${finished},
+        ${JSON.stringify(runMetadata)}::jsonb,
+        ${ip},
+        ${deviceHint ?? null}
+      )
+      returning id
+    `;
+    if (rows && rows.length > 0) {
+      runId = String(rows[0].id);
+    }
+  } catch (e) {
+    if (!isMissingTable(e)) throw e;
+  }
+
+  return runId;
 }
 
 /* ───────── Handler ───────── */
@@ -324,6 +625,7 @@ export const onRequest: PagesFunction<Env> = async ({
   request: Request;
   env: Env;
 }) => {
+  // Preflight
   if (request.method === "OPTIONS") return preflight(env.CORS_ORIGIN);
   if (request.method !== "POST") {
     return withCORS(
@@ -357,7 +659,7 @@ export const onRequest: PagesFunction<Env> = async ({
       game,
       slug,
       score: rawScore,
-      difficulty,
+      difficulty: rawDifficulty,
       mode,
       playTimeMs,
       deviceHint,
@@ -370,262 +672,110 @@ export const onRequest: PagesFunction<Env> = async ({
     const userId = resolveUserId(request, bodyUserId);
     const gameSlug = cleanGameSlug(slug || game);
     const score = toSafeScore(rawScore);
+    const difficulty = toDifficulty(rawDifficulty);
 
     const idem = getIdemKey(request);
     const { ip, ua } = getClientMeta(request);
     const sql = getSql(env);
 
     // ──────────────────────────────────────────────────────────
-    // 2) 기존 game_scores 테이블 (구 레거시 호환용)
-    //    - 기존 페이지/랭킹이 game_scores 를 참고한다면 계속 동작
+    // 2) 레거시 game_scores 테이블 기록 (기존 기능 유지용)
     // ──────────────────────────────────────────────────────────
-    try {
-      await sql/* sql */ `
-        create table if not exists game_scores(
-          id bigserial primary key,
-          user_id text not null,
-          game text not null,
-          score int not null,
-          created_at timestamptz not null default now(),
-          idempotency_key text unique
-        )
-      `;
-      await sql/* sql */ `
-        create index if not exists game_scores_user_created
-        on game_scores (user_id, created_at desc)
-      `;
-      await sql/* sql */ `
-        create index if not exists game_scores_game_user_score_created
-        on game_scores (game, user_id, score desc, created_at asc)
-      `;
-    } catch (e) {
-      if (!isMissingTable(e)) {
-        // 스키마 경쟁 등 비치명 오류 → canonical 경로는 계속 진행
-      }
-    }
-
-    try {
-      if (idem) {
-        await sql/* sql */ `
-          insert into game_scores (user_id, game, score, idempotency_key)
-          values (${userId}, ${gameSlug}, ${score}, ${idem})
-          on conflict (idempotency_key) do nothing
-        `;
-      } else {
-        await sql/* sql */ `
-          insert into game_scores (user_id, game, score)
-          values (${userId}, ${gameSlug}, ${score})
-        `;
-      }
-    } catch (e) {
-      if (!isMissingTable(e)) {
-        // game_scores 삽입 실패도 전체 API 실패로 만들지 않고 무시
-      }
-    }
+    await ensureLegacyGameScoresSchema(sql);
+    await insertLegacyGameScore(sql, { userId, gameSlug, score, idem });
 
     // ──────────────────────────────────────────────────────────
-    // 3) 새 canonical 경로
-    //    - game_runs + games + transactions + user_effects
+    // 3) 새 canonical 경로:
+    //    - games(slug) 보장
+    //    - game_runs 기록
+    //    - progression.ts + user_effects 를 통한 보상 + transactions 기록
     // ──────────────────────────────────────────────────────────
-    try {
-      // 3-1) games(slug) upsert (있으면 재활용)
-      let gameId: string | null = null;
-      try {
-        const rows = await sql/* sql */ `
-          select id from games where slug = ${gameSlug} limit 1
-        `;
-        if (rows && rows.length > 0) {
-          gameId = String(rows[0].id);
-        }
-      } catch (e) {
-        if (!isMissingTable(e)) throw e;
-      }
 
-      if (!gameId) {
-        try {
-          const title = gameSlug.replace(/[-_]/g, " ").toUpperCase();
-          const rows = await sql/* sql */ `
-            insert into games (slug, title, category)
-            values (${gameSlug}, ${title}, 'arcade')
-            on conflict (slug) do update set title = excluded.title
-            returning id
-          `;
-          gameId = String(rows[0].id);
-        } catch (e) {
-          if (!isMissingTable(e)) throw e;
-        }
-      }
+    try {
+      // 3-1) games(slug) row 보장
+      await ensureGameRow(sql, gameSlug);
 
       // 3-2) game_runs 에 플레이 기록 저장
-      let runId: string | null = null;
-      const started =
-        startedAt instanceof Date
-          ? startedAt
-          : startedAt
-          ? new Date(startedAt)
-          : new Date();
-      const finished =
-        finishedAt instanceof Date
-          ? finishedAt
-          : finishedAt
-          ? new Date(finishedAt)
-          : null;
-
-      const runMetadata = {
-        // validateScore 확장 필드
-        difficulty,
-        mode,
-        playTimeMs,
-        deviceHint,
-        // 기타 컨텍스트
-        game: gameSlug,
+      const runId = await insertGameRun(sql, {
+        userId,
+        gameSlug,
         score,
+        difficulty,
+        mode: mode ?? null,
+        playTimeMs: typeof playTimeMs === "number" ? playTimeMs : null,
+        deviceHint: deviceHint ?? null,
+        startedAt,
+        finishedAt,
         ip,
         ua,
-        startedAt: started.toISOString(),
-        finishedAt: finished ? finished.toISOString() : null,
-        source: "api/games/score",
-        rawPayload: raw ?? body, // 디버깅용 스냅샷
-      };
+        rawPayload: raw ?? body,
+      });
 
-      try {
-        // game_runs.sql 스키마(user_id, slug, score, started_at, finished_at, metadata, client_ip, device_hint)
-        const rows = await sql/* sql */ `
-          insert into game_runs (
-            user_id,
-            slug,
-            score,
-            started_at,
-            finished_at,
-            metadata,
-            client_ip,
-            device_hint
-          )
-          values (
-            ${userId}::uuid,
-            ${gameSlug},
-            ${score},
-            ${started},
-            ${finished},
-            ${JSON.stringify(runMetadata)}::jsonb,
-            ${ip},
-            ${deviceHint ?? null}
-          )
-          returning id
-        `;
-        if (rows && rows.length > 0) {
-          runId = String(rows[0].id);
-        }
-      } catch (e) {
-        if (!isMissingTable(e)) throw e;
-      }
-
-      // 3-3) 점수 → 보상 계산(난이도 + user_effects 버프까지 반영)
-      const reward = await computeRewardsWithEffects(
+      // 3-3) 점수 → progression + user_effects 버프까지 반영한 보상 계산
+      const rewards = await computeRewardsWithEffects(
         sql,
         userId,
+        gameSlug,
         score,
-        difficulty as Difficulty
+        difficulty,
+        {
+          mode,
+          playTimeMs,
+          ip,
+          ua,
+        }
       );
 
-      const coinsDelta = reward.coinsDelta;
-      const expDelta = reward.expDelta;
-      const ticketsDelta = reward.ticketsDelta;
+      const finalDelta = rewards.finalDelta;
 
-      // 보상이 전혀 없다면 transactions 삽입은 스킵(단순 기록만 필요하다면 여기서 정책 변경 가능)
-      if (coinsDelta !== 0 || expDelta !== 0 || ticketsDelta !== 0) {
-        // 3-4) transactions 기록 → apply_wallet_transaction 트리거로 user_stats / wallet 반영
+      // 보상이 전혀 없다면 progression 적용은 스킵(기록만 남기고 끝)
+      const hasNonZero =
+        !!finalDelta.pointsDelta ||
+        !!finalDelta.expDelta ||
+        !!finalDelta.ticketsDelta ||
+        !!finalDelta.playsDelta;
+
+      if (hasNonZero) {
+        // 3-4) transactions 기반 progression 적용 (apply_wallet_transaction 트리거 경유)
+        const txMeta = {
+          score,
+          game: gameSlug,
+          run_id: runId,
+          ip,
+          ua,
+          rewards: {
+            pointsDelta: finalDelta.pointsDelta ?? 0,
+            expDelta: finalDelta.expDelta ?? 0,
+            ticketsDelta: finalDelta.ticketsDelta ?? 0,
+            playsDelta: finalDelta.playsDelta ?? 0,
+          },
+          rewardBase: {
+            baseCoins: rewards.snapshot.baseCoins,
+            baseExp: rewards.snapshot.baseExp,
+            baseTickets: rewards.snapshot.baseTickets,
+          },
+          effects: {
+            coinsMultiplier: rewards.snapshot.coinsMultiplier,
+            xpMultiplier: rewards.snapshot.xpMultiplier,
+            ticketsMultiplier: rewards.snapshot.ticketsMultiplier,
+            appliedKeys: rewards.snapshot.appliedKeys,
+          },
+        };
+
         try {
-          const txMeta = {
-            score,
-            game: gameSlug,
-            run_id: runId,
-            ip,
-            ua,
-            rewards: {
-              coinsDelta,
-              expDelta,
-              ticketsDelta,
-            },
-            rewardBase: {
-              baseCoins: reward.snapshot.baseCoins,
-              baseExp: reward.snapshot.baseExp,
-              baseTickets: reward.snapshot.baseTickets,
-            },
-            effects: {
-              coinsMultiplier: reward.snapshot.coinsMultiplier,
-              xpMultiplier: reward.snapshot.xpMultiplier,
-              ticketsMultiplier: reward.snapshot.ticketsMultiplier,
-              appliedKeys: reward.snapshot.appliedKeys,
-            },
-          };
-
-          if (idem) {
-            await sql/* sql */ `
-              insert into transactions (
-                user_id,
-                type,
-                amount,
-                exp_delta,
-                tickets_delta,
-                plays_delta,
-                reason,
-                game,
-                ref_table,
-                ref_id,
-                idempotency_key,
-                meta
-              )
-              values (
-                ${userId}::uuid,
-                'game',
-                ${coinsDelta},
-                ${expDelta},
-                ${ticketsDelta},
-                1,
-                'game_score',
-                ${gameSlug},
-                ${runId ? "game_runs" : null},
-                ${runId ? `${runId}::uuid` : null},
-                ${idem},
-                ${JSON.stringify(txMeta)}::jsonb
-              )
-              on conflict (idempotency_key) do nothing
-            `;
-          } else {
-            await sql/* sql */ `
-              insert into transactions (
-                user_id,
-                type,
-                amount,
-                exp_delta,
-                tickets_delta,
-                plays_delta,
-                reason,
-                game,
-                ref_table,
-                ref_id,
-                meta
-              )
-              values (
-                ${userId}::uuid,
-                'game',
-                ${coinsDelta},
-                ${expDelta},
-                ${ticketsDelta},
-                1,
-                'game_score',
-                ${gameSlug},
-                ${runId ? "game_runs" : null},
-                ${runId ? `${runId}::uuid` : null},
-                ${JSON.stringify(txMeta)}::jsonb
-              )
-            `;
-          }
-          // apply_wallet_transaction 트리거(001 + 006)에서 user_stats / wallet_balances / user_progress 등을 실제 갱신
+          await applyProgressionDeltaDb(sql, {
+            ...finalDelta,
+            // 여기서 refTable/refId/idempotencyKey/meta 를 덮어쓴다.
+            refTable: "game_runs",
+            refId: runId ?? null,
+            idempotencyKey: idem ?? null,
+            meta: txMeta,
+            reason: finalDelta.reason || "game_score",
+          });
         } catch (e) {
           if (!isMissingTable(e)) {
-            // transactions 스키마 문제는 게임 기록 자체를 실패시키지 않는다
+            // transactions / user_stats 관련 스키마가 부분적일 경우에도
+            // 게임 진행 자체는 막지 않도록 에러를 삼킨다.
           }
         }
       }

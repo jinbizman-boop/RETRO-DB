@@ -1,6 +1,15 @@
 // functions/api/_utils/auth.ts
 // Hardened JWT HS256 utilities for Cloudflare Workers (Edge)
-// Fully upgraded for RETRO GAMES wallet-C architecture, auth flows, and security
+// Fully upgraded for RETRO GAMES wallet/auth architecture, auth flows, and security
+//
+// - jwtSign / jwtVerify : 순수 HS256 JWT 유틸
+// - parseBearer        : Authorization 헤더에서 Bearer 토큰 추출
+// - requireUser        : JWT 검증 + 필수 sub(UUID) 보장
+// - optionalUser       : 있으면 검증, 없으면 null
+// - hasScope/requireScope : scope 기반 권한 체크
+// - getUserIdFromPayload  : sub → userId 문자열 안전 추출
+//
+// Cloudflare Workers / Pages Functions 런타임 의존성만 사용 (Node 미사용)
 
 /* ──────────────────────────────────────────────────────────────
  * Type Definitions
@@ -13,10 +22,21 @@ export type JwtPayload = {
   iat?: number;
   iss?: string;
   aud?: string;
-  jti?: string;             // unique token id
-  scope?: string | string[]; // role/scope expansion
+  jti?: string;              // unique token id
+  scope?: string | string[]; // role/scope expansion ("user", "admin", ["user","wallet:write"], ...)
   [k: string]: any;
 };
+
+export type VerifyEnv = {
+  JWT_SECRET?: string;
+  JWT_ISSUER?: string;
+  JWT_AUD?: string;
+  JWT_CLOCK_SKEW_SEC?: string | number;
+};
+
+export type AuthEnv = {
+  JWT_SECRET?: string;
+} & Partial<VerifyEnv>;
 
 /* ───────────────────────── Tunables / Defaults ───────────────────────── */
 
@@ -24,7 +44,7 @@ const MAX_TOKEN_LENGTH = 4096;      // abnormal long token protection
 const DEFAULT_SKEW_SEC = 60;        // clock skew tolerance
 const MIN_SECRET_LEN   = 16;        // secret length minimum
 
-// optional sub-validator pattern (uuid v4)
+// optional sub-validator pattern (uuid v4, Neon users.id와 정합)
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -133,7 +153,7 @@ export async function jwtSign(
 
 /* ───────────────────────────── Verification ──────────────────────────── */
 
-type VerifyOpts = {
+export type VerifyOpts = {
   issuer?: string;
   audience?: string;
   clockSkewSec?: number;
@@ -141,13 +161,6 @@ type VerifyOpts = {
   requireUUIDSub?: boolean; // 강화된 sub 검증
   allowedIssuers?: string[];
   allowedAudiences?: string[];
-};
-
-type VerifyEnv = {
-  JWT_SECRET?: string;
-  JWT_ISSUER?: string;
-  JWT_AUD?: string;
-  JWT_CLOCK_SKEW_SEC?: string | number;
 };
 
 export async function jwtVerify(
@@ -254,20 +267,100 @@ export function parseBearer(req: Request): string | null {
   return m ? m[1] : null;
 }
 
+/* ─────────────────────── Scope / Role Utilities ─────────────────────── */
+
+function normalizeScopes(scope: string | string[] | undefined | null): string[] {
+  if (!scope) return [];
+  if (Array.isArray(scope)) {
+    return scope
+      .map((s) => String(s || "").trim())
+      .filter((s) => s.length > 0);
+  }
+  return String(scope)
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * hasScope(payload, required)
+ *  - payload.scope 에 required 가 포함되어 있는지 검사
+ *  - required 가 배열이면 OR 조건 (하나라도 있으면 true)
+ */
+export function hasScope(
+  payload: JwtPayload,
+  required: string | string[]
+): boolean {
+  const owned = new Set(normalizeScopes(payload.scope));
+  if (!owned.size) return false;
+
+  const requiredList = Array.isArray(required) ? required : [required];
+  for (const r of requiredList) {
+    const key = r.trim();
+    if (!key) continue;
+    if (owned.has(key)) return true;
+  }
+  return false;
+}
+
+/**
+ * requireScope(payload, required)
+ *  - hasScope 가 false 면 에러 발생
+ *  - API 핸들러에서 권한 체크에 사용
+ */
+export function requireScope(
+  payload: JwtPayload,
+  required: string | string[]
+): void {
+  if (!hasScope(payload, required)) {
+    throw new Error("insufficient_scope");
+  }
+}
+
+/* ─────────────────────── UserId Helper ─────────────────────── */
+
+/**
+ * getUserIdFromPayload(payload)
+ *  - payload.sub 를 안전하게 텍스트 userId 로 가져오는 헬퍼
+ *  - 비어있다면 에러를 던져 requireUser 와 동작을 맞춤
+ */
+export function getUserIdFromPayload(payload: JwtPayload): string {
+  const sub = (payload.sub ?? "").toString().trim();
+  if (!sub) throw new Error("Token missing sub");
+  return sub;
+}
+
 /* ──────────────────────────── Policy Wrapper ─────────────────────────── */
+
+/**
+ * 내부용: env 에서 JWT_SECRET 추출 + 기본 검증
+ */
+function resolveJwtSecret(env: AuthEnv): string {
+  if (!env.JWT_SECRET || typeof env.JWT_SECRET !== "string") {
+    throw new Error("JWT_SECRET not set");
+  }
+  if (env.JWT_SECRET.length < MIN_SECRET_LEN) {
+    throw new Error("JWT_SECRET too short");
+  }
+  return env.JWT_SECRET;
+}
 
 /**
  * requireUser(req, env)
  *   - Validates JWT
- *   - Requires sub (userId)
+ *   - Requires sub (userId, UUIDv4)
  *   - Matches issuer/audience if provided
  *   - Returns decoded payload
+ *
+ * 사용 예시:
+ *   const payload = await requireUser(request, env);
+ *   const userId = getUserIdFromPayload(payload);
  */
 export async function requireUser(
   req: Request,
-  env: { JWT_SECRET?: string } & Partial<VerifyEnv>
+  env: AuthEnv
 ): Promise<JwtPayload> {
-  if (!env.JWT_SECRET) throw new Error("JWT_SECRET not set");
+  const secret = resolveJwtSecret(env);
 
   const token = parseBearer(req);
   if (!token) throw new Error("Missing bearer token");
@@ -277,14 +370,51 @@ export async function requireUser(
       ? Number(env.JWT_CLOCK_SKEW_SEC)
       : (env.JWT_CLOCK_SKEW_SEC ?? undefined);
 
-  const payload = await jwtVerify(token, env.JWT_SECRET, {
+  const payload = await jwtVerify(token, secret, {
     issuer: env.JWT_ISSUER,
     audience: env.JWT_AUD,
-    clockSkewSec: typeof clockSkew === "number" && Number.isFinite(clockSkew)
-      ? clockSkew
-      : undefined,
+    clockSkewSec:
+      typeof clockSkew === "number" && Number.isFinite(clockSkew)
+        ? clockSkew
+        : undefined,
     requireSub: true,
-    requireUUIDSub: true, // 강화: userId(sub)는 uuid여야 한다
+    requireUUIDSub: true, // 강화: userId(sub)는 uuid여야 한다 (Neon users.id와 정합)
+    allowedIssuers: env.JWT_ISSUER ? [env.JWT_ISSUER] : undefined,
+    allowedAudiences: env.JWT_AUD ? [env.JWT_AUD] : undefined,
+  });
+
+  return payload;
+}
+
+/**
+ * optionalUser(req, env)
+ *   - Authorization 헤더가 없으면 null 반환
+ *   - 있으면 requireUser 와 동일하게 검증
+ *   - 공용(로그인/비로그인 혼합) 엔드포인트에서 사용
+ */
+export async function optionalUser(
+  req: Request,
+  env: AuthEnv
+): Promise<JwtPayload | null> {
+  const token = parseBearer(req);
+  if (!token) return null;
+
+  const secret = resolveJwtSecret(env);
+
+  const clockSkew =
+    typeof env.JWT_CLOCK_SKEW_SEC === "string"
+      ? Number(env.JWT_CLOCK_SKEW_SEC)
+      : (env.JWT_CLOCK_SKEW_SEC ?? undefined);
+
+  const payload = await jwtVerify(token, secret, {
+    issuer: env.JWT_ISSUER,
+    audience: env.JWT_AUD,
+    clockSkewSec:
+      typeof clockSkew === "number" && Number.isFinite(clockSkew)
+        ? clockSkew
+        : undefined,
+    requireSub: true,
+    requireUUIDSub: true,
     allowedIssuers: env.JWT_ISSUER ? [env.JWT_ISSUER] : undefined,
     allowedAudiences: env.JWT_AUD ? [env.JWT_AUD] : undefined,
   });

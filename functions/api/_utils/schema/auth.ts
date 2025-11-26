@@ -2,9 +2,10 @@
 
 /**
  * Hardened auth payload validators.
- * - Keeps original contract: returns { email: string, password: string }
+ * - 기본 계약 유지: 항상 { email: string, password: string, ...부가필드 } 반환
  * - Email: Unicode 안전화(NFKC), 공백/제어문자 제거, 형식/길이 검증, 단순 스푸핑 방지
  * - Password: 길이/구성(문자군 다양성), 제어문자/널문자 차단, 흔한 비밀번호/키보드 패턴 차단
+ * - 회원가입 추가 정보(username, gender, birth, phone, agree)도 함께 정규화/검증
  * - 의존성 0 (Edge/Workers 호환)
  */
 
@@ -14,6 +15,12 @@ const EMAIL_LOCAL_MAX_LEN = 64;     // local-part 권장 상한
 const PASSWORD_MIN_LEN = 8;         // OWASP 권장 최소
 const PASSWORD_MAX_LEN = 128;       // 현실적 상한(브루트포스/리소스 보호)
 const PASSWORD_MIN_CLASSES = 2;     // 소/대/숫자/기호 네 가지 중 최소 몇 종류
+
+// username / phone 등 가입정보 기본 정책
+const USERNAME_MIN_LEN = 2;
+const USERNAME_MAX_LEN = 32;
+const PHONE_MIN_DIGITS = 8;
+const PHONE_MAX_DIGITS = 20;
 
 // 매우 흔한 비밀번호/패턴(짧은 샘플; 서버측 추가 블랙리스트 권장)
 const COMMON_PASSWORDS = new Set([
@@ -102,10 +109,124 @@ function assessPasswordStrength(password: string): { ok: boolean; reason?: strin
   return { ok: true };
 }
 
-// ───────── Public API (계약 유지) ─────────
+// ───────── 회원가입 추가 필드 유틸 ─────────
 
-export function validateSignup(input: any) {
-  // 기존 계약: email/password 필수, 반환 { email, password }
+function normalizeUsername(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== "string") return null;
+
+  let s = stripControlExceptWhitespace(raw).trim();
+  if (!s) return null;
+
+  try { s = s.normalize("NFKC"); } catch {}
+
+  // 공백을 하나로 축소
+  s = s.replace(/\s+/g, " ");
+
+  // 기본 허용 문자: 한글/영문/숫자/공백/._- (너무 빡세지 않게)
+  if (!/^[\p{L}\p{N} ._\-]+$/u.test(s)) {
+    // 허용 범위 밖 문자가 섞여 있으면 가입은 가능하게 두되, username 은 무시
+    return null;
+  }
+
+  if (s.length < USERNAME_MIN_LEN || s.length > USERNAME_MAX_LEN) {
+    return null;
+  }
+
+  return s;
+}
+
+function normalizeGender(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== "string") return null;
+
+  let s = stripControlExceptWhitespace(raw).trim();
+  if (!s) return null;
+  try { s = s.normalize("NFKC"); } catch {}
+  const lower = s.toLowerCase();
+
+  // 간단 매핑 (실제 저장은 원문 그대로 두고 싶다면 s를 쓰면 됨)
+  if (["m", "male", "남", "남자"].includes(lower)) return "male";
+  if (["f", "female", "여", "여자"].includes(lower)) return "female";
+  if (lower === "other" || lower === "기타") return "other";
+
+  // 그 외 값은 free-text 로 허용: 너무 길면 잘라냄
+  if (s.length > 32) s = s.slice(0, 32);
+  return s;
+}
+
+function normalizePhone(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== "string") return null;
+
+  let s = stripControlExceptWhitespace(raw);
+  // 숫자/플러스/하이픈/공백만 허용하고 나머지는 제거
+  s = s.replace(/[^\d+\- ]+/g, "");
+  s = s.trim();
+  if (!s) return null;
+
+  // 순수 숫자 길이 기준 검증
+  const digits = s.replace(/\D/g, "");
+  if (digits.length < PHONE_MIN_DIGITS || digits.length > PHONE_MAX_DIGITS) {
+    return null;
+  }
+
+  // 정규화: 앞/뒤 공백 제거, 중복 공백/하이픈 축소
+  s = s.replace(/\s+/g, " ");
+  return s;
+}
+
+function normalizeBirth(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== "string") return null;
+
+  let s = stripControlExceptWhitespace(raw).trim();
+  if (!s) return null;
+  try { s = s.normalize("NFKC"); } catch {}
+
+  // 허용 포맷 1: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // 허용 포맷 2: YYYY.MM.DD / YYYY/MM/DD / YYYY MM DD 등 → '-'로 변환
+  const digits = s.replace(/[^\d]/g, "");
+  if (digits.length === 8) {
+    const y = digits.slice(0, 4);
+    const m = digits.slice(4, 6);
+    const d = digits.slice(6, 8);
+    const iso = `${y}-${m}-${d}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  }
+
+  // 그 외는 무시 (가입 자체는 허용, birth만 null)
+  return null;
+}
+
+function coerceAgree(raw: unknown): boolean {
+  // checkbox true/false, "on", "true", "1" 등 폭넓게 처리
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "number") return raw !== 0;
+  if (typeof raw === "string") {
+    const s = raw.trim().toLowerCase();
+    if (["true", "1", "yes", "y", "on", "agree"].includes(s)) return true;
+    return false;
+  }
+  return false;
+}
+
+// ───────── Public API (계약 유지 + 확장) ─────────
+
+export type SignupPayload = {
+  email: string;
+  password: string;
+  username: string | null;
+  gender: string | null;
+  birth: string | null;   // ISO YYYY-MM-DD or null
+  phone: string | null;
+  agree: boolean;         // 이용약관 동의 여부
+};
+
+export function validateSignup(input: any): SignupPayload {
+  // 기존 계약: email/password 필수
   if (!input || typeof input.email !== "string" || typeof input.password !== "string") {
     throw new Error("email and password are required");
   }
@@ -117,17 +238,46 @@ export function validateSignup(input: any) {
 
   // Password: 원문 그대로 반환(계약 준수)하되, 강력 검증만 수행
   const password: string = input.password;
-
   const pw = assessPasswordStrength(password);
   if (!pw.ok) throw new Error(pw.reason || "weak password");
 
-  // (선택) 이메일 로컬파트/도메인의 혼동 문자열 미세 방지
-  // 예: 유사한 유니코드 정규화 차이 등은 운영단(회원가입/중복체크)에서 추가 검증 권장
+  // ── 회원가입 추가 필드 정규화/검증 ──
+  const username = normalizeUsername(input.username);
+  const gender = normalizeGender(input.gender);
+  const birth = normalizeBirth(input.birth);
+  const phone = normalizePhone(input.phone);
 
-  return { email, password };
+  // agree/agreements/terms 같은 키들을 최대한 수용
+  const agreeRaw =
+    input.agree ??
+    input.agreed ??
+    input.terms ??
+    input.termsAgree ??
+    input.terms_agree;
+
+  const agree = coerceAgree(agreeRaw);
+
+  // 여기서 agree를 반드시 true로 강제할지 여부는 정책에 따라 다름
+  // 가입 자체에 약관 동의 필수라면:
+  if (!agree) {
+    // 메시지는 프론트에서 한글로 매핑 가능 (백엔드는 키워드 위주)
+    throw new Error("terms_not_agreed");
+  }
+
+  return {
+    email,
+    password,
+    username,
+    gender,
+    birth,
+    phone,
+    agree,
+  };
 }
 
 export function validateLogin(input: any) {
-  // 기존 구현처럼 signup 규칙을 그대로 적용 (동일 계약/동일 보안수준)
-  return validateSignup(input);
+  // 로그인에서는 email/password만 실제로 사용하지만,
+  // signup과 동일한 보안 기준을 재사용 (추가 필드는 무시해도 무방).
+  const { email, password } = validateSignup(input);
+  return { email, password };
 }

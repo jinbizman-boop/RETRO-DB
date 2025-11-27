@@ -352,8 +352,15 @@ export const onRequest: PagesFunction<Env> = async ({
 
   try {
     const url = new URL(request.url);
-    const queryUserId = url.searchParams.get("userId");
-    const userId = resolveUserId(request, queryUserId);
+
+    // 🔥 1순위: 쿼리스트링 userId (헬스체크/수동 호출용)
+    let userId = url.searchParams.get("userId")?.trim() || null;
+
+    // 🔥 2순위: 기존 헤더 기반 userId (미들웨어에서 넣어준 값)
+    if (!userId) {
+      const queryUserId: string | null = null;
+      userId = resolveUserId(request, queryUserId);
+    }
 
     if (!userId) {
       // 기존 계약 유지: userId 없거나 형식이 이상하면 400

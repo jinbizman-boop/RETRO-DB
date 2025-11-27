@@ -1,29 +1,19 @@
-# wrangler.toml — Cloudflare Pages + Pages Functions (stable/minimal)
+# wrangler.toml — Cloudflare Pages + Pages Functions (Pages 전용 최소 설정)
 # Project: RETRO DB (static: /public, functions: /functions)
 
-# 기본 Workers 설정
 name = "retro-db"
 compatibility_date = "2024-11-01"
+
 # Node.js 내장 모듈(node:stream 등)을 사용하기 위한 호환 모드 설정
 compatibility_flags = ["nodejs_compat"]
 
-# ✅ Pages용 정적 파일 출력 디렉터리 (최상단 전역 키여야 함)
+# ✅ Cloudflare Pages가 인식하는 정적 자산 출력 디렉터리
+#   (루트에 있어야 하며, [pages] 블록 안에 넣지 않는다)
 pages_build_output_dir = "public"
 
-# ✅ 빌드 시 node_modules 설치
-[build]
-command = "npm install"
-
-# ✅ Functions 번들을 modules 형식으로 업로드
-[build.upload]
-format = "modules"
-
 # Notes:
-# - DO NOT add Workers-only or legacy keys (main, routes, workers_dev, triggers, [site], etc.)
-# - Functions are auto-detected from /functions at repo root; no extra config needed
-# - In Cloudflare Pages dashboard, set Output directory = "public"
-# - Root directory in Cloudflare Pages settings should remain the repo root (empty)
-# - No extra build command is required for static hosting from `public/`, but
-#   here we run `npm install` so that server-side dependencies (e.g. Neon) are available.
-# - `nodejs_compat` 플래그로 node:stream 등 일부 Node API를 Functions에서 사용할 수 있습니다.
-# - 추가 Node 기능 사용 시에는 Cloudflare Workers 호환성 문서를 함께 참고하세요.
+# - Functions 는 repo 루트의 /functions 에서 자동으로 감지됨.
+# - Pages 대시보드에서도 Output directory 를 "public" 으로 맞춰두면 됨.
+# - 별도의 [build], [build.upload] 블록은 Pages 구성에서 지원하지 않으므로 사용하지 않는다.
+# - package.json 이 루트에 있기 때문에, Pages 빌드 시 npm install 은 자동으로 실행된다.
+# - nodejs_compat 로 일부 Node API 를 Functions 에서 사용할 수 있다.

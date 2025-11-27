@@ -2,8 +2,8 @@
   "name": "retro-games",
   "private": true,
   "scripts": {
-    "dev": "wrangler pages dev ./public --compatibility-date=2025-11-03",
-    "deploy": "wrangler pages deploy ./public --branch=production",
+    "dev": "wrangler pages dev . --project-name=retro-db",
+    "deploy": "wrangler pages deploy . --project-name=retro-db",
     "migrate": "psql \"$NEON_DATABASE_URL\" -f migrations/001_init.sql"
   },
   "dependencies": {

@@ -7,8 +7,7 @@ compatibility_date = "2024-11-01"
 # Node.js 내장 모듈(node:stream 등)을 사용하기 위한 호환 모드 설정
 compatibility_flags = ["nodejs_compat"]
 
-# Pages will read static outputs from this directory (repo root based)
-pages_build_output_dir = "public"
+# pages_build_output_dir 제거
 
 # Notes:
 # - DO NOT add Workers-only or legacy keys (main, routes, workers_dev, triggers, [pages], [site], [build], etc.)

@@ -1,13 +1,16 @@
 # wrangler.toml — Cloudflare Pages + Pages Functions (stable/minimal)
 # Project: RETRO DB (static: /public, functions: /functions)
 
-name = "retro-db"
-compatibility_date = "2024-11-01"
+[pages]
+pages_build_output_dir = "public"
 
+[build]
+command = "npm install"
+
+[build.upload]
+format = "modules"
 # Node.js 내장 모듈(node:stream 등)을 사용하기 위한 호환 모드 설정
 compatibility_flags = ["nodejs_compat"]
-
-# pages_build_output_dir 제거
 
 # Notes:
 # - DO NOT add Workers-only or legacy keys (main, routes, workers_dev, triggers, [pages], [site], [build], etc.)

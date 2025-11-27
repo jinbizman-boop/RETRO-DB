@@ -7,8 +7,8 @@
  *   export async function dbHealth(env: Env)
  *
  * 🔧 보강 사항
- * - @neondatabase/serverless 의 **정적 임포트 제거** → 동적 임포트(변수 기반 specifier)
- *   → 타입 선언/패키지 부재 시 TS가 모듈을 해석하지 않음(에디터 경고 제거)
+ * - @neondatabase/serverless 의 **정적 임포트 제거** → 동적 임포트(문자열 리터럴 specifier)
+ *   → Cloudflare 번들에 안전하게 포함되면서도, 에디터/타입 에러 최소화
  * - **재시도 + 지수 백오프 + 타임아웃** 내장
  * - **URL 유효성 검사** 및 **민감정보 마스킹**
  * - **URL 단위 클라이언트 캐시**(프리뷰/프로덕션 동시 대응)
@@ -111,14 +111,15 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 /* ────────────────────────────── 동적 로더 ──────────────────────────────── */
 /**
- * 변수 기반 specifier 로 동적 import → TS가 타입을 해석하려 들지 않음.
- * 런타임 설치가 안 되어 있으면, 친절한 메시지로 에러를 던집니다.
+ * 문자열 리터럴 specifier 로 동적 import → 번들러는 모듈을 포함시키고,
+ * 설치가 안 되어 있으면 친절한 메시지로 에러를 던집니다.
  */
 async function importNeonOrHint(): Promise<NeonFactory> {
   try {
-    const spec = "@neondatabase/serverless";
+    // ⚠️ 중요: 변수에 넣지 말고, 문자열 리터럴로 바로 import 해야
+    // Cloudflare/esbuild 번들에 @neondatabase/serverless 가 포함됩니다.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod: any = await import(spec as string);
+    const mod: any = await import("@neondatabase/serverless");
     const neon: NeonFactory | undefined = mod?.neon ?? mod?.default?.neon;
     if (typeof neon !== "function") {
       throw new Error("neon export missing");

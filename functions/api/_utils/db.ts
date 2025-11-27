@@ -7,21 +7,19 @@
  *   export async function dbHealth(env: Env)
  *
  * 🔧 보강 사항
- * - @neondatabase/serverless 의 **정적 임포트 제거** → 동적 임포트(문자열 리터럴 specifier)
- *   → Cloudflare 번들에 안전하게 포함되면서도, 에디터/타입 에러 최소화
- * - **재시도 + 지수 백오프 + 타임아웃** 내장
- * - **URL 유효성 검사** 및 **민감정보 마스킹**
- * - **URL 단위 클라이언트 캐시**(프리뷰/프로덕션 동시 대응)
- * - **태그드 템플릿/일반 호출 둘 다** 지원하는 래퍼
- * - **간단 계측 헤더/로그 포맷**(옵션)
+ * - @neondatabase/serverless 를 **정적 import** 로 사용해서
+ *   Cloudflare Pages/Workers 번들에 확실히 포함되도록 함
+ * - 재시도 + 지수 백오프 + 타임아웃 내장
+ * - URL 유효성 검사 및 민감정보 마스킹
+ * - URL 단위 클라이언트 캐시(프리뷰/프로덕션 동시 대응)
+ * - 태그드 템플릿/일반 호출 둘 다 지원하는 래퍼
+ * - 간단 계측 헤더/로그 포맷(옵션)
  *
  * 📦 런타임 의존성(배포 환경에 설치 필요)
  *   npm i @neondatabase/serverless
- *
- * ⚠️ 주의
- * - 이 파일은 정적 import 를 사용하지 않습니다. (동적 import 로만 로드)
- * - Cloudflare Workers/Pages 에서 ESM 번들로 배포됩니다.
  */
+
+import { neon } from "@neondatabase/serverless";
 
 /* ─────────────────────────────── 공개 타입 ─────────────────────────────── */
 export type Env = {
@@ -34,17 +32,15 @@ export type Env = {
 
 /* ─────────────────────────────── 튜너블 상수 ───────────────────────────── */
 const DEFAULT_TIMEOUT_MS = 15_000; // 15s
-const MAX_RETRIES = 3;             // 0번째 시도 + 3회 재시도 = 최대 4번
-const BASE_BACKOFF_MS = 200;       // 200 → 400 → 800
+const MAX_RETRIES = 3; // 0번째 시도 + 3회 재시도 = 최대 4번
+const BASE_BACKOFF_MS = 200; // 200 → 400 → 800
 const BACKOFF_FACTOR = 2;
 const DEFAULT_HEALTH_SQL = "select 1";
 
 /* ─────────────────────────────── 내부 상태 ─────────────────────────────── */
 type NeonTagged = (...a: any[]) => Promise<any>;
-type NeonFactory = (url: string) => NeonTagged;
 
 const clientCache = new Map<string, ReturnType<typeof createLazyClient>>();
-let _lastImportError: string | null = null;
 
 /* ─────────────────────────────── 유틸 함수 ─────────────────────────────── */
 function redactDbUrl(url: string): string {
@@ -90,7 +86,7 @@ function isTransientError(err: unknown): boolean {
     m.includes("temporar") || // temporary
     m.includes("connection") ||
     m.includes("reset") ||
-    m.includes("again") ||    // try again
+    m.includes("again") || // try again
     m.includes("503") ||
     m.includes("502") ||
     m.includes("429")
@@ -99,45 +95,13 @@ function isTransientError(err: unknown): boolean {
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   let timer: any;
-  const killer = new Promise<never>((_, rej) =>
-    (timer = setTimeout(() => rej(new Error(`DB query timeout after ${ms}ms`)), ms))
-  );
+  const killer = new Promise<never>((_, rej) => {
+    timer = setTimeout(() => rej(new Error(`DB query timeout after ${ms}ms`)), ms);
+  });
   try {
     return await Promise.race([p, killer]);
   } finally {
     clearTimeout(timer);
-  }
-}
-
-/* ────────────────────────────── 동적 로더 ──────────────────────────────── */
-/**
- * 문자열 리터럴 specifier 로 동적 import → 번들러는 모듈을 포함시키고,
- * 설치가 안 되어 있으면 친절한 메시지로 에러를 던집니다.
- */
-async function importNeonOrHint(): Promise<NeonFactory> {
-  try {
-    // ⚠️ 중요: 변수에 넣지 말고, 문자열 리터럴로 바로 import 해야
-    // Cloudflare/esbuild 번들에 @neondatabase/serverless 가 포함됩니다.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod: any = await import("@neondatabase/serverless");
-    const neon: NeonFactory | undefined = mod?.neon ?? mod?.default?.neon;
-    if (typeof neon !== "function") {
-      throw new Error("neon export missing");
-    }
-    _lastImportError = null;
-    return neon;
-  } catch (e) {
-    const detail = String((e as any)?.message ?? e);
-    _lastImportError = detail;
-    throw new Error(
-      [
-        "Neon driver not found (dynamic import failed).",
-        "Install it in your project:",
-        "  npm i @neondatabase/serverless",
-        "If using Cloudflare Pages/Workers, keep ESM build.",
-        `Details: ${detail}`,
-      ].join("\n")
-    );
   }
 }
 
@@ -229,7 +193,7 @@ function createLazyClient(url: string): (...a: any[]) => Promise<any> {
 
   const lazy: any = async function (...args: any[]) {
     if (!real) {
-      const neon = await importNeonOrHint();
+      // 🔹 정적 import 된 neon 팩토리 사용
       real = neon(url);
     }
     // 템플릿/일반 호출 모두 지원
@@ -260,12 +224,7 @@ export async function dbHealth(
     await sql([DEFAULT_HEALTH_SQL]); // 템플릿이 아닌 일반 호출로도 수행 가능
     return { ok: true, took_ms: Math.round(performance.now() - t0) };
   } catch (e: any) {
-    const msg = [
-      String(e?.message ?? e),
-      _lastImportError ? `(driver: ${_lastImportError})` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const msg = String(e?.message ?? e);
     return { ok: false, error: msg, took_ms: Math.round(performance.now() - t0) };
   }
 }
@@ -277,7 +236,6 @@ function _debugState() {
     timeoutMs: DEFAULT_TIMEOUT_MS,
     retries: MAX_RETRIES,
     backoff: { base: BASE_BACKOFF_MS, factor: BACKOFF_FACTOR },
-    lastImportError: _lastImportError,
     cachedUrls: Array.from(clientCache.keys()).map(redactDbUrl),
   };
 }

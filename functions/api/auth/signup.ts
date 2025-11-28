@@ -17,8 +17,20 @@ import * as Rate from "../_utils/rate-limit";
  *   • migrations/005_user_profile_and_progress.sql 에서
  *     password_hash, gender, birth, phone, agree_at 등 컬럼을 정식 추가
  *   • 여기서는 컬럼 보강 DDL을 "이중 안전망"으로 유지 (alter table if not exists)
- *   • user_stats / user_progress 에 가입 시점 row 생성 (경험치/포인트/티켓/게임 카운트 기본값 0)
- *   • audit_logs 에 signup 이벤트 기록 (선택적, 스키마 있으면 활용)
+ *   • user_stats / user_progress / user_wallet 에 가입 시점 row 생성
+ *     (경험치/포인트/티켓/게임 카운트 기본값 0)
+ *   • audit_logs / analytics_events 에 signup 이벤트 기록 (존재 시 활용)
+ *
+ * 기능 고도화 메모
+ * - 1) 회원가입 / 로그인 기능 연결:
+ *      • SHA-256 password_hash 로 로그인 API 와 동일한 방식 사용
+ *      • 선택적으로 JWT 토큰 발급 (env.JWT_SECRET 존재 시)
+ * - 2) 게임 플레이 후 경험치/포인트 자동 저장:
+ *      • user_stats, user_wallet 테이블/컬럼/제약 조건을 가입 단계에서 안전하게 보강
+ * - 3) shop_items 기본 seed 추가:
+ *      • 별도 migration 에서 처리하지만, 여기서는 스키마 쪽만 방어적으로 확인
+ * - 4) analytics_events 자동 기록:
+ *      • 가입 시 analytics_events 에 'signup' 이벤트 기록 (테이블 존재 시)
  */
 
 /* ───────── Minimal Cloudflare Pages ambient types (editor-only) ───────── */
@@ -35,7 +47,7 @@ type PagesFunction<E = unknown> = (
 ) => Promise<Response> | Response;
 /* ─────────────────────────────────────────────────────────────────────── */
 
-/* ───────── Crypto helpers ───────── */
+/* ───────── Crypto helpers (password hash) ───────── */
 async function sha256(s: string) {
   const buf = await crypto.subtle.digest(
     "SHA-256",
@@ -44,6 +56,74 @@ async function sha256(s: string) {
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/* ───────── JWT helpers (optional, for immediate login after signup) ─────────
+ * - HS256 (HMAC-SHA256) 기반 간단 JWT 구현
+ * - env.JWT_SECRET 존재 시에만 토큰 발급, 없으면 기존 응답 구조만 유지
+ */
+
+type JwtPayload = {
+  sub: string; // userId
+  iat: number;
+  exp: number;
+  [key: string]: unknown;
+};
+
+function base64UrlEncode(input: ArrayBuffer | Uint8Array | string): string {
+  let bytes: Uint8Array;
+
+  if (typeof input === "string") {
+    bytes = new TextEncoder().encode(input);
+  } else if (input instanceof ArrayBuffer) {
+    bytes = new Uint8Array(input);
+  } else {
+    bytes = input;
+  }
+
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function createJwtToken(
+  userId: string,
+  secret: string,
+  options?: { expiresInSec?: number; extra?: Record<string, unknown> }
+): Promise<string> {
+  const header = { alg: "HS256", typ: "JWT" };
+  const nowSec = Math.floor(Date.now() / 1000);
+  const expSec = nowSec + (options?.expiresInSec ?? 60 * 60 * 24 * 30); // default 30 days
+
+  const payload: JwtPayload = {
+    sub: userId,
+    iat: nowSec,
+    exp: expSec,
+    ...(options?.extra ?? {}),
+  };
+
+  const headerB64 = base64UrlEncode(JSON.stringify(header));
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const data = `${headerB64}.${payloadB64}`;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(data)
+  );
+  const sigB64 = base64UrlEncode(sig);
+
+  return `${data}.${sigB64}`;
 }
 
 /* ───────── Neon/Postgres 오류 식별: 이메일/아이디 중복 ───────── */
@@ -124,12 +204,91 @@ function getClientMeta(request: Request) {
   return { ip, ua };
 }
 
-/* ───────── Helpers: audit_logs 사용 가능 여부 체크 ───────── */
+/* ───────── Helpers: audit_logs / analytics_events 사용 가능 여부 체크 ───────── */
 async function hasAuditLogsTable(sql: ReturnType<typeof getSql>): Promise<boolean> {
   const rows = await sql/* sql */`
     select to_regclass('public.audit_logs') as name
   `;
   return Boolean(rows[0]?.name);
+}
+
+async function hasAnalyticsEventsTable(
+  sql: ReturnType<typeof getSql>
+): Promise<boolean> {
+  const rows = await sql/* sql */`
+    select to_regclass('public.analytics_events') as name
+  `;
+  return Boolean(rows[0]?.name);
+}
+
+/* ───────── Helpers: user_wallet 스키마 보강 ─────────
+ * - 게임 플레이 후 포인트/티켓 자동 저장을 위한 지갑 테이블
+ * - migrations/005_user_stats_wallet_extension.sql 과 호환되도록 방어적 설계
+ */
+async function ensureUserWalletSchema(sql: ReturnType<typeof getSql>): Promise<void> {
+  // 기본 테이블 생성 (이미 있으면 아무 일도 하지 않음)
+  await sql/* sql */`
+    create table if not exists user_wallet (
+      user_id    uuid primary key references users(id) on delete cascade,
+      points     bigint not null default 0,
+      tickets    bigint not null default 0,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    )
+  `;
+
+  // 누락된 컬럼 방어적 추가
+  await sql/* sql */`
+    alter table user_wallet
+      add column if not exists points     bigint not null default 0,
+      add column if not exists tickets    bigint not null default 0,
+      add column if not exists created_at timestamptz not null default now(),
+      add column if not exists updated_at timestamptz not null default now()
+  `;
+
+  // 음수 방지 제약조건 (존재하지 않는 경우에만 추가)
+  await sql/* sql */`
+    do $$
+    begin
+      if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'user_wallet'::regclass
+          and conname = 'user_wallet_points_nonneg'
+      ) then
+        alter table user_wallet
+          add constraint user_wallet_points_nonneg check (points >= 0);
+      end if;
+
+      if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'user_wallet'::regclass
+          and conname = 'user_wallet_tickets_nonneg'
+      ) then
+        alter table user_wallet
+          add constraint user_wallet_tickets_nonneg check (tickets >= 0);
+      end if;
+    end
+    $$;
+  `;
+
+  // updated_at 트리거 세팅 (set_updated_at() 함수가 존재할 때만)
+  await sql/* sql */`
+    do $$
+    begin
+      if exists (
+        select 1 from pg_proc where proname = 'set_updated_at'
+      ) then
+        if not exists (
+          select 1 from pg_trigger where tgname = 'user_wallet_set_updated_at'
+        ) then
+          create trigger user_wallet_set_updated_at
+          before update on user_wallet
+          for each row execute function set_updated_at();
+        end if;
+      end if;
+    end
+    $$;
+  `;
 }
 
 /* ───────── Cloudflare Pages handler ───────── */
@@ -185,9 +344,11 @@ export const onRequest: PagesFunction<Env> = async ({
     const { ip, ua } = getClientMeta(request);
 
     // ─────────────────────────────────────────────────────────────
-    // users / user_stats / user_progress / audit_logs 스키마 보강
+    // users / user_stats / user_progress / user_wallet / analytics_events 스키마 보강
     //  - users 컬럼은 migrations/005_user_profile_and_progress.sql 에서
     //    이미 추가되지만, 여기서도 alter table if not exists 로 이중 안전망 유지
+    //  - user_stats / user_progress / user_wallet 은 가입 시점 기본 row 생성 전,
+    //    테이블/컬럼/제약 조건을 방어적으로 체크
     // ─────────────────────────────────────────────────────────────
 
     // users: password_hash 및 회원정보 컬럼 보강
@@ -279,17 +440,37 @@ export const onRequest: PagesFunction<Env> = async ({
     await sql/* sql */`
       do $$
       begin
-        if not exists (
-          select 1
-          from pg_trigger
-          where tgname = 'user_stats_set_updated_at'
+        if exists (
+          select 1 from pg_proc where proname = 'set_updated_at'
         ) then
-          create trigger user_stats_set_updated_at
-          before update on user_stats
-          for each row execute function set_updated_at();
+          if not exists (
+            select 1
+            from pg_trigger
+            where tgname = 'user_stats_set_updated_at'
+          ) then
+            create trigger user_stats_set_updated_at
+            before update on user_stats
+            for each row execute function set_updated_at();
+          end if;
         end if;
       end
       $$;
+    `;
+
+    // user_wallet 스키마 보강 (게임 포인트/티켓 관리용)
+    await ensureUserWalletSchema(sql);
+
+    // analytics_events 테이블이 없더라도 create table if not exists 로 방어 가능 (선택)
+    await sql/* sql */`
+      create table if not exists analytics_events (
+        id         bigserial primary key,
+        user_id    uuid references users(id) on delete cascade,
+        event_name text not null,
+        game_id    text,
+        score      bigint,
+        metadata   jsonb,
+        created_at timestamptz not null default now()
+      )
     `;
 
     // ── 가입 처리 ─────────────────────────────────────────────────────
@@ -331,16 +512,29 @@ export const onRequest: PagesFunction<Env> = async ({
         on conflict (user_id) do nothing
       `;
 
-      // user_progress 기본 row 생성 (exp/level/tickets = 0/1/0)
+      // user_progress 기본 row 생성 (exp/level/tickets = 0/1/0) — 스키마 존재 시
       await sql/* sql */`
-        insert into user_progress (user_id)
-        values (${userId})
+        do $$
+        begin
+          if to_regclass('public.user_progress') is not null then
+            insert into user_progress (user_id)
+            values (${userId}::uuid)
+            on conflict (user_id) do nothing;
+          end if;
+        end
+        $$;
+      `;
+
+      // user_wallet 기본 row 생성 (points/tickets = 0) — ensureUserWalletSchema 이후 안전
+      await sql/* sql */`
+        insert into user_wallet (user_id)
+        values (${userId}::uuid)
         on conflict (user_id) do nothing
       `;
 
       // audit_logs 테이블이 있으면 가입 기록 남기기 (옵션)
       if (await hasAuditLogsTable(sql)) {
-        const payload = {
+        const payloadAudit = {
           email,
           username,
           ip,
@@ -352,27 +546,62 @@ export const onRequest: PagesFunction<Env> = async ({
           values (
             ${userId}::uuid,
             'signup_local',
-            ${JSON.stringify(payload)}::jsonb
+            ${JSON.stringify(payloadAudit)}::jsonb
           )
         `;
       }
 
-      // 응답: 기존 구조 유지 (ok + userId, 헤더 성능 정보)
-      return withCORS(
-        json(
-          {
-            ok: true,
-            userId,
-          },
-          {
-            headers: {
-              "Cache-Control": "no-store",
-              "X-Signup-Took-ms": String(
-                Math.round(performance.now() - t0)
-              ),
+      // analytics_events 테이블이 있으면 signup 이벤트 기록
+      if (await hasAnalyticsEventsTable(sql)) {
+        const payloadAnalytics = {
+          ip,
+          ua,
+          signup_source: "local_form",
+        };
+        await sql/* sql */`
+          insert into analytics_events (user_id, event_name, metadata)
+          values (
+            ${userId}::uuid,
+            'signup',
+            ${JSON.stringify(payloadAnalytics)}::jsonb
+          )
+        `;
+      }
+
+      // JWT 토큰 (선택적) 발급: env.JWT_SECRET 이 설정된 경우에만
+      let token: string | null = null;
+      if (env && (env as any).JWT_SECRET) {
+        try {
+          token = await createJwtToken(userId, (env as any).JWT_SECRET, {
+            expiresInSec: 60 * 60 * 24 * 30, // 30 days
+            extra: {
+              email,
+              username,
             },
-          }
-        ),
+          });
+        } catch {
+          // 토큰 발급 실패는 치명적 에러가 아니므로 무시하고 계속 진행
+          token = null;
+        }
+      }
+
+      // 응답: 기존 구조 유지 (ok + userId) + token 이 있으면 추가
+      const tookMs = Math.round(performance.now() - t0);
+      const payloadResponse: Record<string, any> = {
+        ok: true,
+        userId,
+      };
+      if (token) {
+        payloadResponse.token = token;
+      }
+
+      return withCORS(
+        json(payloadResponse, {
+          headers: {
+            "Cache-Control": "no-store",
+            "X-Signup-Took-ms": String(tookMs),
+          },
+        }),
         env.CORS_ORIGIN
       );
     } catch (e: any) {

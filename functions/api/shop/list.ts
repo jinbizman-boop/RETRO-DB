@@ -2,8 +2,11 @@
 // ───────────────────────────────────────────────────────────────
 // RETRO-GAMES Cloudflare API: 상점 아이템 목록 조회
 //
-// - 활성화(active) & 비아카이브(archived=false) 상태의 shop_items 리스트 반환
-// - 정렬: sort_order → price_coins → name
+// - 활성화(active) 상태의 shop_items 리스트 반환
+// - 정렬: id (seed 순서)
+// - DB 실제 컬럼( item_key / price_points / is_active … )에 맞게 매핑
+//   • item_type / effect_key / effect_value / effect_duration_minutes 등은
+//     item_key 기준으로 계산해서 alias 로 제공
 // - CORS / Rate-limit / 응답 포맷은 signup/login/game 과 동일 스타일
 // ───────────────────────────────────────────────────────────────
 
@@ -74,64 +77,83 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     `;
 
     if (!exists) {
+      const tookMs = Math.round(performance.now() - started);
       return withCORS(
         json(
-          { ok: true, items: [], meta: { tookMs: Math.round(performance.now() - started) } },
+          { ok: true, items: [], meta: { tookMs } },
           { headers: { "Cache-Control": "no-store" } }
         ),
         env.CORS_ORIGIN
       );
     }
 
-    // 기본 쿼리: active & !archived
+    // item_type / effect_* 계산용 CASE 절
+    const baseSelect = sql/* sql */`
+      select
+        id,
+        name,
+        -- item_type: item_key 기반 가상 컬럼
+        case
+          when item_key like 'ticket_%'    then 'ticket'
+          when item_key like 'exp_boost_%' then 'booster'
+          else 'other'
+        end                                                   as item_type,
+        -- effect_key: ticket → tickets, booster → exp_multiplier
+        case
+          when item_key like 'ticket_%'    then 'tickets'
+          when item_key like 'exp_boost_%' then 'exp_multiplier'
+          else null
+        end                                                   as effect_key,
+        -- effect_value: seed 에 맞춰 하드코딩(티켓 수 / %)
+        case
+          when item_key = 'ticket_small'  then 5
+          when item_key = 'ticket_medium' then 10
+          when item_key = 'ticket_large'  then 20
+          when item_key = 'exp_boost_10'  then 10
+          when item_key = 'exp_boost_20'  then 20
+          else null
+        end::bigint                                           as effect_value,
+        -- duration: 부스트 계열만 분 단위로 환산 (없으면 null)
+        case
+          when item_key like 'exp_boost_%'
+            then greatest(1, coalesce(duration_sec, 0) / 60)
+          else null
+        end::integer                                          as effect_duration_minutes,
+        price_points                                          as price_coins,
+        -- 기존 스키마 호환용 placeholder 컬럼들
+        null::bigint                                          as stock,
+        null::jsonb                                           as metadata,
+        is_active                                             as active,
+        id                                                    as sort_order,
+        null::text[]                                          as tags
+      from shop_items
+      where is_active = true
+    `;
+
     let rows: any[];
 
     if (typeFilter) {
       rows = await sql/* sql */`
-        select
-          id,
-          name,
-          item_type,
-          effect_key,
-          effect_value,
-          effect_duration_minutes,
-          price_coins,
-          stock,
-          metadata,
-          active,
-          sort_order,
-          tags
-        from shop_items
-        where active = true
-          and coalesce(archived, false) = false
-          and item_type = ${typeFilter}
+        select *
+        from (
+          ${baseSelect}
+        ) s
+        where s.item_type = ${typeFilter}
         order by
-          sort_order nulls last,
-          price_coins nulls last,
-          name asc
+          s.sort_order nulls last,
+          s.price_coins nulls last,
+          s.name asc
       `;
     } else {
       rows = await sql/* sql */`
-        select
-          id,
-          name,
-          item_type,
-          effect_key,
-          effect_value,
-          effect_duration_minutes,
-          price_coins,
-          stock,
-          metadata,
-          active,
-          sort_order,
-          tags
-        from shop_items
-        where active = true
-          and coalesce(archived, false) = false
+        select *
+        from (
+          ${baseSelect}
+        ) s
         order by
-          sort_order nulls last,
-          price_coins nulls last,
-          name asc
+          s.sort_order nulls last,
+          s.price_coins nulls last,
+          s.name asc
       `;
     }
 

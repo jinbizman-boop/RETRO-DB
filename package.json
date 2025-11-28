@@ -7,12 +7,14 @@
     "migrate": "psql \"$NEON_DATABASE_URL\" -f migrations/001_init.sql"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.0",
-    "hono": "^4.6.0",
-    "zod": "^3.23.8"
+    "@neondatabase/serverless": "0.10.4",
+    "hono": "4.10.4",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241112.0",
-    "typescript": "^5.6.3"
+    "@cloudflare/workers-types": "4.20251107.0",
+    "typescript": "5.9.3",
+    "@types/node": "24.10.0",
+    "undici-types": "7.16.0"
   }
 }

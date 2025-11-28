@@ -3,10 +3,11 @@
 // RETRO-GAMES Cloudflare API: 상점 아이템 구매
 //
 // - 인증 필수 (JWT → _middleware → data.auth.userId)
-// - shop_items 에 정의된 item_type / effect_key 에 따라
-//   • ticket pack → user_wallet / user_stats.tickets 증가
-//   • exp booster → 나중에 user_effects 같은 데 반영할 수도 있음 (지금은 analytics 에만 기록)
+// - shop_items 에 정의된 item_key 를 기반으로
+//   • ticket_*   → user_wallet / user_stats.tickets 증가
+//   • exp_boost* → 추후 부스트 로직 확장 가능 (지금은 analytics 에만 기록)
 // - analytics_events 에 'shop_purchase' 이벤트 기록
+// - DB 실제 컬럼( item_key / price_points / is_active … )에 맞게 매핑
 // ───────────────────────────────────────────────────────────────
 
 import { json, readJSON } from "../_utils/json";
@@ -139,23 +140,76 @@ export const onRequest: PagesFunction<Env> = async ({
       );
     }
 
-    // 대상 아이템 조회
+    // 대상 아이템 조회 (DB 실제 컬럼 → 예상 컬럼으로 매핑)
     let rows: any[];
     if (itemId != null) {
       rows = await sql/* sql */`
-        select *
+        select
+          id,
+          item_key,
+          name,
+          description,
+          price_points                                  as price_coins,
+          price_tickets,
+          duration_sec,
+          max_stack,
+          is_active                                     as active,
+          -- 가상 컬럼들 (list.ts 와 동일한 규칙)
+          case
+            when item_key like 'ticket_%'    then 'ticket'
+            when item_key like 'exp_boost_%' then 'booster'
+            else 'other'
+          end                                           as item_type,
+          case
+            when item_key like 'ticket_%'    then 'tickets'
+            when item_key like 'exp_boost_%' then 'exp_multiplier'
+            else null
+          end                                           as effect_key,
+          case
+            when item_key = 'ticket_small'  then 5
+            when item_key = 'ticket_medium' then 10
+            when item_key = 'ticket_large'  then 20
+            when item_key = 'exp_boost_10'  then 10
+            when item_key = 'exp_boost_20'  then 20
+            else null
+          end::bigint                                   as effect_value
         from shop_items
         where id = ${itemId}
-          and active = true
-          and coalesce(archived, false) = false
+          and is_active = true
       `;
     } else {
       rows = await sql/* sql */`
-        select *
+        select
+          id,
+          item_key,
+          name,
+          description,
+          price_points                                  as price_coins,
+          price_tickets,
+          duration_sec,
+          max_stack,
+          is_active                                     as active,
+          case
+            when item_key like 'ticket_%'    then 'ticket'
+            when item_key like 'exp_boost_%' then 'booster'
+            else 'other'
+          end                                           as item_type,
+          case
+            when item_key like 'ticket_%'    then 'tickets'
+            when item_key like 'exp_boost_%' then 'exp_multiplier'
+            else null
+          end                                           as effect_key,
+          case
+            when item_key = 'ticket_small'  then 5
+            when item_key = 'ticket_medium' then 10
+            when item_key = 'ticket_large'  then 20
+            when item_key = 'exp_boost_10'  then 10
+            when item_key = 'exp_boost_20'  then 20
+            else null
+          end::bigint                                   as effect_value
         from shop_items
         where name = ${name}
-          and active = true
-          and coalesce(archived, false) = false
+          and is_active = true
       `;
     }
 
@@ -210,9 +264,7 @@ export const onRequest: PagesFunction<Env> = async ({
       );
     }
 
-    // ───── 트랜잭션으로 포인트 차감 + 효과 적용 ─────
-    // Neon serverless 에서 BEGIN/COMMIT 은 내부적으로 하나의 세션에서만 안전하게 동작.
-    // 여기서는 간단한 예시로 같은 sql 핸들에서 순차 실행.
+    // ───── 포인트 차감 + 효과 적용 ─────
 
     // 1) 포인트 차감
     await sql/* sql */`
@@ -224,8 +276,6 @@ export const onRequest: PagesFunction<Env> = async ({
     let ticketsGained = 0;
 
     // 2) 효과 적용
-    //  - ticket pack: effect_key='tickets' → user_wallet / user_stats.tickets 증가
-    //  - booster: exp_multiplier → 일단 analytics 에만 기록(실제 적용은 게임 로직에서)
     if (itemType === "ticket" || effectKey === "tickets") {
       ticketsGained = effectValue;
 
@@ -242,7 +292,7 @@ export const onRequest: PagesFunction<Env> = async ({
       `;
     } else if (itemType === "booster" && effectKey === "exp_multiplier") {
       // EXP 부스트 아이템은, 나중에 user_effects 같은 테이블 도입 시
-      // 거기에 기간/배율로 기록하는 구조로 쉽게 확장할 수 있음.
+      // 거기에 기간/배율로 기록하는 구조로 쉽게 확장 가능.
       // 여기서는 "구매했다"는 사실만 analytics 에 남긴다.
     }
 

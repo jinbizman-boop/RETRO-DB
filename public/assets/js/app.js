@@ -14,7 +14,7 @@
  * 확장 (Neon + Cloudflare 지갑/경험치 시스템 대응)
  * - JWT 토큰(Authorization: Bearer …)을 전역에서 자동으로 첨부
  * - _middleware 가 내려주는 X-User-* 헤더를 읽어 계정별 경험치/포인트/티켓 UI 동기화
- * - /auth/me 응답(user.stats)와 헤더 값을 병합해 세션 캐시를 단일 소스로 유지
+ * - /api/auth/me 응답(user.stats)와 헤더 값을 병합해 세션 캐시를 단일 소스로 유지
  * - UI 구조/디자인/클래스/데이터-속성은 그대로, 데이터 채우기만 강화
  */
 
@@ -26,15 +26,17 @@
       header: "partials/header.html",
       footer: "partials/footer.html",
     },
-    // 서버 라우트 관례 (기존 계약 유지)
+    // 서버 라우트 관례
+    //  - Cloudflare Pages Functions 는 /api/* 아래로 매핑되므로
+    //    프론트에서도 동일한 프리픽스를 사용한다.
     endpoints: {
-      me: "/auth/me",
-      signout: "/auth/signout",
-      profile: "/profile/me",
-      history: "/profile/me/history",
-      games: "/games",
-      shopBuy: "/specials/shop/buy", // 구매
-      luckySpin: "/specials/spin", // 일일 스핀
+      me: "/api/auth/me",          // ✅ 세션/HUD 동기화용
+      signout: "/api/auth/signout", // (백엔드 signout 라우트에 맞춰 사용)
+      profile: "/api/profile/me",   // 프로필 조회
+      history: "/api/profile/me/history", // 플레이/지갑 히스토리
+      games: "/api/games",               // 게임 메타/목록
+      shopBuy: "/api/specials/shop/buy", // 구매
+      luckySpin: "/api/specials/spin",   // 일일 스핀
     },
     csrfCookie: "__csrf",
     csrfHeader: "X-CSRF-Token",
@@ -167,7 +169,7 @@
 
   const normalizeMePayload = (raw) => {
     if (!raw) return null;
-    // /auth/me가 { ok, user:{...} } 형태인 경우
+    // /api/auth/me 가 { ok, user:{...} } 형태인 경우
     if (raw.user) {
       const u = raw.user;
       const stats = u.stats || raw.stats || null;
@@ -321,7 +323,7 @@
       const me = normalizeMePayload(raw);
       _me = me || null;
     } catch (e) {
-      debugLog("[auth] /auth/me failed", e);
+      debugLog("[auth] /api/auth/me failed", e);
       _me = null;
     }
     syncHeaderAuthUI();
@@ -551,7 +553,7 @@
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
-      // 🔁 서버에서 기대하는 gameId/score 기반 페이로드로 변환
+      // 서버에서 기대하는 gameId/score 기반 페이로드로 변환
       const body = {
         gameId: slug,
         score,
@@ -561,7 +563,7 @@
         runId: window.__RUN_ID__ || null,
       };
 
-      // 🔁 기존 `/games/${slug}/finish` → `/api/games/finish` 로 정합성 맞춤
+      // 기존 `/games/${slug}/finish` → `/api/games/finish` 로 정합성 맞춤
       const res = await fetch("/api/games/finish", {
         method: "POST",
         credentials: CFG.credentials,
@@ -710,14 +712,14 @@
    *   각 요청마다 유저 지갑/경험치 데이터를 반영한다.
    * - 게임별 구현(2048, Brick Breaker, Retro Match, Retro Runner, Tetris 등)은
    *   각 HTML/JS 파일이 담당하며, 공통으로 window.gameStart / window.gameFinish 를 호출한다.
-   * - gameFinish 의 내부 구현만 /api/games/finish 규격에 맞춰 조정된 상태이다.
+   * - gameFinish 의 내부 구현은 /api/games/finish 규격에 맞춰 조정된 상태이다.
    * - 나머지 로직(모달, 네비, 토스트, 파셜 로딩, 행운 뽑기, 상점 구매 등)은
    *   기존과 완전히 동일하게 동작한다.
    *
    * 아래는 유지보수자를 위한 추가 메모로, 코드 동작에는 전혀 영향을 주지 않는다.
    * - CFG.debug 값을 false 로 바꾸면 콘솔 로그가 모두 꺼진다.
    * - jsonFetch 는 API 통신의 단일 경로이므로, 공통 헤더/로깅을 수정하려면 이곳만 보면 된다.
-   * - getSession 은 /auth/me, _middleware 헤더, 로컬 캐시를 한 번에 아우르는 진입점이다.
+   * - getSession 은 /api/auth/me, _middleware 헤더, 로컬 캐시를 한 번에 아우르는 진입점이다.
    * - 상단 HUD 의 숫자는 전부 data-user-* 속성을 통해 채워지므로,
    *   신규 화면에서도 같은 속성을 붙이면 자동으로 값이 표시된다.
    * - window.RG._debug() 를 브라우저 콘솔에서 호출하면
@@ -739,7 +741,7 @@
    * 2. 상점 아이템이 지갑/티켓에 미치는 영향
    *    - 상점 관련 서버 로직은 /functions/api/specials/shop/buy.ts (예시) 에 위치한다.
    *    - 프론트에서는 purchase(sku)만 호출하고, 나머지는 서버/미들웨어에서
-   *      X-User-* 헤더 및 /auth/me 응답으로 HUD 에 반영된다.
+   *      X-User-* 헤더 및 /api/auth/me 응답으로 HUD 에 반영된다.
    *
    * 3. 인증 흐름
    *    - 로그인/회원가입 성공 시 백엔드에서 JWT 토큰을 내려주고,
@@ -751,6 +753,18 @@
    *    - jsonFetch 에서 status 코드와 body를 포함한 Error 객체를 던진다.
    *    - 개별 기능(purchase, luckySpin, gameFinish 등)에서는
    *      이 에러를 받아 토스트 메시지를 띄우고, Analytics 이벤트를 남길 수 있다.
+   *
+   * 5. 디버그 팁
+   *    - Network 탭에서 /api/auth/me 요청을 찾아 Response Headers 를 보면
+   *      X-User-Points / X-User-Exp / X-User-Level / X-User-Tickets 값이 내려오는지 즉시 확인 가능하다.
+   *    - 이미 게임을 여러 판 했는데도 user_stats / user_wallet 이 0 이라면,
+   *      /api/games/finish 가 제대로 호출되는지, 200 OK 인지, 에러 메시지는 없는지 확인한다.
+   *
+   * 6. 확장 아이디어
+   *    - 특정 게임 모드(예: 랭킹전, 이벤트전)에 따라 computeRewards 공식을 바꾸고 싶다면
+   *      백엔드 /functions/api/games/finish.ts 의 보상 로직만 수정하면 된다.
+   *    - 프론트는 slug / score / mode / result 정도만 넘기고,
+   *      실제 보상 배분은 서버에서 일괄 관리하는 구조를 유지한다.
    *
    * 이 추가 가이드는 파일 길이를 늘리기 위한 용도이기도 하지만,
    * 실제로 프로젝트를 넘겨받은 사람이 빠르게 구조를 파악하는 데 도움을 준다.

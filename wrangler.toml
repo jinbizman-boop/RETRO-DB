@@ -17,3 +17,14 @@ pages_build_output_dir = "public"
 # - 별도의 [build], [build.upload] 블록은 Pages 구성에서 지원하지 않으므로 사용하지 않는다.
 # - package.json 이 루트에 있기 때문에, Pages 빌드 시 npm install 은 자동으로 실행된다.
 # - nodejs_compat 로 일부 Node API 를 Functions 에서 사용할 수 있다.
+
+# ──────────────────────────────────────────────────────────────
+# Vars (일반 환경 변수)
+# - 비밀키(JWT_SECRET, NEON_DATABASE_URL)는 대시보드의 "비밀"로 관리
+# - 아래 값들은 노출되어도 되는 일반 문자열이므로 wrangler.toml 에서 관리
+#   → env.JWT_ISSUER, env.JWT_AUDIENCE, env.JWT_EXPIRY 로 Functions 에서 사용 가능
+# ──────────────────────────────────────────────────────────────
+[vars]
+JWT_ISSUER   = "retro-games"
+JWT_AUDIENCE = "retro-games-client"
+JWT_EXPIRY   = "7d"

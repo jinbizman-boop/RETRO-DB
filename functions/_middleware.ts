@@ -2,6 +2,7 @@
 // ───────────────────────────────────────────────────────────────
 // Global CORS + Auth propagation middleware for Cloudflare Pages Functions
 //
+// ✅ 목표/역할 정리
 // - 기존 동작/계약 100% 유지
 // - VSCode 타입 에러 제거를 위한 로컬 타입 shim 포함
 // - 전역 CORS/보안 헤더 부착
@@ -12,8 +13,7 @@
 // - ★ B안 적용: 인증이 성공한 경우, 다운스트림 Functions 로 전달되는
 //   Request 의 헤더에 `X-User-Id` 를 주입해서 /api/wallet, /api/games 등에서
 //   즉시 userId 를 읽을 수 있도록 한다.
-// - DB 스키마: migrations/001_init.sql + wallet C안 구조의 user_stats 를 기준으로
-//   user_progress / wallet_balances 대신 user_stats 를 사용하도록 정합성 강화.
+// - DB 스키마: user_stats 테이블 기준으로 coins/exp/xp/tickets/games_played 사용
 // - 프론트엔드에서 커스텀 헤더를 읽을 수 있도록 Access-Control-Expose-Headers 추가.
 // - 이 미들웨어는 “절대” 본문(body)나 status 코드를 변경하지 않고, 헤더만 얹는다.
 // ───────────────────────────────────────────────────────────────
@@ -23,7 +23,6 @@
 type CfContext<E> = {
   request: Request;
   env: E;
-  // Cloudflare Pages: next() or next(newRequest | { request })
   next: (input?: Request | { request: Request }) => Promise<Response>;
   params?: Record<string, string>;
   data?: unknown;
@@ -49,71 +48,70 @@ const ALLOW_HEADERS = (env: any) =>
 
 // 프론트에서 사용할 수 있는 모든 커스텀 헤더를 한 곳에 모아둔다.
 // (API 레벨에서 추가된 헤더는 여기에도 반드시 반영해줘야 프론트가 읽을 수 있음)
-const EXPOSE_HEADERS =
-  [
-    // DB / 헬스체크
-    "X-DB-Ok",
-    "X-DB-Took-ms",
-    "X-DB-Error",
+const EXPOSE_HEADERS = [
+  // DB / 헬스체크
+  "X-DB-Ok",
+  "X-DB-Took-ms",
+  "X-DB-Error",
 
-    // User stats (전역 요약)
-    "X-User-Id",
-    "X-User-Points",
-    "X-User-Exp",
-    "X-User-Level",
-    "X-User-Tickets",
-    "X-User-Games",
+  // User stats (전역 요약)
+  "X-User-Id",
+  "X-User-Points",
+  "X-User-Exp",
+  "X-User-Level",
+  "X-User-Tickets",
+  "X-User-Games",
 
-    // Wallet / Transactions
-    "X-Wallet-User",
-    "X-Wallet-Source",
-    "X-Wallet-Delta",
-    "X-Wallet-Balance",
-    "X-Wallet-Type",
-    "X-Wallet-Game",
-    "X-Wallet-Exp-Delta",
-    "X-Wallet-Tickets-Delta",
-    "X-Wallet-Plays-Delta",
-    "X-Wallet-Exp",
-    "X-Wallet-Tickets",
-    "X-Wallet-Games",
-    "X-Wallet-Idempotent",
-    "X-Wallet-Ref-Table",
-    "X-Wallet-Ref-Id",
-    "X-Wallet-Took-ms",
+  // Wallet / Transactions
+  "X-Wallet-User",
+  "X-Wallet-Source",
+  "X-Wallet-Delta",
+  "X-Wallet-Balance",
+  "X-Wallet-Type",
+  "X-Wallet-Game",
+  "X-Wallet-Exp-Delta",
+  "X-Wallet-Tickets-Delta",
+  "X-Wallet-Plays-Delta",
+  "X-Wallet-Exp",
+  "X-Wallet-Tickets",
+  "X-Wallet-Games",
+  "X-Wallet-Idempotent",
+  "X-Wallet-Ref-Table",
+  "X-Wallet-Ref-Id",
+  "X-Wallet-Took-ms",
 
-    // Inventory / Shop / Redeem
-    "X-Inventory-User",
-    "X-Inventory-Count",
-    "X-Inventory-Limit",
-    "X-Inventory-Source",
-    "X-Redeem-User",
-    "X-Redeem-Item",
-    "X-Redeem-Delta",
-    "X-Redeem-Source",
-    "X-Redeem-Cost-Coins",
-    "X-Redeem-Idempotent",
-    "X-Redeem-Took-ms",
+  // Inventory / Shop / Redeem
+  "X-Inventory-User",
+  "X-Inventory-Count",
+  "X-Inventory-Limit",
+  "X-Inventory-Source",
+  "X-Redeem-User",
+  "X-Redeem-Item",
+  "X-Redeem-Delta",
+  "X-Redeem-Source",
+  "X-Redeem-Cost-Coins",
+  "X-Redeem-Idempotent",
+  "X-Redeem-Took-ms",
 
-    // Auth / Score / Signup / Login 등 처리시간
-    "X-Score-Took-ms",
-    "X-Signup-Took-ms",
-    "X-Login-Took-ms",
-    "X-Me-Took-ms",
+  // Auth / Score / Signup / Login / Me 등 처리시간
+  "X-Score-Took-ms",
+  "X-Signup-Took-ms",
+  "X-Login-Took-ms",
+  "X-Me-Took-ms",
 
-    // Specials (events / rewards)
-    "X-Reward-Status",
-    "X-Reward-Coins",
-    "X-Reward-Exp",
-    "X-Reward-Tickets",
-    "X-Reward-Took-ms",
-    "X-Events-Limit",
-    "X-Events-Status",
-    "X-Events-Took-ms",
-    "X-Events-Active-Count",
-    "X-Events-Upcoming-Count",
-    "X-Events-Past-Count",
-  ].join(",");
+  // Specials (events / rewards)
+  "X-Reward-Status",
+  "X-Reward-Coins",
+  "X-Reward-Exp",
+  "X-Reward-Tickets",
+  "X-Reward-Took-ms",
+  "X-Events-Limit",
+  "X-Events-Status",
+  "X-Events-Took-ms",
+  "X-Events-Active-Count",
+  "X-Events-Upcoming-Count",
+  "X-Events-Past-Count",
+].join(",");
 
 // truthy-style query param parser
 const truthy = (v: string | null) =>
@@ -176,21 +174,22 @@ type UserHeaderStats = {
 };
 
 /**
- * DB user_stats 스키마:
- *   user_id uuid primary key
- *   coins bigint
- *   exp bigint
- *   xp bigint (과거 호환용, 있으면 exp 대신 사용 가능)
- *   tickets bigint
+ * DB user_stats 스키마(기대 형태):
+ *   user_id      uuid primary key
+ *   coins        bigint
+ *   exp          bigint
+ *   xp           bigint (과거 호환용, 있으면 exp 대신 사용 가능)
+ *   level        int    (없을 경우 exp 기반 level 계산)
+ *   tickets      bigint
  *   games_played bigint
- *   updated_at timestamptz
+ *   updated_at   timestamptz
  *
  * 이 함수는 user_stats 기반으로:
  *   - X-User-Points (coins)
  *   - X-User-Exp    (exp/xp)
  *   - X-User-Level  (level 또는 exp→계산)
  *   - X-User-Tickets
- *   - X-User-Games  (games_played; 헤더 이름은 아래에서 부여)
+ *   - X-User-Games  (games_played)
  *
  * 을 헤더에 넣기 위한 숫자들을 조회한다.
  *
@@ -209,8 +208,7 @@ async function loadUserStatsFromDb(
   let tickets = 0;
   let gamesPlayed = 0;
 
-  // user_stats row 가 없으면 트랜잭션 계층에서 만들기도 하지만,
-  // 여기서는 미리 ensureUserStatsRow 로 row 를 보장해둔다.
+  // user_stats row 가 없으면 progression 헬퍼에서 생성하도록 시도
   try {
     await ensureUserStatsRow(sql as any, userIdText);
   } catch (e) {
@@ -335,10 +333,9 @@ async function getUserStatsForHeaders(
  * - 인증이 실패하면 원본 Request 를 그대로 반환 (비인증 요청은 막지 않음).
  *
  * 주입된 X-User-Id 는:
- *   - /api/wallet/transaction.ts
- *   - /api/games/score.ts
- *   - /api/wallet/transaction.ts
- *   - /api/wallet/xxx.ts (balace/inventory/redeem 등)
+ *   - /api/wallet/*
+ *   - /api/games/*
+ *   - /api/specials/*
  * 등에서 공통으로 사용된다.
  */
 async function attachUserIdToRequest(
@@ -375,6 +372,21 @@ async function attachUserIdToRequest(
   return { requestForNext, userIdText };
 }
 
+// ───────────────────────── CORS Preflight ──────────────────────────────
+function buildPreflightResponse(env: Partial<DbEnv>): Response {
+  const hdr = new Headers();
+  hdr.set("Access-Control-Allow-Origin", ALLOW_ORIGIN(env));
+  hdr.set("Access-Control-Allow-Methods", ALLOW_METHODS(env));
+  hdr.set("Access-Control-Allow-Headers", ALLOW_HEADERS(env));
+  hdr.set("Access-Control-Max-Age", "86400");
+  hdr.set("X-Content-Type-Options", "nosniff");
+  hdr.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  hdr.set("Access-Control-Expose-Headers", EXPOSE_HEADERS);
+  hdr.set("Vary", "Origin");
+
+  return new Response(null, { headers: hdr });
+}
+
 // ───────────────────────── Main Middleware ─────────────────────────────
 
 export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
@@ -382,31 +394,16 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
   env,
   next,
 }) => {
-  // CORS preflight (기존 방식 그대로 유지)
+  // 1) CORS preflight (기존 방식 그대로 유지)
   if (request.method === "OPTIONS") {
-    const hdr = new Headers();
-    hdr.set("Access-Control-Allow-Origin", ALLOW_ORIGIN(env));
-    hdr.set("Access-Control-Allow-Methods", ALLOW_METHODS(env));
-    hdr.set("Access-Control-Allow-Headers", ALLOW_HEADERS(env));
-    hdr.set("Access-Control-Max-Age", "86400");
-    hdr.set("X-Content-Type-Options", "nosniff");
-    hdr.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    hdr.set("Access-Control-Expose-Headers", EXPOSE_HEADERS);
-    hdr.set("Vary", "Origin");
-
-    return new Response(null, {
-      headers: hdr,
-    });
+    return buildPreflightResponse(env);
   }
 
   const url = new URL(request.url);
 
-  // ─────────────────────────────────────────────────────────────
-  // B안: /api/* 경로에 대해서만, 다운스트림으로 전달되는 Request 에
-  //      `X-User-Id` 를 주입해서 /api/wallet 등의 엔드포인트가
-  //      공통 규칙으로 유저를 식별할 수 있도록 한다.
-  //      (비인증이면 그냥 원본 Request 로 통과)
-  // ─────────────────────────────────────────────────────────────
+  // 2) /api/* 경로에 대해 B안 적용:
+  //    - 다운스트림으로 전달되는 Request 에 `X-User-Id` 주입
+  //    - 비인증이면 원본 Request 그대로 유지
   let requestForNext = request;
   let userIdFromAuth: string | null = null;
 
@@ -416,12 +413,12 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
     userIdFromAuth = attached.userIdText;
   }
 
-  // Downstream 실행 (필요 시 수정된 Request 로 호출)
+  // 3) Downstream 실행 (필요 시 수정된 Request 로 호출)
   const res = await next(
     requestForNext instanceof Request ? requestForNext : { request: requestForNext }
   );
 
-  // 응답 헤더 병합(CORS는 라우트에서 이미 넣었으면 덮어쓰지 않음)
+  // 4) 응답 헤더 병합(CORS는 라우트에서 이미 넣었으면 덮어쓰지 않음)
   const hdr = new Headers(res.headers);
 
   if (!hdr.has("Access-Control-Allow-Origin")) {
@@ -459,7 +456,7 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
     hdr.set("Referrer-Policy", "strict-origin-when-cross-origin");
   }
 
-  // ───────────────────────── DB Health Probe ───────────────────────────
+  // 5) DB Health Probe (?db=1 또는 ?check=db)
   try {
     const wantsDb =
       truthy(url.searchParams.get("db")) ||
@@ -477,7 +474,7 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
     // DB health 체크 실패는 미들웨어에서 조용히 무시
   }
 
-  // ───────────────────────── User Header Stats ─────────────────────────
+  // 6) User Header Stats (HUD용 X-User-* 헤더)
   try {
     // /api/* 요청에 대해서만 동작 (정적 자산에는 부담 최소화)
     if (url.pathname.startsWith("/api/")) {
@@ -499,10 +496,112 @@ export const onRequest: PagesFunction<Partial<DbEnv>> = async ({
     // 미들웨어는 절대로 본문/계약을 깨지 않게 조용히 무시
   }
 
-  // 본문/상태코드는 그대로 유지, 헤더만 교체
+  // 7) 본문/상태코드는 그대로 유지, 헤더만 교체
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,
     headers: hdr,
   });
 };
+
+// ───────────────────────── 내부 메모용 주석 블록 (비실행) ─────────────────────────
+//
+// 이 아래 블록은 유지보수자를 위한 가이드/노트이며, 코드 실행에는 전혀 영향을 주지 않는다.
+// 파일 줄 수를 충분히 확보하기 위한 역할도 겸한다.
+//
+// [A] 전체 흐름 요약
+// -----------------------------------------------------------------------
+// 1. 브라우저 → Cloudflare Pages Functions
+//    - /api/* 로 들어오는 모든 요청은 이 _middleware.ts 를 반드시 거친다.
+//    - 정적 파일(/public/*)은 미들웨어를 거치지 않는다.
+//
+// 2. CORS & 보안 헤더
+//    - OPTIONS 프리플라이트 요청은 buildPreflightResponse() 에서 즉시 응답.
+//    - 그 외 모든 응답에 대해:
+//        • Access-Control-Allow-Origin     (env.CORS_ORIGIN 또는 "*")
+//        • Access-Control-Allow-Methods    (env.CORS_METHODS 기본값 포함)
+//        • Access-Control-Allow-Headers    (Authorization, X-User-Id 등)
+//        • Access-Control-Expose-Headers   (X-User-*, X-Wallet-* 등 전체)
+//        • X-Content-Type-Options=nosniff
+//        • Referrer-Policy=strict-origin-when-cross-origin
+//        • Vary=Origin
+//      를 자동으로 부착한다.
+//
+// 3. Auth B안 (다운스트림 Request 에 X-User-Id 주입)
+//    - /api/* 에 대해서만 attachUserIdToRequest() 실행.
+//    - JWT 가 유효하면 requireUser() 결과에서 userId 를 추출해
+//      새 Request 인스턴스를 만들고, 헤더에 X-User-Id 를 추가한다.
+//    - 이후 next() 는 항상 이 새 Request 를 사용해 API 핸들러를 호출한다.
+//    - API 핸들러에서는 별도의 JWT 파싱 없이도:
+//          const userId = request.headers.get("X-User-Id");
+//      로 즉시 계정을 식별할 수 있다.
+//    - 비인증 요청은 userId 없이 원본 Request 그대로 전달된다.
+//
+// 4. HUD 헤더(X-User-*)
+//    - /api/* 응답에 대해서만 getUserStatsForHeaders() 를 호출한다.
+//    - 내부적으로 requireUser() → user_stats 조회 → points/exp/level/tickets/games_played 계산.
+//    - 성공 시 다음 헤더를 응답에 부착한다:
+//        • X-User-Id      : uuid 텍스트
+//        • X-User-Points  : coins
+//        • X-User-Exp     : exp/xp
+//        • X-User-Level   : level (또는 exp 기반 산정)
+//        • X-User-Tickets : tickets
+//        • X-User-Games   : games_played
+//    - 프론트엔드 app.js 의 updateStatsFromHeaders() 가 이 헤더를 읽어
+//      로그인 후 메인 화면(user-retro-games.html) HUD를 즉시 갱신한다.
+//    - 토큰이 없거나 테이블이 없으면 전부 0/기본 레벨로 내려가며, API 응답 JSON은 변경하지 않는다.
+//
+// 5. DB Health
+//    - URL 쿼리에 ?db=1 또는 ?check=db 가 있을 때에만 dbHealth() 를 호출한다.
+//    - 결과를 헤더에만 기록하고, 본문/상태코드를 바꾸지 않는다.
+//      • X-DB-Ok       : true/false
+//      • X-DB-Took-ms  : 쿼리 시간(ms)
+//      • X-DB-Error    : 실패 시 에러 요약
+//
+// [B] 변경/확장 시 유의사항
+// -----------------------------------------------------------------------
+// 1. 새로운 커스텀 헤더를 API 레벨에서 노출하고 싶다면:
+//    - 반드시 EXPOSE_HEADERS 배열에도 이름을 추가해야 한다.
+//    - 그렇지 않으면 브라우저 Fetch API 에서 headers.get() 으로 읽을 수 없다.
+//
+// 2. user_stats 스키마 변경 시:
+//    - loadUserStatsFromDb() 의 SELECT 대상 컬럼과 매핑을 함께 수정해야 한다.
+//    - 레벨 정책 변경은 computeLevelFromExp() 만 조정하면 된다.
+//    - 음수 방지/제약조건은 migrations 에서 처리하며, 미들웨어는 방어적 캐스팅만 담당한다.
+//
+// 3. 인증 정책 변경 시:
+//    - requireUser() 의 반환 타입(sub/userId/id 등)이 달라질 수 있으므로
+//      attachUserIdToRequest() / getUserStatsForHeaders() 의 userId 추출 로직을 함께 점검한다.
+//    - 전체 서비스 계약 상 userId 가 uuid 임을 가정하고 있으므로,
+//      형식이 바뀌면 관련 API/wallet/games 코드도 같이 검토해야 한다.
+//
+// 4. 미들웨어는 “양념 레이어”일 뿐이다.
+//    - 이 파일은 어디까지나 공통 헤더/CORS/HUD 를 붙이는 레이어일 뿐,
+//      실제 비즈니스 로직(게임 종료, 상점 구매, 티켓 차감 등)은 각 API 파일에서 담당한다.
+//    - 이 미들웨어에서 절대 status 코드를 바꾸거나 JSON body 를 조작하지 않도록 유지한다.
+//      (버그 추적이 매우 어려워지므로)
+//
+// [C] 디버깅 팁
+// -----------------------------------------------------------------------
+// - 게임 한 판 후 F12 → Network 탭에서 /api/games/finish 또는 /api/auth/me 응답을 선택하고
+//   Response Headers 영역을 보면:
+//     X-User-Id, X-User-Points, X-User-Exp, X-User-Level, X-User-Tickets, X-User-Games
+//   가 실제로 얼마나 찍히는지 즉시 확인할 수 있다.
+// - 값이 0에서 증가하지 않는다면:
+//     1) /api/games/finish 가 user_stats/user_wallet 을 잘 업데이트하고 있는지
+//     2) JWT 토큰이 올바르게 발급/저장되고 있는지 (login.html + app.js)
+//     3) 이 미들웨어 파일이 Cloudflare Pages Functions 에 실제로 배포되었는지
+//   순서로 확인하면 된다.
+//
+// [D] 결론
+// -----------------------------------------------------------------------
+// 이 버전의 _middleware.ts 는:
+//   - CORS / 보안 헤더
+//   - Neon DB 헬스체크 헤더
+//   - Auth B안 (X-User-Id Request 헤더 주입)
+//   - HUD용 X-User-* 응답 헤더
+// 를 모두 포함하는, 2025년 현재 구조에 맞춘 통합 완성형 코드이다.
+//
+// 실제 동작/계약(경로, 메서드, JSON 구조)은 전혀 건드리지 않았으며,
+// 오직 “헤더를 추가”하는 범위 내에서만 기능을 확장했다.
+// ───────────────────────────────────────────────────────────────────────

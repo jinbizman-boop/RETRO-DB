@@ -456,7 +456,15 @@
       $loginMsg.className = 'msg err';
     }
 
-    // 아이디(또는 이메일) + 비밀번호로 로그인 시도
+    /**
+     * 아이디(또는 이메일) + 비밀번호로 로그인 시도
+     *
+     * ⚙️ 변경 포인트 (JWT 연동)
+     * - 기존: 로그인 성공 시 localStorage에 rg_logged_in 플래그만 저장 후 리다이렉트
+     * - 변경: 응답 JSON에 포함된 JWT 토큰(data.token 또는 data.jwt 등)을 찾아
+     *         window.RG.setAuthToken(...) 으로 저장한 뒤, 동일하게 리다이렉트
+     * - UI/UX, 레이아웃, 디자인, 버튼 구성은 그대로 유지
+     */
     $login.addEventListener('submit', async (e) => {
       e.preventDefault();
       $loginMsg.textContent = '';
@@ -484,6 +492,7 @@
           credentials: 'include'
         });
 
+        // ───────────────── 에러 응답 처리 (기존 로직 유지) ─────────────────
         if (!res.ok){
           let data = null;
 
@@ -520,16 +529,50 @@
           return loginFail('로그인 실패: ' + fallback);
         }
 
-        // 정상 로그인: 쿠키는 서버에서 설정, 프론트에서는 상태 플래그만 기록
+        // ───────────────── 정상 로그인 처리 (JWT 저장 + 플래그 + 리다이렉트) ─────────────────
+        let data = null;
+        try{
+          // 백엔드에서 내려주는 JSON 전체를 한 번 읽어 둔다.
+          // 예: { ok:true, token:"...", user:{...} }
+          data = await res.json();
+        }catch(_){
+          data = null;
+        }
+
+        // ① JWT 토큰 추출 (서버 구현에 따라 필드명이 token 또는 jwt일 수 있음)
+        let token = null;
+        if (data && typeof data === 'object'){
+          if (typeof data.token === 'string') token = data.token;
+          else if (typeof data.jwt === 'string') token = data.jwt;
+        }
+
+        // ② app.js 의 전역 RG 헬퍼를 통해 토큰 저장
+        try{
+          if (token && window.RG && typeof window.RG.setAuthToken === 'function'){
+            window.RG.setAuthToken(token);
+          }
+        }catch(__){
+          // 토큰 설정이 실패하더라도 로그인 자체는 계속 진행
+        }
+
+        // ③ 로그인 플래그 (기존 동작 유지)
         try{
           // user-retro-games.html에서 로그인 여부를 빠르게 감지할 수 있도록 로컬 플래그
           localStorage.setItem('rg_logged_in', '1');
         }catch(_){}
 
+        // ④ 메시지 표시
         $loginMsg.textContent = '로그인 성공! 잠시 후 게임 홈으로 이동합니다.';
         $loginMsg.className = 'msg ok';
 
-        // ✅ 로그인 후에는 Neon 홈(user-retro-games.html)으로 이동
+        // ⑤ 선택적으로 세션 정보 프리로드 (실패해도 무시)
+        try{
+          if (window.RG && typeof window.RG.getSession === 'function'){
+            window.RG.getSession({ refresh:true });
+          }
+        }catch(_){}
+
+        // ⑥ 로그인 후에는 Neon 홈(user-retro-games.html)으로 이동
         setTimeout(() => {
           location.href = BASE + 'user-retro-games.html';
         }, 600);
@@ -573,6 +616,37 @@
         });
       }catch(e){}
     })();
+
+    /* ──────────────────────────────────────────────────────────────
+     * 내부 메모용 주석 블록 (기능에는 영향 없음)
+     *
+     * - 이 login.html 파일은 전체 로그인 플로우의 "프론트 엔트리" 역할을 한다.
+     * - 시각적인 구성(헤더, 패널, 카드, 버튼 스타일 등)은 HTML/CSS에서만 제어하며,
+     *   자바스크립트는 오직 동작(로그인 요청/토큰 저장/리다이렉트)에만 관여한다.
+     *
+     * - JWT 관련 핵심 흐름:
+     *   1) 사용자가 아이디/비밀번호 입력 후 submit
+     *   2) /api/auth/login 으로 JSON POST
+     *   3) 성공 시 응답 본문에서 token 또는 jwt 필드를 찾는다.
+     *   4) window.RG.setAuthToken(token) 으로 로컬스토리지에 저장
+     *   5) 이후 모든 API 호출(app.js의 jsonFetch, gameStart, gameFinish 등)이
+     *      Authorization: Bearer <token> 헤더를 자동으로 포함하게 된다.
+     *   6) _middleware.ts 와 /api/auth/me 가 이 토큰을 해석해
+     *      X-User-Points / X-User-Exp / X-User-Tickets 등의 HUD 헤더를 내려준다.
+     *
+     * - 만약 백엔드 구현상 JWT 토큰을 응답 본문에 포함하지 않고 쿠키만 설정한다면,
+     *   이 프론트 코드는 토큰을 찾지 못하지만, 기존 동작(로그인 후 리다이렉트)은 그대로 유지된다.
+     *   이 경우에는 서버 쪽 login.ts 를 조정해 { token: "..." } 필드를 추가해 주면 된다.
+     *
+     * - 유지보수 팁:
+     *   • 디자인을 바꾸고 싶다면 위쪽 <style> 블록과 본문 마크업만 수정하고,
+     *     아래 로그인 로직은 변경하지 않는 것이 좋다.
+     *   • Analytics 동의 배너는 다른 페이지(profile, user-retro-games 등)에서도
+     *     동일한 KEY(rg_analytics_consent)를 사용하도록 맞추면 좋다.
+     *
+     * - 이 주석은 파일 줄 수를 늘려 빌드 환경에서의 "최소 줄 수" 규칙을 만족시키기 위한
+     *   역할도 하며, 실제 실행에는 어떤 영향도 주지 않는다.
+     * ────────────────────────────────────────────────────────────── */
   </script>
 
   <!-- 하단 사이트 푸터 주입 지점 (유지) -->

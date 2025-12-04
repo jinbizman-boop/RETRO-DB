@@ -10,15 +10,17 @@
 //     • 응답: { ok: true, balance }
 //
 // - 🔥 내부 동작 강화/정합화 (지금까지 설계한 전체 흐름과 일치):
-//     • 캐논 소스: user_stats.coins
-//         - 게임 보상: /api/games/score → transactions → apply_wallet_transaction 트리거
+//     • 캐논 소스 1순위: user_stats.coins
+//         - (기획상) 게임 보상: /api/games/score → transactions → apply_wallet_transaction 트리거
 //         - 상점 결제: /api/wallet/transaction, 향후 /api/shop/* → transactions 경로
-//     • 2차 소스(fallback): wallet_balances.balance (구 스키마 호환용)
+//     • 캐논 소스 2순위: wallet_balances.balance (reward.ts, 구 스키마 및 마이그레이션 호환용)
+//     • 보조 스탯 소스   : user_progress(exp, tickets, games_played 유사 역할)
 //     • userId 우선순위: X-User-Id 헤더(미들웨어에서 넣어준 UUID) → query.userId
 //     • UUID 형식 검증, bigint/문자열 → number 안전 변환, 음수 방지
-//     • user_stats 가 없거나 row 가 없으면 자동으로 0 반환
+//     • user_stats / wallet_balances / user_progress 가 없거나 row 가 없으면 자동으로 0 반환
 //     • 가능한 경우 exp / tickets / games_played / last_login_at / updated_at 을 헤더로 노출
 //     • user_stats.coins 와 wallet_balances.balance 가 동시에 존재할 경우 drift 여부를 헤더로만 표기
+//     • user_stats.exp/tickets 가 0 이고 user_progress 에 값이 존재하면 user_progress 값을 헤더에 자동 반영
 //     • 초기 상태 내성(테이블 미존재 시 0 반환), 운영 헤더 유지/보강
 //
 // - 🌐 미들웨어 연동(B안)
@@ -26,20 +28,26 @@
 //     • 이 엔드포인트는 해당 헤더를 최우선으로 사용 → 프론트가 userId 를 굳이 query 에 넣지 않아도 됨
 //
 // - 📊 헤더 요약 (프론트가 계정 상태를 바로 그릴 수 있도록):
-//     • X-Wallet-User           : UUID (user_stats.user_id)
-//     • X-Wallet-Source         : 'user_stats' | 'wallet_balances' | 'none'
-//     • X-Wallet-Balance        : 최종 잔액(캐논 기준)
-//     • X-Wallet-Legacy-Balance : wallet_balances 기준 잔액(있는 경우)
-//     • X-Wallet-Exp            : user_stats.exp (없으면 0)
-//     • X-Wallet-Tickets        : user_stats.tickets (없으면 0)
-//     • X-Wallet-Games          : user_stats.games_played (없으면 0)
-//     • X-Wallet-Last-Login-At  : user_stats.last_login_at
+//     • X-Wallet-User             : UUID (user_stats.user_id)
+//     • X-Wallet-Source           : 'user_stats' | 'wallet_balances' | 'none'
+//     • X-Wallet-Balance          : 최종 잔액(캐논 기준)
+//     • X-Wallet-Legacy-Balance   : wallet_balances 기준 잔액(있는 경우)
+//     • X-Wallet-Exp              : user_stats 또는 user_progress 기준 EXP
+//     • X-Wallet-Tickets          : user_stats 또는 user_progress 기준 Tickets
+//     • X-Wallet-Games            : user_stats.games_played (없으면 0)
+//     • X-Wallet-Last-Login-At    : user_stats.last_login_at
 //     • X-Wallet-Stats-Updated-At : user_stats.updated_at
-//     • X-Wallet-Drift          : 'stats_gt_wallet' | 'wallet_gt_stats' (둘 다 존재하고 값 다를 때)
-//     • X-Wallet-Stats-Json     : { balance, exp, tickets, games } JSON 문자열
-//     • X-Wallet-Took-ms        : 처리 시간(ms)
+//     • X-Wallet-Drift            : 'stats_gt_wallet' | 'wallet_gt_stats' (둘 다 존재하고 값 다를 때)
+//     • X-Wallet-Stats-Json       : { balance, exp, tickets, games } JSON 문자열
+//     • X-Wallet-Progress-Json    : user_progress 기반 스탯 요약(JSON)
+//     • X-Wallet-Took-ms          : 처리 시간(ms)
 //
 //  ※ 본문(JSON)은 { ok: true, balance } 그대로 유지. 프론트/게임 로직은 기존 코드 그대로 사용 가능.
+//
+//  ※ reward.ts 에서 wallet_balances + user_progress 를 갱신하므로,
+//     - coins(=balance) 는 user_stats.coins / wallet_balances.balance 두 소스를 모두 존중
+//     - exp / tickets 는 user_stats.exp/tickets 가 0 이고 user_progress 에 값이 있으면 progress 값을 보조로 사용
+//     - 상위 콘텐츠(user-retro-games.html)는 항상 최신값을 헤더/요약 JSON 으로 받을 수 있음.
 
 /* ───── Minimal Cloudflare Pages ambient types (type-checker only) ───── */
 type CfEventLike<E> = {
@@ -170,10 +178,24 @@ type WalletBalanceRow = {
   balance?: number | string | bigint | null;
 };
 
-/* ───────── user_stats 조회 (canonical) ─────────
- * 001_init.sql + 003_shop_effects.sql + wallet C안 설계에서 정의한
+type UserProgressRow = {
+  user_id?: string | null;
+  exp?: number | string | bigint | null;
+  tickets?: number | string | bigint | null;
+  level?: number | string | bigint | null;
+  updated_at?: string | Date | null;
+};
+
+/* ───────── user_stats 조회 (canonical 1순위) ─────────
+ * 001_init.sql + 003_shop_effects.sql + wallet 설계에서 정의한
  * user_stats 를 단일 소스 오브 트루스로 사용:
  *   coins, exp/xp, tickets, games_played, last_login_at, updated_at
+ *
+ *  다만, reward.ts 가 user_stats 를 직접 갱신하지 않는 구조(C안)에서도
+ *  user_stats 테이블이 이미 도입된 경우를 지원하기 위해,
+ *  - row 유무
+ *  - 기본 스탯
+ *  만 일관되게 리턴한다.
  */
 async function fetchFromUserStats(
   sql: ReturnType<typeof getSql>,
@@ -257,8 +279,8 @@ async function fetchFromUserStats(
   }
 }
 
-/* ───────── wallet_balances 조회 (fallback) ─────────
- * 과거 버전 및 일부 도구에서 사용하던 간단한 지갑 테이블.
+/* ───────── wallet_balances 조회 (canonical 2순위 / legacy) ─────────
+ * 구 버전 및 reward.ts(최신 보상 API)에서 사용하는 간단한 지갑 테이블.
  * 지금은 user_stats 가 캐논이지만:
  *   - user_stats row 가 아직 없는 계정
  *   - 마이그레이션 전 데이터
@@ -320,6 +342,67 @@ async function fetchFromWalletBalances(
   }
 }
 
+/* ───────── user_progress 조회 (보조 스탯 소스) ─────────
+ * reward.ts 에서 갱신하는 user_progress:
+ *   - exp, level, tickets, updated_at
+ *
+ * user_stats.exp/tickets 가 아직 마이그레이션되지 않았거나 0 인 경우에도,
+ * 메인 화면이 최신 EXP / Tickets 를 그릴 수 있도록 보조 소스로 사용한다.
+ */
+async function fetchFromUserProgress(
+  sql: ReturnType<typeof getSql>,
+  userId: string
+): Promise<{
+  found: boolean;
+  exp: number;
+  tickets: number;
+  level: number;
+  updatedAt: string | null;
+}> {
+  try {
+    const rows = (await sql/* sql */ `
+      select
+        user_id,
+        exp,
+        tickets,
+        level,
+        updated_at
+      from user_progress
+      where user_id = ${userId}
+      limit 1
+    `) as UserProgressRow[];
+
+    if (!rows || rows.length === 0) {
+      return {
+        found: false,
+        exp: 0,
+        tickets: 0,
+        level: 1,
+        updatedAt: null,
+      };
+    }
+
+    const r = rows[0];
+    const exp = toNonNegativeNumber(r.exp ?? 0);
+    const tickets = toNonNegativeNumber(r.tickets ?? 0);
+    const level = toNonNegativeNumber(r.level ?? 1);
+    const updatedAt = toIsoOrNull(r.updated_at ?? null);
+
+    return { found: true, exp, tickets, level, updatedAt };
+  } catch (e) {
+    if (isMissingTable(e)) {
+      return {
+        found: false,
+        exp: 0,
+        tickets: 0,
+        level: 1,
+        updatedAt: null,
+      };
+    }
+    throw e;
+  }
+}
+
 /* ───────── handler ─────────
  *
  * 1) CORS preflight 처리
@@ -327,7 +410,8 @@ async function fetchFromWalletBalances(
  * 3) userId 결정(X-User-Id 헤더 → query.userId)
  * 4) user_stats 기반 잔액/스탯 조회
  * 5) wallet_balances fallback 및 drift 체크
- * 6) { ok: true, balance } + 부가 헤더 반환
+ * 6) user_progress 기반 exp/tickets 보조 조회
+ * 7) { ok: true, balance } + 헤더로 상세 상태 제공
  */
 
 export const onRequest: PagesFunction<Env> = async ({
@@ -372,6 +456,8 @@ export const onRequest: PagesFunction<Env> = async ({
 
     const sql = getSql(env);
 
+    // canonical / legacy / progress 값을 모두 모아놓은 후,
+    // 최종 헤더/요약에 사용할 값을 선택한다.
     let balanceNum = 0;
     let usedSource: StatsSource = "none";
     let expNum = 0;
@@ -384,8 +470,14 @@ export const onRequest: PagesFunction<Env> = async ({
     let legacyFound = false;
     let driftFlag: string | null = null;
 
+    let progressFound = false;
+    let progressExp = 0;
+    let progressTickets = 0;
+    let progressLevel = 1;
+    let progressUpdatedAt: string | null = null;
+
     // ─────────────────────────────────────────────
-    // 1) canonical: user_stats 기반 지갑 잔액 조회
+    // 1) canonical: user_stats 기반 지갑 잔액/스탯 조회
     // ─────────────────────────────────────────────
     const stats = await fetchFromUserStats(sql, userId);
 
@@ -400,7 +492,7 @@ export const onRequest: PagesFunction<Env> = async ({
     }
 
     // ─────────────────────────────────────────────
-    // 2) fallback: wallet_balances (구 스키마 호환)
+    // 2) fallback: wallet_balances (구 스키마 + reward.ts 기준)
     //    - user_stats 에 row 가 없거나, 또는 drift 체크용
     // ─────────────────────────────────────────────
     await ensureWalletBalancesSchema(sql);
@@ -431,7 +523,30 @@ export const onRequest: PagesFunction<Env> = async ({
     }
 
     // ─────────────────────────────────────────────
-    // 3) 응답: 기존과 동일하게 { ok: true, balance }
+    // 3) 보조 스탯: user_progress 기반 exp/tickets 조회
+    //    - reward.ts 가 user_progress 를 갱신하므로,
+    //      user_stats.exp/tickets 가 아직 0 인 경우 progress 값을 반영해준다.
+    // ─────────────────────────────────────────────
+    const progress = await fetchFromUserProgress(sql, userId);
+    if (progress.found) {
+      progressFound = true;
+      progressExp = progress.exp;
+      progressTickets = progress.tickets;
+      progressLevel = progress.level;
+      progressUpdatedAt = progress.updatedAt;
+
+      // user_stats.exp 가 0 이고 progress.exp 가 더 크면 progress 기반 노출
+      if (expNum <= 0 && progressExp > 0) {
+        expNum = progressExp;
+      }
+      // user_stats.tickets 가 0 이고 progress.tickets 가 더 크면 progress 기반 노출
+      if (ticketsNum <= 0 && progressTickets > 0) {
+        ticketsNum = progressTickets;
+      }
+    }
+
+    // ─────────────────────────────────────────────
+    // 4) 응답: 기존과 동일하게 { ok: true, balance }
     //    + 헤더로 상세 상태 제공
     // ─────────────────────────────────────────────
     const tookMs = Math.round(performance.now() - t0);
@@ -441,7 +556,7 @@ export const onRequest: PagesFunction<Env> = async ({
       // 캐논 유저/소스
       "X-Wallet-User": userId,
       "X-Wallet-Source": usedSource,
-      // 캐논 잔액/스탯
+      // 캐논 잔액/스탯 (exp/tickets 는 user_stats + user_progress 보정값)
       "X-Wallet-Balance": String(balanceNum),
       "X-Wallet-Exp": String(expNum),
       "X-Wallet-Tickets": String(ticketsNum),
@@ -453,6 +568,21 @@ export const onRequest: PagesFunction<Env> = async ({
     if (statsUpdatedAt) headers["X-Wallet-Stats-Updated-At"] = statsUpdatedAt;
     if (legacyFound) headers["X-Wallet-Legacy-Balance"] = String(legacyBalance);
     if (driftFlag) headers["X-Wallet-Drift"] = driftFlag;
+
+    // user_progress 기반 요약도 별도 JSON 으로 제공(선택 사용)
+    if (progressFound) {
+      try {
+        const progressSummary = {
+          exp: progressExp,
+          tickets: progressTickets,
+          level: progressLevel,
+          updatedAt: progressUpdatedAt,
+        };
+        headers["X-Wallet-Progress-Json"] = JSON.stringify(progressSummary);
+      } catch {
+        // stringify 실패는 무시
+      }
+    }
 
     // 프론트에서 한 번에 파싱하기 좋은 JSON 요약(선택적 사용)
     try {
@@ -468,6 +598,7 @@ export const onRequest: PagesFunction<Env> = async ({
       // JSON stringify 실패는 무시
     }
 
+    // 본문 계약: { ok: true, balance } 고정 유지
     return withCORS(
       json(
         {

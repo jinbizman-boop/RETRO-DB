@@ -308,6 +308,9 @@
   <div id="site-header"></div>
   <canvas id="fx"></canvas>
 
+  <!-- 2048 전용 배경 음악 (loop, volume 30%) -->
+  <audio id="bgm2048" src="/assets/music/2048-background.mp3" loop preload="auto"></audio>
+
   <div class="shell">
     <div class="cabinetLayout">
       <!-- 좌측 세로 광고 배너 -->
@@ -337,24 +340,24 @@
           <div class="chip">최고 <b id="best">0</b></div>
           <div class="chip">이동 <b id="moves">0</b></div>
 
-          <!-- Points (통합 XP 기반) -->
+          <!-- Points (통합 XP 기반 / app.js HUD와 데이터 일치) -->
           <div class="pill points" aria-label="사용자 포인트">
             <div class="icon">🏅</div>
             <div>
               <div class="nums">
-                <span class="big" id="pointsAmt">0</span>
+                <span class="big" id="pointsAmt" data-user-points>0</span>
                 <span class="cap">/ <span id="pointsCap">20,000</span></span>
               </div>
               <div class="bar"><span id="pointsBar"></span></div>
             </div>
           </div>
 
-          <!-- Tickets (통합 티켓 기반) -->
+          <!-- Tickets (통합 티켓 기반 / app.js HUD와 데이터 일치) -->
           <div class="pill tickets" aria-label="티켓 진행">
             <div class="icon">🎟️</div>
             <div>
               <div class="nums">
-                <span class="big" id="ticketsAmt">0</span>
+                <span class="big" id="ticketsAmt" data-user-tickets>0</span>
                 <span class="cap">티켓</span>
               </div>
               <div class="bar"><span id="ticketsBar"></span></div>
@@ -502,7 +505,7 @@
   const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
   const fmt=n=> Number(n).toLocaleString('ko-KR');
 
-  /* ===== WALLET API (spec & helpers) ===== */
+  /* ===== WALLET API (legacy helpers – reward는 app.js의 sendGameReward 사용) ===== */
   const WALLET_API_BASE = '/api/wallet';
 
   async function postWalletReward(payload){
@@ -535,7 +538,7 @@
     }
   }
 
-  /* ===== Global Wallet Totals (hub 공유) ===== */
+  /* ===== Global Wallet Totals (hub 공유 – 일부는 app.js의 stats와 병행) ===== */
   function getOrInitGlobalTotals(){
     const NUM = v => Number.isFinite(+v) ? +v : 0;
     const markKey = 'rg_wallet_init';
@@ -634,7 +637,7 @@
     }
   }
 
-  /* 2048은 티켓 소모 없이 자유 플레이 */
+  /* 2048은 티켓 소모 없이 자유 플레이 (과거 티켓 차감 로직은 사용하지 않음) */
   function consumeTicketForSession(){
     const totals = getOrInitGlobalTotals();
     if(totals.tickets <= 0){
@@ -645,6 +648,7 @@
     totals.tickets -= 1;
     setGlobalTotals(totals);
 
+    // 예전 wallet/reward 포맷은 더 이상 사용하지 않지만, 하위 호환을 위해 남겨둔 형태
     postWalletReward({
       game: '2048',
       delta: { coins:0, xp:0, tickets:-1 },
@@ -655,6 +659,8 @@
   }
 
   function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+    // ⚠ 현재는 app.js의 window.sendGameReward + refreshWalletHUD 를 사용하므로
+    // 이 함수는 직접 호출하지 않는다. (하위 호환 주석용으로 남김)
     if(!delta) return;
     const coins   = Number(delta.coins)   || 0;
     const xp      = Number(delta.xp)      || 0;
@@ -741,7 +747,7 @@
   }
   function addRecord(score, points){
     const recs=loadJSON(LS_KEYS.records,[]);
-       const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
+    const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
     saveJSON(LS_KEYS.records,recs.slice(0,200));
   }
   function showRecords(){
@@ -1000,22 +1006,46 @@
       if(this._ended) return;
       this._ended=true;
       const maxT = this.maxTile();
+      const finalScore = this.score|0;
+
       this._snapshotBonusAtEnd(maxT);
       this.syncHUD();
-      addRecord(this.score, this.points||0);
+      addRecord(finalScore, this.points||0);
       addPlay();
-      notifyFinish(this.score|0);
+      notifyFinish(finalScore);
 
       if(this.testMode) return;
 
+      // ✅ 새 보상 흐름: app.js의 window.sendGameReward를 통해 /api/wallet/reward 호출
       try{
-        const delta = calcReward(this.score||0, this.points||0, maxT, this.level||1);
-        applyGlobalRewardAndSyncWallet('2048', delta, {
-          score:  this.score||0,
-          points: this.points||0,
-          level:  this.level||1,
-          maxTile:maxT
-        });
+        const delta = calcReward(finalScore, this.points||0, maxT, this.level||1);
+
+        if (typeof window.sendGameReward === 'function') {
+          window.sendGameReward('2048', {
+            exp: delta.xp,
+            tickets: delta.tickets,
+            points: delta.coins,
+            score: finalScore,
+            meta: {
+              level: this.level || 1,
+              maxTile: maxT,
+              moves: this.moves | 0
+            }
+          });
+        } else {
+          // 하위 호환: 예전 helper가 남아있다면 그대로 사용
+          applyGlobalRewardAndSyncWallet('2048', delta, {
+            score:  finalScore,
+            points: this.points || 0,
+            level:  this.level || 1,
+            maxTile:maxT
+          });
+        }
+
+        // HUD 최신화 (app.js 쪽 통합 HUD까지 반영)
+        if (typeof window.refreshWalletHUD === 'function') {
+          window.refreshWalletHUD();
+        }
       }catch(e){
         console.error('reward sync error', e);
       }
@@ -1144,8 +1174,37 @@
     applyTier(tier.value);
     lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
     updateTicketUI();
-    syncWalletFromServerAndRender();
+
+    // ✅ 통합 HUD: app.js에 refreshWalletHUD가 있다면 우선 사용
+    if (typeof window.refreshWalletHUD === 'function') {
+      window.refreshWalletHUD();
+    } else {
+      syncWalletFromServerAndRender();
+    }
+
     initSideBanners();
+  })();
+
+  // 2048 전용 BGM 초기화 (사용자 첫 상호작용 시 재생, 볼륨 30%)
+  (function initBackgroundMusic(){
+    try{
+      const bgm = document.getElementById('bgm2048');
+      if (!bgm) return;
+      bgm.volume = 0.3;
+
+      let started = false;
+      const start = () => {
+        if (started) return;
+        started = true;
+        bgm.play().catch(()=>{ /* 일부 브라우저의 자동재생 제한 무시 */ });
+      };
+
+      document.addEventListener('click', start, { once: true, passive: true });
+      document.addEventListener('keydown', start, { once: true });
+      document.addEventListener('touchstart', start, { once: true, passive: true });
+    }catch(e){
+      console.warn('bgm init failed', e);
+    }
   })();
   </script>
 

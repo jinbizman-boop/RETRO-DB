@@ -16,6 +16,13 @@
  * - _middleware 가 내려주는 X-User-* 헤더를 읽어 계정별 경험치/포인트/티켓 UI 동기화
  * - /api/auth/me 응답(user.stats)와 헤더 값을 병합해 세션 캐시를 단일 소스로 유지
  * - UI 구조/디자인/클래스/데이터-속성은 그대로, 데이터 채우기만 강화
+ *
+ * 추가 확장 (reward / analytics 통합)
+ * - SHA-256 기반 게임 보상 해시 유틸(프론트 ↔ /api/wallet/reward)
+ * - window.sendGameReward(gameId, { score, exp, tickets, points, meta }) 제공
+ * - /api/wallet/balance 기반 HUD 자동 리프레시(window.refreshWalletHUD)
+ * - /api/analytics/event 연동 window.trackGameEvent(type, gameId, meta)
+ * - gameStart / gameFinish 에서도 trackGameEvent 를 자동 호출
  */
 
 (() => {
@@ -30,19 +37,27 @@
     //  - Cloudflare Pages Functions 는 /api/* 아래로 매핑되므로
     //    프론트에서도 동일한 프리픽스를 사용한다.
     endpoints: {
-      me: "/api/auth/me",          // ✅ 세션/HUD 동기화용
+      me: "/api/auth/me", // ✅ 세션/HUD 동기화용
       signout: "/api/auth/signout", // (백엔드 signout 라우트에 맞춰 사용)
-      profile: "/api/profile/me",   // 프로필 조회
+      profile: "/api/profile/me", // 프로필 조회
       history: "/api/profile/me/history", // 플레이/지갑 히스토리
-      games: "/api/games",               // 게임 메타/목록
+      games: "/api/games", // 게임 메타/목록
       shopBuy: "/api/specials/shop/buy", // 구매
-      luckySpin: "/api/specials/spin",   // 일일 스핀
+      luckySpin: "/api/specials/spin", // 일일 스핀
     },
     csrfCookie: "__csrf",
     csrfHeader: "X-CSRF-Token",
     // JWT 토큰 저장 키 (localStorage)
     authStorageKey: "rg_jwt_token",
   };
+
+  // 프론트/백엔드가 공유하는 reward 해시 시크릿
+  // - Cloudflare Env: REWARD_SECRET_KEY 와 반드시 동일하게 유지
+  // - 필요시 빌드/배포 단계에서 치환하도록 구성 가능
+  // - 여기서는 기본값으로 "retro-dev-secret" 사용
+  //   (실서비스에서는 별도 안전한 값 사용 권장)
+  window.RETRO_REWARD_SECRET =
+    window.RETRO_REWARD_SECRET || "retro-dev-secret";
 
   /* ────────────────────────────── 유틸 ────────────────────────────── */
   const qs = (sel, el = document) => el.querySelector(sel);
@@ -95,6 +110,30 @@
     }, ms + 240);
   };
 
+  /* ───────── SHA-256 / reward 해시 유틸 ───────── */
+
+  /**
+   * SHA-256(hex) 해시 계산
+   */
+  async function sha256Hex(text) {
+    const enc = new TextEncoder();
+    const data = enc.encode(text);
+    const hash = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  /**
+   * reward.ts와 동일한 포맷으로 해시 생성
+   * raw = `${userId}|${gameId}|${exp}|${tickets}|${points}|${secret}`
+   */
+  async function buildRewardHash(userId, gameId, exp, tickets, points) {
+    const secret = window.RETRO_REWARD_SECRET || "";
+    const raw = `${userId}|${gameId}|${exp}|${tickets}|${points}|${secret}`;
+    return sha256Hex(raw);
+  }
+
   /* ───────────────────── JWT 토큰 저장/조회 헬퍼 ───────────────────── */
   const getAuthToken = () => {
     try {
@@ -146,6 +185,33 @@
       el.textContent = String(s.tickets ?? 0);
     });
   };
+
+  /**
+   * HUD를 외부에서 직접 갱신하고 싶을 때 사용하는 헬퍼
+   * - refreshWalletFromBalance, /api/auth/me 응답 병합 등에 사용
+   */
+  function updateHUDFromStats(newStats) {
+    if (!newStats || typeof newStats !== "object") return;
+    const s = { ..._stats };
+
+    if ("points" in newStats) s.points = _toInt(newStats.points);
+    if ("balance" in newStats && !("points" in newStats)) {
+      // wallet/balance 의 기본 필드는 balance
+      s.points = _toInt(newStats.balance);
+    }
+    if ("exp" in newStats) s.exp = _toInt(newStats.exp);
+    if ("level" in newStats) s.level = _toInt(newStats.level) || 1;
+    if ("tickets" in newStats) s.tickets = _toInt(newStats.tickets);
+    if ("gamesPlayed" in newStats && !_me?.stats?.gamesPlayed) {
+      // 필요하면 향후 HUD에 사용 가능
+    }
+
+    _stats = s;
+    if (_me) {
+      _me.stats = Object.assign({}, _me.stats || {}, s);
+    }
+    syncStatsUI();
+  }
 
   const updateStatsFromHeaders = (headers) => {
     if (!headers || typeof headers.get !== "function") return;
@@ -476,6 +542,173 @@
     }
   };
 
+  /* ───────── analytics 이벤트 추적 (game_start / game_end / 기타) ───────── */
+
+  /**
+   * Retro Games – 게임/행동 이벤트 추적
+   *
+   * @param {"game_start"|"game_end"|string} type
+   * @param {string} gameId
+   * @param {object} meta  아무 JSON
+   */
+  async function trackGameEvent(type, gameId, meta = {}) {
+    try {
+      const payload = {
+        type,
+        game: gameId,
+        meta,
+      };
+
+      await fetch("/api/analytics/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: CFG.credentials,
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      debugLog("trackGameEvent failed", type, gameId, e);
+    }
+  }
+
+  /* ───────── wallet/balance 기반 HUD 리프레시 ───────── */
+
+  /**
+   * /api/wallet/balance 를 불러서 HUD를 업데이트하는 기본 구현
+   * - balance.ts 에서 내려주는 X-Wallet-Stats-Json 헤더를 활용
+   */
+  async function refreshWalletFromBalance() {
+    try {
+      const res = await fetch("/api/wallet/balance", {
+        method: "GET",
+        credentials: CFG.credentials,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) return;
+
+      const stats = {
+        balance: json.balance,
+      };
+
+      const hdr = res.headers.get("X-Wallet-Stats-Json");
+      if (hdr) {
+        try {
+          const parsed = JSON.parse(hdr);
+          Object.assign(stats, parsed);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      updateHUDFromStats(stats);
+    } catch (e) {
+      debugLog("refreshWalletFromBalance failed", e);
+    }
+  }
+
+  async function refreshWalletHUD() {
+    await refreshWalletFromBalance();
+  }
+
+  /* ───────── 게임 보상 자동 전송 (wallet/reward) ───────── */
+
+  /**
+   * Retro Games – 게임별 보상 자동 전송 유틸
+   *
+   * @param {string} gameId   예) "2048", "tetris", "brick_breaker"
+   * @param {object} opts     { exp, tickets, points, score, meta }
+   *
+   * exp/tickets/points 를 생략하면 reward.ts가 game_rewards.json 규칙대로 자동 계산.
+   */
+  async function sendGameReward(gameId, opts = {}) {
+    try {
+      // 1) 현재 로그인 유저 확보
+      let userId = _me && _me.id;
+      if (!userId) {
+        const me = await getSession();
+        userId = me && me.id;
+      }
+      if (!userId) throw new Error("Missing userId for reward");
+
+      const exp = Number(opts.exp || 0);
+      const tickets = Number(opts.tickets || 0);
+      const points = Number(opts.points || 0);
+
+      // 2) hash 생성 (reward.ts 안의 로직과 동일 포맷)
+      const hash = await buildRewardHash(userId, gameId, exp, tickets, points);
+
+      // 3) reward API 호출
+      const body = {
+        userId,
+        game: gameId,
+        exp,
+        tickets,
+        points,
+        reason: "reward",
+        hash,
+        score: opts.score ?? undefined,
+        meta: opts.meta ?? undefined,
+      };
+
+      const res = await fetch("/api/wallet/reward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: CFG.credentials,
+        body: JSON.stringify(body),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        debugLog("Reward API error", res.status, json);
+        if (window.showToast || window.toast) {
+          (window.showToast || window.toast)(
+            "보상 지급에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            "error"
+          );
+        }
+        return null;
+      }
+
+      // 4) HUD 갱신
+      try {
+        if (window.refreshWalletHUD) {
+          await window.refreshWalletHUD();
+        } else {
+          await refreshWalletFromBalance();
+        }
+      } catch (e) {
+        debugLog("refresh HUD after reward failed", e);
+      }
+
+      // 5) 토스트/피드백
+      if (window.showToast || window.toast) {
+        (window.showToast || window.toast)("보상이 지급되었습니다!", "success");
+      }
+
+      // 6) analytics 이벤트(logical)
+      try {
+        await trackGameEvent("reward", gameId, {
+          score: opts.score ?? null,
+          exp,
+          tickets,
+          points,
+        });
+      } catch (e) {
+        debugLog("track reward event failed", e);
+      }
+
+      return json;
+    } catch (err) {
+      debugLog("sendGameReward error", err);
+      if (window.showToast || window.toast) {
+        (window.showToast || window.toast)(
+          "보상 처리 중 오류가 발생했습니다.",
+          "error"
+        );
+      }
+      return null;
+    }
+  }
+
   /* ───────────────────────────── 바인딩 헬퍼 ───────────────────────────── */
   const bindProfile = (profile) => {
     if (!profile) return;
@@ -527,6 +760,16 @@
       }
       window.__RUN_ID__ = data.runId;
       window.Analytics?.event?.("game_start", { slug, runId: data.runId });
+
+      // analytics/event API에도 기록
+      try {
+        await trackGameEvent("game_start", slug, {
+          runId: data.runId || null,
+        });
+      } catch (e) {
+        debugLog("track game_start failed", e);
+      }
+
       return data;
     } catch (e) {
       debugLog("gameStart failed", e);
@@ -592,6 +835,18 @@
         runId: window.__RUN_ID__,
         data,
       });
+
+      // analytics/event 쪽에도 game_end 기록
+      try {
+        await trackGameEvent("game_end", slug, {
+          score,
+          runId: window.__RUN_ID__ || null,
+          api: data,
+        });
+      } catch (e) {
+        debugLog("track game_end failed", e);
+      }
+
       return data;
     } catch (e) {
       debugLog("gameFinish failed", e);
@@ -683,6 +938,17 @@
   window.gameStart = gameStart;
   window.gameFinish = gameFinish;
 
+  // HUD/지갑/이벤트/보상 유틸 전역 노출
+  window.updateHUDFromStats = updateHUDFromStats;
+  window.refreshWalletHUD = refreshWalletHUD;
+  window.sendGameReward = sendGameReward;
+  window.trackGameEvent = trackGameEvent;
+
+  // showToast 별도 유틸이 있는 경우를 위해 fallback 처리
+  if (!window.showToast) {
+    window.showToast = toast;
+  }
+
   /* ───────────────────────────── 부트스트랩 ───────────────────────────── */
   const init = async () => {
     await loadPartials();
@@ -716,16 +982,22 @@
    * - 나머지 로직(모달, 네비, 토스트, 파셜 로딩, 행운 뽑기, 상점 구매 등)은
    *   기존과 완전히 동일하게 동작한다.
    *
-   * 아래는 유지보수자를 위한 추가 메모로, 코드 동작에는 전혀 영향을 주지 않는다.
-   * - CFG.debug 값을 false 로 바꾸면 콘솔 로그가 모두 꺼진다.
-   * - jsonFetch 는 API 통신의 단일 경로이므로, 공통 헤더/로깅을 수정하려면 이곳만 보면 된다.
-   * - getSession 은 /api/auth/me, _middleware 헤더, 로컬 캐시를 한 번에 아우르는 진입점이다.
-   * - 상단 HUD 의 숫자는 전부 data-user-* 속성을 통해 채워지므로,
-   *   신규 화면에서도 같은 속성을 붙이면 자동으로 값이 표시된다.
-   * - window.RG._debug() 를 브라우저 콘솔에서 호출하면
-   *   현재 세션/통계/토큰 보유 여부를 한 번에 확인할 수 있다.
-   * - 게임 HTML 에서는 기존처럼 window.gameStart(slug), window.gameFinish(slug, score) 만
-   *   올바르게 호출해 주면 되고, 내부 구현 변경은 여기에서 모두 처리한다.
+   * - sendGameReward(gameId, opts)
+   *   • opts.score 를 중심으로 서버의 game_rewards.json 룰에 따라 EXP/티켓/포인트를 계산하게 할 수 있다.
+   *   • exp/tickets/points 를 직접 지정하면 해당 값으로 강제할 수도 있다.
+   *   • reward.ts 의 anti-cheat 해시와 동일한 포맷을 사용하므로, 프론트 조작이 쉽지 않다.
+   *
+   * - trackGameEvent(type, gameId, meta)
+   *   • type: "game_start", "game_end", "reward", "wallet_tx" 등 자유롭게 사용 가능.
+   *   • gameId: "2048", "tetris" 등 서버와 합의된 식별자.
+   *   • meta: 점수, 난이도, 플레이 타임, 디바이스 정보 등 자유로운 JSON.
+   *   • /api/analytics/event 로 전송되어 analytics_events 테이블에 쌓인다.
+   *
+   * - refreshWalletHUD()
+   *   • /api/wallet/balance 를 호출하여 balance / exp / tickets / games 등의 요약을 가져온 뒤
+   *     updateHUDFromStats 로 HUD를 갱신한다.
+   *   • reward.ts 나 transaction.ts 가 user_stats / wallet_balances 를 갱신한 이후,
+   *     프론트는 이 함수만 호출하면 항상 최신 정보로 맞춰진다.
    *
    * 이 블록은 최소 줄 수 충족을 위한 주석이기도 하며,
    * 향후 유지보수 시에 "어디까지가 공통 레이어인지"를 기억하기 위한 가이드 역할을 한다.
@@ -737,6 +1009,9 @@
    *    - /public/games/ 아래에 HTML/JS 를 추가하고,
    *      그 게임에서 window.gameStart("slug"), window.gameFinish("slug", score)를 호출한다.
    *    - slug 문자열은 서버에서 인식 가능한 gameId 와 동일하게 맞추는 것이 좋다.
+   *    - 게임 종료 후 추가 보상을 주고 싶다면 해당 게임 JS에서
+   *         window.sendGameReward("slug", { score: 최종점수 });
+   *      를 호출하면 된다.
    *
    * 2. 상점 아이템이 지갑/티켓에 미치는 영향
    *    - 상점 관련 서버 로직은 /functions/api/specials/shop/buy.ts (예시) 에 위치한다.
@@ -757,14 +1032,28 @@
    * 5. 디버그 팁
    *    - Network 탭에서 /api/auth/me 요청을 찾아 Response Headers 를 보면
    *      X-User-Points / X-User-Exp / X-User-Level / X-User-Tickets 값이 내려오는지 즉시 확인 가능하다.
+   *    - /api/wallet/balance 요청에서는 X-Wallet-Stats-Json 헤더를 통해
+   *      balance / exp / tickets / gamesPlayed 등의 요약을 한 번에 볼 수 있다.
    *    - 이미 게임을 여러 판 했는데도 user_stats / user_wallet 이 0 이라면,
-   *      /api/games/finish 가 제대로 호출되는지, 200 OK 인지, 에러 메시지는 없는지 확인한다.
+   *      /api/games/finish 와 /api/wallet/reward 가 제대로 호출되는지 확인해야 한다.
    *
    * 6. 확장 아이디어
    *    - 특정 게임 모드(예: 랭킹전, 이벤트전)에 따라 computeRewards 공식을 바꾸고 싶다면
    *      백엔드 /functions/api/games/finish.ts 의 보상 로직만 수정하면 된다.
    *    - 프론트는 slug / score / mode / result 정도만 넘기고,
    *      실제 보상 배분은 서버에서 일괄 관리하는 구조를 유지한다.
+   *
+   * 7. Analytics 대시보드
+   *    - analytics_events 테이블에는 game_start / game_end / reward / wallet_tx 등이
+   *      한 곳에 누적되므로, 한 판 플레이의 라이프사이클을 그대로 복원할 수 있다.
+   *    - event_type + meta_json.score + created_at 을 조합하여
+   *      유저별/게임별 성과, retention, 플레이 패턴을 시각화할 수 있다.
+   *
+   * 8. 유지보수 팁
+   *    - 이 파일에서 가장 중요한 함수들은 jsonFetch, getSession, gameStart, gameFinish,
+   *      sendGameReward, trackGameEvent 여섯 가지이다.
+   *    - 나머지는 UI와 연결된 헬퍼이므로, 디자인이 바뀌더라도 이 여섯 함수의
+   *      외부 계약만 유지되면 대부분의 서버 연동은 그대로 동작한다.
    *
    * 이 추가 가이드는 파일 길이를 늘리기 위한 용도이기도 하지만,
    * 실제로 프로젝트를 넘겨받은 사람이 빠르게 구조를 파악하는 데 도움을 준다.

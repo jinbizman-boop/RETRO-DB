@@ -11,8 +11,11 @@
 // 🔥 Wallet-C 스키마 / 시스템 정합 강화 (회원별 코인/경험치/티켓 일관 반영)
 // - canonical 스키마 (migrations/001_init.sql, 005/006 확장 기준):
 //     • transactions 테이블 + apply_wallet_transaction BEFORE INSERT 트리거
-//     • user_stats(coins, exp, tickets, games_played, updated_at) 자동 갱신
-// - 더 이상 wallet_balances / wallet_tx 별도 테이블 사용 ❌
+//     • user_stats(coins, exp/xp, tickets, games_played, updated_at) 자동 갱신
+// - reward.ts / balance.ts 와의 정합:
+//     • reward.ts: 게임 보상 → user_progress + wallet_balances 갱신
+//     • balance.ts: user_stats(우선) + wallet_balances + user_progress 를 통합 조회
+//     • transaction.ts: 상점 결제/직접 코인 조정 → transactions → user_stats 갱신
 // - userId 소스 / 정규화:
 //     • 1순위: _middleware.ts 가 주입한 X-User-Id 헤더 (UUID users.id)
 //     • 2순위: body.userId (validateTransaction 결과)
@@ -45,6 +48,12 @@
 //                 { error: "insufficient_funds" } (400) 로 통일
 //     • 나머지는 { error: message } 400 으로 그대로 전달
 //
+// - 📊 추가 고도화 (reward.ts / balance.ts 와 동일 철학):
+//     • 트랜잭션 실행 후, 최신 user_stats 를 다시 읽어서 요약 헤더 제공
+//       - X-Wallet-Stats-Json: { balance, exp, tickets, gamesPlayed }
+//     • analytics_events 에 wallet_tx 이벤트 기록(선택적 활용)
+//     • X-Wallet-Debug-* 헤더로 디버그 정보(요청/응답 메타) 선택 제공
+//
 // ───────────────────────────────────────────────────────────────
 
 // ───── Minimal Cloudflare Pages ambient types (type-checker only) ─────
@@ -68,7 +77,29 @@ import { validateTransaction } from "../_utils/schema/wallet";
 import * as Rate from "../_utils/rate-limit";
 import { ensureUserStatsRow } from "../_utils/progression";
 
-/* ───────── constants / helpers ───────── */
+/* ───────── types & constants ───────── */
+
+type TxType = "earn" | "spend";
+
+type UserStatsRow = {
+  coins?: number | string | bigint | null;
+  exp?: number | string | bigint | null;
+  xp?: number | string | bigint | null;
+  tickets?: number | string | bigint | null;
+  games_played?: number | string | bigint | null;
+  last_login_at?: string | Date | null;
+  updated_at?: string | Date | null;
+};
+
+type TxInsertResultRow = {
+  balance_after?: number | string | bigint | null;
+};
+
+type AnalyticsRow = {
+  id?: string;
+};
+
+type SqlClient = ReturnType<typeof getSql>;
 
 /**
  * users.id = UUID (001_init.sql 기반) 이므로, UUID 강제
@@ -76,21 +107,33 @@ import { ensureUserStatsRow } from "../_utils/progression";
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/* ───────── helpers: userId / amount / meta / 정규화 ───────── */
+
+/**
+ * 문자열 안전 정규화
+ * - trim + NFKC
+ */
+function safeNormalizeStr(v: string): string {
+  const trimmed = v.trim();
+  try {
+    return trimmed.normalize("NFKC");
+  } catch {
+    return trimmed;
+  }
+}
+
 /**
  * userId 우선순위
- *  1) X-User-Id / x-user-id 헤더 (미들웨어에서 JWT sub 기반으로 세팅)
+ *  1) X-User-Id / x-user-id 헤더 (미들웨어가 JWT 기반으로 주입)
  *  2) validateTransaction 이 반환한 body.userId
  */
 function resolveUserId(req: Request, bodyUserId: unknown): string {
   const headerId =
     req.headers.get("X-User-Id") || req.headers.get("x-user-id") || "";
 
-  let candidate = (headerId || String(bodyUserId ?? "")).trim();
-  try {
-    candidate = candidate.normalize("NFKC");
-  } catch {
-    // 일부 런타임에서 normalize 미지원 시 조용히 무시
-  }
+  let candidate = safeNormalizeStr(
+    (headerId || String(bodyUserId ?? "")).trim()
+  );
 
   if (!candidate) throw new Error("Missing userId");
   if (!UUID_V4_REGEX.test(candidate)) {
@@ -261,7 +304,7 @@ function isInsufficientBalanceError(err: any): boolean {
 }
 
 /**
- * transactions 테이블 자체가 없는 경우, 혹은 user_stats 가 없는 경우
+ * transactions / user_stats 스키마 미초기화 여부
  * → "Wallet schema is not initialized" 로 통합
  */
 function isWalletSchemaMissing(err: any): boolean {
@@ -269,7 +312,148 @@ function isWalletSchemaMissing(err: any): boolean {
   const msg = String(err?.message ?? err).toLowerCase();
   if (msg.includes("apply_wallet_transaction")) return true;
   if (msg.includes("user_stats") && msg.includes("does not exist")) return true;
+  if (msg.includes("transactions") && msg.includes("does not exist")) return true;
   return false;
+}
+
+/**
+ * Date/타임스탬프 컬럼을 ISO 문자열 또는 null 로 변환
+ */
+function toIsoOrNull(v: unknown): string | null {
+  if (!v) return null;
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    return v.toISOString();
+  }
+  if (typeof v === "string") {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+  try {
+    const d = new Date(String(v));
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/* ───────── user_stats 조회 (balance.ts와 정합) ───────── */
+
+async function fetchUserStats(
+  sql: SqlClient,
+  userId: string
+): Promise<{
+  found: boolean;
+  coins: number;
+  exp: number;
+  tickets: number;
+  gamesPlayed: number;
+  lastLoginAt: string | null;
+  updatedAt: string | null;
+}> {
+  try {
+    const rows = (await sql/* sql */ `
+      select
+        coins,
+        exp,
+        xp,
+        tickets,
+        games_played,
+        last_login_at,
+        updated_at
+      from user_stats
+      where user_id = ${userId}::uuid
+      limit 1
+    `) as UserStatsRow[];
+
+    if (!rows || rows.length === 0) {
+      return {
+        found: false,
+        coins: 0,
+        exp: 0,
+        tickets: 0,
+        gamesPlayed: 0,
+        lastLoginAt: null,
+        updatedAt: null,
+      };
+    }
+
+    const r = rows[0];
+
+    const coins =
+      r.coins === undefined || r.coins === null
+        ? 0
+        : Number(r.coins) || 0;
+    const expCandidate = r.exp ?? r.xp ?? 0;
+    const exp = Number(expCandidate) || 0;
+    const tickets = Number(r.tickets ?? 0) || 0;
+    const gamesPlayed = Number(r.games_played ?? 0) || 0;
+
+    const lastLoginAt = toIsoOrNull(r.last_login_at ?? null);
+    const updatedAt = toIsoOrNull(r.updated_at ?? null);
+
+    return {
+      found: true,
+      coins,
+      exp,
+      tickets,
+      gamesPlayed,
+      lastLoginAt,
+      updatedAt,
+    };
+  } catch (e) {
+    if (isMissingTable(e)) {
+      return {
+        found: false,
+        coins: 0,
+        exp: 0,
+        tickets: 0,
+        gamesPlayed: 0,
+        lastLoginAt: null,
+        updatedAt: null,
+      };
+    }
+    throw e;
+  }
+}
+
+/* ───────── analytics_events 로깅 (선택적) ─────────
+ * - reward.ts 와 마찬가지로 통계/분석용 로그 남기기
+ */
+
+async function logAnalyticsEvent(
+  sql: SqlClient,
+  userId: string,
+  game: string | null,
+  type: "wallet_tx",
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    await sql/* sql */ `
+      create table if not exists analytics_events (
+        id uuid primary key default gen_random_uuid(),
+        user_id text,
+        game_id text,
+        event_type text not null,
+        meta_json jsonb,
+        created_at timestamptz default now()
+      )
+    `;
+    const gameId = game ?? null;
+    await sql/* sql */ `
+      insert into analytics_events(user_id, game_id, event_type, meta_json)
+      values(
+        ${userId},
+        ${gameId},
+        ${type},
+        ${JSON.stringify(payload)}::jsonb
+      )
+    ` as AnalyticsRow[];
+  } catch (e) {
+    // 분석용이므로 실패해도 트랜잭션에는 영향 주지 않음
+  }
 }
 
 /* ───────── handler ───────── */
@@ -308,10 +492,10 @@ export const onRequest: PagesFunction<Env> = async ({
   try {
     const body = await readJSON(request);
 
-    // ──────────────────────────────────────────────────────────
-    // 1차: 기존 스키마 검증(계약 유지)
-    //     validateTransaction 이 userId / amount / reason / game / meta 등을 1차 정제
-    // ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // 1) 기존 스키마 검증(계약 유지)
+    //    validateTransaction 이 userId / amount / reason / game / meta 등을 1차 정제
+    // ─────────────────────────────────────────────
     const txInput = validateTransaction(body) as any;
 
     const {
@@ -327,9 +511,9 @@ export const onRequest: PagesFunction<Env> = async ({
       meta: rawMeta,
     } = txInput;
 
-    // ──────────────────────────────────────────────────────────
-    // 2차: 서버측 보수적 정규화 (userId/amount/reason/game/ref/meta)
-    // ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // 2) 서버측 보수적 정규화 (userId/amount/reason/game/ref/meta)
+    // ─────────────────────────────────────────────
 
     // userId: 헤더(X-User-Id) 우선 → body.userId
     const userId = resolveUserId(request, rawUser);
@@ -345,8 +529,7 @@ export const onRequest: PagesFunction<Env> = async ({
     const reason = cleanReason(rawReason ?? undefined);
 
     // txn_type: amount 부호에 따라 earn / spend
-    const txType: "earn" | "spend" =
-      amountBig >= 0n ? "earn" : ("spend" as const);
+    const txType: TxType = amountBig >= 0n ? "earn" : "spend";
 
     // game: ranking / 로그 집계용 ID (선택)
     const game = cleanGameId(rawGame);
@@ -384,7 +567,6 @@ export const onRequest: PagesFunction<Env> = async ({
       ip: clientMeta.ip,
       ua: clientMeta.ua,
       env: {
-        // 환경 힌트 (서비스/스테이징 구분용)
         nodeEnv: (env as any).NODE_ENV ?? undefined,
         runtime: "cloudflare-pages",
       },
@@ -402,16 +584,15 @@ export const onRequest: PagesFunction<Env> = async ({
     // user_stats row 가 없으면 생성 (트리거에서 insert 할 수 있지만 선제 보장)
     await ensureUserStatsRow(sql as any, userId);
 
+    // ─────────────────────────────────────────────
+    // 3) canonical 경로: transactions insert
+    //    - BEFORE INSERT 트리거 apply_wallet_transaction 가
+    //      user_stats(coins, exp, tickets, games_played)를 갱신
+    // ─────────────────────────────────────────────
     try {
-      // ──────────────────────────────────────────────────────────
-      // 3) canonical 경로: transactions insert
-      //    - BEFORE INSERT 트리거 apply_wallet_transaction 가
-      //      user_stats(coins, xp, tickets, games_played)를 갱신
-      // ──────────────────────────────────────────────────────────
-
       if (idem) {
         // 멱등키 기반: 같은 키로 다시 들어오면 double-spend 방지
-        const rows = await sql/* sql */ `
+        const rows = (await sql/* sql */ `
           insert into transactions (
             user_id,
             type,
@@ -444,7 +625,8 @@ export const onRequest: PagesFunction<Env> = async ({
           )
           on conflict (idempotency_key) do nothing
           returning balance_after
-        `;
+        `) as TxInsertResultRow[];
+
         usedIdempotent = true;
 
         // 새로 insert 된 경우에만 balance_after 반환
@@ -453,7 +635,7 @@ export const onRequest: PagesFunction<Env> = async ({
         }
         // rows.length === 0 인 경우: 이미 처리된 멱등키 → 재호출을 무시하고 ok: true 반환
       } else {
-        const rows = await sql/* sql */ `
+        const rows = (await sql/* sql */ `
           insert into transactions (
             user_id,
             type,
@@ -483,13 +665,13 @@ export const onRequest: PagesFunction<Env> = async ({
             ${note}
           )
           returning balance_after
-        `;
+        `) as TxInsertResultRow[];
+
         if (rows && rows.length > 0 && rows[0].balance_after != null) {
           balanceAfter = Number(rows[0].balance_after);
         }
       }
-      // apply_wallet_transaction BEFORE INSERT 트리거가
-      // user_stats(coins, exp, tickets, games_played)를 자동 갱신한다.
+      // 여기까지 오면 트리거가 user_stats(coins, exp, tickets, games_played)를 자동 갱신
     } catch (e) {
       // 스키마 문제(테이블/컬럼 없음)면 명시적인 에러 메시지로 반환
       if (isWalletSchemaMissing(e)) {
@@ -520,30 +702,116 @@ export const onRequest: PagesFunction<Env> = async ({
 
     const tookMs = Math.round(performance.now() - t0);
 
-    // ──────────────────────────────────────────────────────────
-    // 4) 응답: 외부 계약 유지 { ok: true } + 보조 헤더들
-    // ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // 4) 트랜잭션 이후 최신 user_stats 조회 (balance.ts와 동일 구조)
+    //    - 프론트가 즉시 최신 잔액/스탯을 알 수 있도록 헤더로 제공
+    // ─────────────────────────────────────────────
+    const stats = await fetchUserStats(sql, userId);
+
+    const finalCoins =
+      stats.found && Number.isFinite(Number(stats.coins))
+        ? Number(stats.coins)
+        : balanceAfter ?? 0;
+    const finalExp = stats.exp;
+    const finalTickets = stats.tickets;
+    const finalGames = stats.gamesPlayed;
+
+    const statsSummary = {
+      balance: finalCoins,
+      exp: finalExp,
+      tickets: finalTickets,
+      gamesPlayed: finalGames,
+    };
+
+    // ─────────────────────────────────────────────
+    // 5) analytics_events 에 wallet_tx 로그 남기기 (선택 기능)
+    // ─────────────────────────────────────────────
+    const analyticsPayload = {
+      txType,
+      amount: amountBig.toString(),
+      reason: reason,
+      game,
+      expDelta,
+      ticketsDelta,
+      playsDelta,
+      refTable,
+      refId,
+      idempotencyKey: idem,
+      balanceAfter: balanceAfter,
+      coinsAfter: finalCoins,
+      expAfter: finalExp,
+      ticketsAfter: finalTickets,
+      gamesAfter: finalGames,
+      tookMs,
+    };
+
+    // 실패해도 전체 트랜잭션에는 영향 없음 (fire-and-forget 느낌)
+    try {
+      await logAnalyticsEvent(sql, userId, game, "wallet_tx", analyticsPayload);
+    } catch {
+      // ignore
+    }
+
+    // ─────────────────────────────────────────────
+    // 6) 응답: 외부 계약 유지 { ok: true } + 보조 헤더들
+    // ─────────────────────────────────────────────
+    const headers: Record<string, string> = {
+      "Cache-Control": "no-store",
+      "X-Wallet-User": userId,
+      "X-Wallet-Delta": amountBig.toString(),
+      "X-Wallet-Idempotent": String(usedIdempotent),
+      "X-Wallet-Type": txType,
+      "X-Wallet-Game": game || "",
+      "X-Wallet-Exp-Delta": String(expDelta),
+      "X-Wallet-Tickets-Delta": String(ticketsDelta),
+      "X-Wallet-Plays-Delta": String(playsDelta),
+      "X-Wallet-Ref-Table": refTable || "",
+      "X-Wallet-Ref-Id": refId != null ? String(refId) : "",
+      "X-Wallet-Took-ms": String(tookMs),
+    };
+
+    if (balanceAfter !== null) {
+      headers["X-Wallet-Balance"] = String(balanceAfter);
+    } else if (Number.isFinite(finalCoins)) {
+      headers["X-Wallet-Balance"] = String(finalCoins);
+    }
+
+    if (stats.lastLoginAt) {
+      headers["X-Wallet-Last-Login-At"] = stats.lastLoginAt;
+    }
+    if (stats.updatedAt) {
+      headers["X-Wallet-Stats-Updated-At"] = stats.updatedAt;
+    }
+
+    // balance.ts 와 동일 형식의 요약 JSON 헤더
+    try {
+      headers["X-Wallet-Stats-Json"] = JSON.stringify(statsSummary);
+    } catch {
+      // stringify 실패는 무시
+    }
+
+    // 디버그 용: 원하면 프론트에서 X-Wallet-Debug 를 켜서 확인 가능 (선택)
+    const debugRequested =
+      request.headers.get("X-Wallet-Debug") === "1" ||
+      request.headers.get("x-wallet-debug") === "1";
+    if (debugRequested) {
+      try {
+        headers["X-Wallet-Debug-Meta"] = JSON.stringify({
+          userId,
+          game,
+          txType,
+          idem,
+        });
+      } catch {
+        // ignore
+      }
+    }
+
     return withCORS(
       json(
         { ok: true },
         {
-          headers: {
-            "Cache-Control": "no-store",
-            "X-Wallet-User": userId,
-            "X-Wallet-Delta": amountBig.toString(),
-            "X-Wallet-Idempotent": String(usedIdempotent),
-            ...(balanceAfter !== null
-              ? { "X-Wallet-Balance": String(balanceAfter) }
-              : {}),
-            "X-Wallet-Type": txType,
-            "X-Wallet-Game": game || "",
-            "X-Wallet-Exp-Delta": String(expDelta),
-            "X-Wallet-Tickets-Delta": String(ticketsDelta),
-            "X-Wallet-Plays-Delta": String(playsDelta),
-            "X-Wallet-Ref-Table": refTable || "",
-            "X-Wallet-Ref-Id": refId != null ? String(refId) : "",
-            "X-Wallet-Took-ms": String(tookMs),
-          },
+          headers,
         }
       ),
       env.CORS_ORIGIN

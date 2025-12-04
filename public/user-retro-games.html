@@ -1348,6 +1348,9 @@
 
   <canvas id="fx"></canvas>
 
+  <!-- 🎵 허브 전용 배경 음악 (30% 볼륨, 반복 재생) -->
+  <audio id="hubBgm" src="/assets/music/main-background.mp3" loop preload="auto" aria-hidden="true"></audio>
+
   <!-- ✅ 좌측 세로형 광고 배너 -->
   <div class="sideAd sideAd-left" aria-label="광고 배너(좌측)">
     <div class="sideAd-inner">
@@ -2342,6 +2345,56 @@
 
     let fxEnabled = true;
 
+    /* 🎵 허브 BGM 제어용 헬퍼 */
+    let bgmAudio = null;
+    function getBgmAudio(){
+      if(!bgmAudio){
+        bgmAudio = document.getElementById("hubBgm");
+        if(bgmAudio){
+          bgmAudio.volume = 0.3;
+        }
+      }
+      return bgmAudio;
+    }
+
+    function syncBgmWithSettings(settings){
+      const audio = getBgmAudio();
+      if(!audio) return;
+      const enabled = settings.soundMaster !== false && settings.bgm !== false;
+      audio.muted = !enabled;
+      if(enabled){
+        audio.volume = 0.3;
+        try{
+          audio.play().catch(function(){});
+        }catch(e){}
+      }else{
+        try{
+          if(!audio.paused) audio.pause();
+        }catch(e){}
+      }
+    }
+
+    function ensureBgmUserStart(){
+      const audio = getBgmAudio();
+      if(!audio) return;
+      if(audio.muted) return;
+      if(audio.paused){
+        try{
+          audio.play().catch(function(){});
+        }catch(e){}
+      }
+    }
+
+    window.addEventListener("click", function(){
+      ensureBgmUserStart();
+    }, { once:true });
+
+    window.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){
+        ensureBgmUserStart();
+      }
+    }, { once:true });
+
     function loadSettings(){
       try{
         const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -2391,6 +2444,9 @@
           document.documentElement.classList.remove("rg-reduced-motion");
         }
       }catch(e){}
+
+      /* 🎵 설정 반영 시 BGM on/off 동기화 */
+      syncBgmWithSettings(settings);
 
       try{
         window.RG_HUB = window.RG_HUB || {};
@@ -2930,6 +2986,81 @@
     window.openShopModal = openShopModal;
     window.closeShopModal = closeShopModal;
     window.RG_addReward = addReward;
+
+    /* ===== 공통 게임 시작/종료 + 보상 연동 헬퍼 ===== */
+    (function attachGlobalGameHooks(){
+      /**
+       * 게임 페이지에서 공통으로 사용할 로컬 보상 큐잉 함수.
+       * - 각 게임에서 window.RG_queueReward({coins,tickets,xp}) 호출 후 허브로 이동하면
+       *   허브의 consumeQueuedReward()가 처리.
+       */
+      window.RG_queueReward = function(reward){
+        try{
+          if(!reward) return;
+          const payload = {
+            coins:   NUM(reward.coins),
+            tickets: NUM(reward.tickets),
+            xp:      NUM(reward.xp)
+          };
+          if(!(payload.coins || payload.tickets || payload.xp)) return;
+          localStorage.setItem("rg_reward", JSON.stringify(payload));
+        }catch(e){
+          console.warn("[RG] queueReward failed:", e);
+        }
+      };
+
+      /**
+       * 게임 시작 훅 (각 게임 파일의 notifyStart()에서 호출 가정)
+       * - 전체 플레이 수 증가
+       * - analytics.js에 정의된 analyticsGameStart(slug, meta) 있으면 호출
+       */
+      if(!window.gameStart){
+        window.gameStart = function(slug, meta){
+          try{
+            const key = "rg_plays_total";
+            const cur = NUM(localStorage.getItem(key) || 0) + 1;
+            localStorage.setItem(key, cur);
+            ACCOUNT_TOTALS.plays = cur;
+            renderHUD();
+          }catch(e){
+            console.warn("[RG] gameStart plays update error:", e);
+          }
+          try{
+            if(typeof window.analyticsGameStart === "function"){
+              window.analyticsGameStart(slug, meta || {});
+            }
+          }catch(e){
+            console.warn("[RG] analyticsGameStart error:", e);
+          }
+        };
+      }
+
+      /**
+       * 게임 종료 훅 (각 게임 파일의 notifyFinish(score, reward)에서 호출 가정)
+       * - reward가 함께 넘어오면 로컬 큐에 저장 (허브 입장 시 addReward로 반영)
+       * - analytics.js에 정의된 analyticsGameFinish(slug, payload) 있으면 호출
+       * ※ 실제 지갑(/api/wallet) 적립은 각 게임 파일에서 이미 처리하는 것으로 가정.
+       */
+      if(!window.gameFinish){
+        window.gameFinish = function(slug, payload){
+          try{
+            const r = payload && payload.reward;
+            if(r && (r.coins || r.tickets || r.xp)){
+              window.RG_queueReward(r);
+            }
+          }catch(e){
+            console.warn("[RG] gameFinish reward queue error:", e);
+          }
+          try{
+            if(typeof window.analyticsGameFinish === "function"){
+              window.analyticsGameFinish(slug, payload || {});
+            }
+          }catch(e){
+            console.warn("[RG] analyticsGameFinish error:", e);
+          }
+        };
+      }
+    })();
 
     /* 배경 파티클 */
     const c=document.getElementById('fx');

@@ -1357,7 +1357,7 @@
       <ins class="adsbygoogle"
         style="display:block;width:100%;height:100%;"
         data-ad-client="ca-pub-6713974265397310"
-        data-ad-slot=""
+        data-ad-slot="4514999077"
         data-ad-format="auto"
         data-full-width-responsive="false"></ins>
       <script>
@@ -1376,7 +1376,7 @@
       <ins class="adsbygoogle"
         style="display:block;width:100%;height:100%;"
         data-ad-client="ca-pub-6713974265397310"
-        data-ad-slot="7668007538"
+        data-ad-slot="4514999077"
         data-ad-format="auto"
         data-full-width-responsive="false"></ins>
       <script>
@@ -1842,20 +1842,33 @@
       userId:  null,
     };
 
+    // ✅ 유저별/게스트별 로컬스토리지 prefix
+    function getStoragePrefix(){
+      const uid = ACCOUNT_TOTALS.userId;
+      if (!uid) return "rg_guest";
+      return "rg_u_" + String(uid);
+    }
+
     function readTotalsFromLocal(){
+      const prefix = getStoragePrefix();
       return {
-        coins:   NUM(localStorage.getItem('rg_coins')   || 0),
-        tickets: NUM(localStorage.getItem('rg_tickets') || 0),
-        xp:      NUM(localStorage.getItem('rg_xp')      || 0),
-        xpCap:   NUM(localStorage.getItem('rg_xp_cap')  || 20000)
+        coins:   NUM(localStorage.getItem(prefix + '_coins')   || 0),
+        tickets: NUM(localStorage.getItem(prefix + '_tickets') || 0),
+        xp:      NUM(localStorage.getItem(prefix + '_xp')      || 0),
+        xpCap:   NUM(localStorage.getItem(prefix + '_xp_cap')  || 20000)
       };
     }
 
     function writeTotalsToLocal(t){
-      localStorage.setItem('rg_coins',   t.coins);
-      localStorage.setItem('rg_tickets', t.tickets);
-      localStorage.setItem('rg_xp',      t.xp);
-      localStorage.setItem('rg_xp_cap',  t.xpCap);
+      const prefix = getStoragePrefix();
+      try{
+        localStorage.setItem(prefix + '_coins',   t.coins);
+        localStorage.setItem(prefix + '_tickets', t.tickets);
+        localStorage.setItem(prefix + '_xp',      t.xp);
+        localStorage.setItem(prefix + '_xp_cap',  t.xpCap);
+      }catch(e){
+        console.warn("[RG] writeTotalsToLocal error:", e);
+      }
     }
 
     function readTotals(){
@@ -1891,7 +1904,8 @@
       if (xpEl)     xpEl.textContent     = fmt(t.xp);
       if (ticketEl) ticketEl.textContent = fmt(t.tickets);
 
-      const localPlays = NUM(localStorage.getItem('rg_plays_total') || 0);
+      const prefix = getStoragePrefix();
+      const localPlays = NUM(localStorage.getItem(prefix + '_plays') || 0);
       const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
       if (playEl) playEl.textContent = fmt(plays);
 
@@ -1902,9 +1916,40 @@
       if (xpCap) xpCap.textContent = "/ " + (t.xpCap >= 1000 ? fmt(t.xpCap/1000)+"K" : fmt(t.xpCap));
     }
 
+    // ✅ 로그인 실패/로그아웃 시 HUD + 로컬스토리지 초기화
+    function resetAccountTotalsAndStorage(){
+      ACCOUNT_TOTALS.coins   = 0;
+      ACCOUNT_TOTALS.tickets = 0;
+      ACCOUNT_TOTALS.xp      = 0;
+      ACCOUNT_TOTALS.plays   = 0;
+      ACCOUNT_TOTALS.xpCap   = 20000;
+
+      try{
+        const prefix = getStoragePrefix();
+        localStorage.setItem(prefix + '_coins',   '0');
+        localStorage.setItem(prefix + '_tickets', '0');
+        localStorage.setItem(prefix + '_xp',      '0');
+        localStorage.setItem(prefix + '_xp_cap',  '20000');
+        localStorage.setItem(prefix + '_plays',   '0');
+      }catch(e){
+        console.warn("[RG] resetAccountTotalsAndStorage localStorage error:", e);
+      }
+
+      renderHUD();
+      renderShopCounters();
+    }
+    
     renderHUD();
     window.addEventListener('storage', e=>{
-      if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap','rg_plays_total'].includes(e.key)) {
+      if(!e.key) return;
+      // ✅ 유저별 prefix가 달라도 suffix만 맞으면 HUD 갱신
+      if(
+        e.key.endsWith('_coins')   ||
+        e.key.endsWith('_tickets') ||
+        e.key.endsWith('_xp')      ||
+        e.key.endsWith('_xp_cap')  ||
+        e.key.endsWith('_plays')
+      ){
         renderHUD();
         renderShopCounters();
       }
@@ -2046,10 +2091,9 @@
         });
 
         if(!res.ok){
+          ACCOUNT_TOTALS.userId = null;
           updateUserGreeting(null);
-          ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
-          renderHUD();
-          renderShopCounters();
+          resetAccountTotalsAndStorage();   // ✅ 새 함수로 HUD+storage 초기화
           return;
         }
 
@@ -2059,10 +2103,9 @@
         }catch(_){}
 
         if(!data || !data.ok || !data.user){
+          ACCOUNT_TOTALS.userId = null;
           updateUserGreeting(null);
-          ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
-          renderHUD();
-          renderShopCounters();
+          resetAccountTotalsAndStorage();   // ✅
           return;
         }
 
@@ -2077,10 +2120,9 @@
         syncWalletFromServer().catch(()=>{});
       }catch(err){
         console.error("auth check error", err);
+        ACCOUNT_TOTALS.userId = null;
         updateUserGreeting(null);
-        ACCOUNT_TOTALS.coins = ACCOUNT_TOTALS.xp = ACCOUNT_TOTALS.tickets = ACCOUNT_TOTALS.plays = null;
-        renderHUD();
-        renderShopCounters();
+        resetAccountTotalsAndStorage();  // ✅
       }
     };
 
@@ -2543,6 +2585,15 @@
           window.RG.logout().catch(function(){});
         }
       }catch(e){}
+
+      // ✅ HUD + 로컬스토리지도 같이 초기화
+      try{
+        ACCOUNT_TOTALS.userId = null;
+        resetAccountTotalsAndStorage();
+      }catch(e){
+        console.warn("[RG] logout reset error:", e);
+      }
+
       try{
         window.location.href = BASE + "logout.html";
       }catch(e){}
@@ -3017,7 +3068,8 @@
       if(!window.gameStart){
         window.gameStart = function(slug, meta){
           try{
-            const key = "rg_plays_total";
+            const prefix = getStoragePrefix();
+            const key = prefix + "_plays";
             const cur = NUM(localStorage.getItem(key) || 0) + 1;
             localStorage.setItem(key, cur);
             ACCOUNT_TOTALS.plays = cur;

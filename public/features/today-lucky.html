@@ -150,9 +150,9 @@
 </style>
 </head>
 
-<!-- 프로젝트 스크립트(그대로) -->
-<script defer src="assets/js/app.js"></script>
-<script defer src="assets/js/analytics.js"></script>
+<!-- 프로젝트 스크립트(경로 절대 경로로 유지) -->
+<script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
 
 <body>
   <div id="site-header"></div>
@@ -192,6 +192,100 @@
   </div>
 
 <script>
+/* ------------------------------------------------------------------
+ *  공통 상수 (AUTH / BASE 경로)
+ * ------------------------------------------------------------------ */
+const BASE = "/";
+const AUTH_API_BASE = "/api/auth";
+
+/* ------------------------------------------------------------------
+ *  🔊 오늘의 행운 전용 BGM
+ *  - /assets/music/today-lucky-background.mp3
+ *  - 기본 볼륨 30%, loop 재생
+ *  - rg_user_settings(soundMaster / bgm)와 연동
+ * ------------------------------------------------------------------ */
+const BGM_SRC_TODAY_LUCKY = "/assets/music/today-lucky-background.mp3";
+let bgmLuckyEl = null;
+let bgmLuckyReady = false;
+
+function loadRgSettings(){
+  try{
+    const raw = localStorage.getItem("rg_user_settings");
+    if(!raw){
+      return {
+        soundMaster:true,
+        bgm:true,
+        backgroundFx:true,
+        reducedMotion:false,
+        gameCountdown:true,
+        gameHints:true
+      };
+    }
+    const parsed = JSON.parse(raw) || {};
+    return {
+      soundMaster: parsed.soundMaster !== false,
+      bgm:         parsed.bgm         !== false,
+      backgroundFx:parsed.backgroundFx !== false,
+      reducedMotion:!!parsed.reducedMotion,
+      gameCountdown: parsed.gameCountdown !== false,
+      gameHints:     parsed.gameHints     !== false
+    };
+  }catch(e){
+    return {
+      soundMaster:true,
+      bgm:true,
+      backgroundFx:true,
+      reducedMotion:false,
+      gameCountdown:true,
+      gameHints:true
+    };
+  }
+}
+function shouldPlayLuckyBgm(){
+  const s = loadRgSettings();
+  return !!(s.soundMaster && s.bgm);
+}
+function ensureLuckyBgm(){
+  if(bgmLuckyEl) return bgmLuckyEl;
+  bgmLuckyEl = document.createElement("audio");
+  bgmLuckyEl.src = BGM_SRC_TODAY_LUCKY;
+  bgmLuckyEl.loop = true;
+  bgmLuckyEl.volume = 0.3; // 🔊 30%
+  bgmLuckyEl.setAttribute("preload","auto");
+  bgmLuckyEl.style.display = "none";
+  document.body.appendChild(bgmLuckyEl);
+  return bgmLuckyEl;
+}
+async function tryPlayLuckyBgm(){
+  const audio = ensureLuckyBgm();
+  if(!shouldPlayLuckyBgm()){
+    try{ audio.pause(); }catch(_){}
+    return;
+  }
+  try{
+    await audio.play();
+    bgmLuckyReady = true;
+  }catch(e){
+    // 자동재생 차단 시: 사용자 인터랙션 이후 재시도
+    bgmLuckyReady = false;
+  }
+}
+function handleLuckyBgmUserGesture(){
+  if(bgmLuckyReady) return;
+  tryPlayLuckyBgm();
+}
+document.addEventListener("click", handleLuckyBgmUserGesture, { once:true });
+document.addEventListener("keydown", handleLuckyBgmUserGesture, { once:true });
+window.addEventListener("storage", function(e){
+  if(e.key === "rg_user_settings"){
+    tryPlayLuckyBgm();
+  }
+});
+document.addEventListener("DOMContentLoaded", function(){
+  // DOM 준비 후 약간의 딜레이 뒤에 첫 재생 시도
+  setTimeout(tryPlayLuckyBgm, 300);
+});
+
 /* ------------------------------------------------------------------
  *  AdSense 연동 (인터스티셜 광고: n회 스핀마다 노출)
  *  - head에 삽입된 auto-ads 코드 + 여기서 ins 태그로 수동 슬롯 호출
@@ -274,7 +368,7 @@ const setTickets = n => localStorage.setItem(TICKET_KEY, String(Math.max(0, n|0)
  * ------------------------------------------------------------------ */
 const BANK_KEY = 'fortune_points_bank';
 const $ = s => document.querySelector(s);
-const fmt = n => n.toLocaleString('ko-KR');
+const fmt = n => Number(n||0).toLocaleString('ko-KR');
 const bankEl = $('#bank'), betEl = $('#bet'), winEl = $('#win');
 
 let bank    = +((localStorage.getItem(BANK_KEY) ?? bankEl.textContent.replace(/,/g,'') ) || 0);
@@ -294,8 +388,9 @@ syncWinUI(0);
 
 /* ------------------------------------------------------------------
  *  💰 /api/wallet 연동 브릿지 (today-lucky 전용)
- *  - 공통 훅 RG_addReward(gameId, payload) 있으면 먼저 호출
+ *  - 공통 훅 window.RG_addReward(gameId, payload) 호출
  *  - 이후 /api/wallet 로 직접 POST (action='reward')
+ *  - user-retro-games.html 쪽 HUD/Wallet 정보와 연동
  * ------------------------------------------------------------------ */
 /**
  * payload 예시:
@@ -308,25 +403,35 @@ syncWinUI(0);
  * }
  */
 async function sendGameReward(gameId, payload){
-  // 1) 전역 훅 먼저
+  const safePayload = payload || {};
+  const game = gameId || "today-lucky";
+
+  // 1) 전역 훅 먼저 호출 (허브에서 HUD/지갑 동기화)
   try{
-    if (typeof window.RG_addReward === 'function') {
-      window.RG_addReward(gameId, payload);
+    if (typeof window.RG_addReward === "function") {
+      // 통일된 시그니처: (gameId, payload)
+      window.RG_addReward(game, {
+        score:          safePayload.score        || 0,
+        pointsEarned:   safePayload.pointsEarned || 0,
+        ticketsEarned:  safePayload.ticketsEarned|| 0,
+        playsIncrement: safePayload.playsIncrement||0,
+        meta:           safePayload.meta || {}
+      });
     }
   }catch(e){
     console.warn('[RG][reward] RG_addReward hook error:', e);
   }
 
-  // 2) /api/wallet POST
+  // 2) /api/wallet POST – 서버 지갑/기록 반영
   try{
     const body = {
-      game: gameId,
+      game: game,
       action: 'reward',
-      score:          payload.score|0,
-      pointsEarned:   payload.pointsEarned|0,
-      ticketsEarned:  payload.ticketsEarned|0,
-      playsIncrement: payload.playsIncrement|0,
-      meta:           payload.meta || {}
+      score:          safePayload.score        || 0,
+      pointsEarned:   safePayload.pointsEarned || 0,
+      ticketsEarned:  safePayload.ticketsEarned|| 0,
+      playsIncrement: safePayload.playsIncrement||0,
+      meta:           safePayload.meta || {}
     };
 
     const res = await fetch('/api/wallet', {
@@ -710,7 +815,39 @@ const homeBtn = document.getElementById('homeBtn');
 
 spinBtn.onclick = () => startSpin();
 stopBtn.onclick = () => stopSpin();
-homeBtn.onclick = () => { window.location.href = 'user-retro-games.html'; };
+
+// ✅ HOME 버튼: 유저 계정 인식 후 메인 허브로 이동
+async function goRetroHome(){
+  try{
+    const res = await fetch(AUTH_API_BASE + "/me", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Accept": "application/json",
+        "Cache-Control": "no-store"
+      }
+    });
+    if(res.ok){
+      let data = null;
+      try{ data = await res.json(); }catch(_){}
+      if(data && data.ok && data.user){
+        // 로그인 세션 존재 → 곧바로 메인 허브로
+        window.location.href = BASE + "user-retro-games.html";
+        return;
+      }
+    }
+  }catch(e){
+    console.warn("[RG][today-lucky] auth check failed on HOME:", e);
+  }
+  // 세션 없음/오류 → 로그인 후 메인 허브로 복귀
+  try{
+    const next = encodeURIComponent(BASE + "user-retro-games.html");
+    window.location.href = BASE + "login.html?next=" + next;
+  }catch(e){
+    window.location.href = BASE + "login.html";
+  }
+}
+homeBtn.onclick = () => { goRetroHome(); };
 
 // "참여하기" = 티켓 5장 결제 (라운드당 1회)
 betBtn.onclick = () => {
@@ -769,6 +906,7 @@ document.addEventListener('keydown', (e)=>{
 
 /* ------------------------------------------------------------------
  *  세션 훅 & 가시성
+ *  - gameStart / gameFinish : 허브/analytics와 통합
  * ------------------------------------------------------------------ */
 function notifyStart(){
   try{

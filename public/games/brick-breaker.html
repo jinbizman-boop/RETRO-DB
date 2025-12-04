@@ -15,16 +15,16 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#0e1b34">
-  <meta name="description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="description" content="Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
   <meta name="robots" content="index,follow">
   <meta property="og:site_name" content="RETRO GAMES">
-  <meta property="og:title" content="RETRO 2048 – Arcade Cabinet">
-  <meta property="og:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta property="og:title" content="Brick Breaker – Arcade Cabinet">
+  <meta property="og:description" content="Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
   <meta property="og:type" content="website">
   <meta property="og:image" content="/assets/og/retro-games-card.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="RETRO 2048 – Arcade Cabinet">
-  <meta name="twitter:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="twitter:title" content="Brick Breaker – Arcade Cabinet">
+  <meta name="twitter:description" content="Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
   <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 
   <script>
@@ -38,7 +38,7 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense 글로벌 스크립트 -->
+  <!-- AdSense 글로벌 스크립트 (모든 광고 단위 공통) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
 
@@ -543,11 +543,7 @@
   </style>
 </head>
 
-<!-- 전역 스크립트(모듈 아님) – games/ 경로에서도 동작하도록 루트 기준 경로 사용 -->
-<script defer src="/assets/js/app.js"></script>
-<script defer src="/assets/js/analytics.js"></script>
-
-<body>
+<body data-rg-page="game">
   <div id="site-header"></div>
   <canvas id="fx"></canvas>
 
@@ -558,19 +554,21 @@
         <div class="ad-vertical sideAdInner">
           <span class="label">AD</span>
           <span class="hint">세로형 광고 배너 영역입니다.</span>
+
+          <!-- 좌우측 사이드 수직형 광고 (slot: 4514999077) -->
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-6713974265397310"
                data-ad-slot="4514999077"
                data-ad-format="auto"
-               data-full-width-responsive="false"></ins>
+               data-full-width-responsive="true"></ins>
         </div>
       </aside>
 
       <section class="cabinet" aria-label="retro arcade cabinet">
         <header class="marquee">
           <div class="title">
-            <h1>RETRO 2048</h1>
+            <h1>Brick Breaker</h1>
             <div class="subtitle">ARROWS · SWIPE</div>
           </div>
         </header>
@@ -579,7 +577,7 @@
         <div class="hud">
           <div class="chip">점수 <b id="score">0</b></div>
           <div class="chip">최고 <b id="best">0</b></div>
-          <div class="chip">이동 <b id="moves">0</b></div>
+          <div class="chip">레벨 <b id="moves">0</b></div>
 
           <!-- Points -->
           <div class="pill points" aria-label="사용자 포인트">
@@ -640,13 +638,15 @@
               <option value="insane">극악무도 (100)</option>
             </select>
           </label>
-          <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
           <label>보드
             <select id="sizeSel">
               <option value="12">보통</option>
               <option value="14">넓음</option>
               <option value="10">좁음</option>
             </select>
+          </label>
+          <label>레벨
+            <input id="lvlRange" type="range" min="1" max="100" value="1" step="1">
           </label>
           <button class="btn" id="endBtn">게임 종료</button>
         </div>
@@ -657,16 +657,24 @@
         <div class="ad-vertical sideAdInner">
           <span class="label">AD</span>
           <span class="hint">세로형 광고 배너 영역입니다.</span>
+
+          <!-- 좌우측 사이드 수직형 광고 (slot: 4514999077) -->
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-6713974265397310"
                data-ad-slot="4514999077"
                data-ad-format="auto"
-               data-full-width-responsive="false"></ins>
+               data-full-width-responsive="true"></ins>
         </div>
       </aside>
     </div>
   </div>
+
+  <!-- 좌우측 사이드 수직형 광고 초기화 -->
+  <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
 
   <!-- Records Modal -->
   <div id="recModal">
@@ -686,42 +694,46 @@
         <h3 id="adTitle" style="margin:0;color:#ffdf6e">광고</h3>
         <button id="adClose">닫기</button>
       </div>
+
+      <!-- 홈버튼 사각형 디스플레이 광고 (slot: 7668007538) -->
       <div id="adContainer" class="adPlaceholder">
-        <div style="text-align:center;opacity:.9">
-          <div style="font-weight:900;margin-bottom:6px">여기에 광고가 표시됩니다</div>
-          <div style="font-size:12px;opacity:.8">개발/테스트 환경에서는 플레이스홀더가 보입니다</div>
-        </div>
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6713974265397310"
+             data-ad-slot="7668007538"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
       </div>
     </div>
   </div>
 
+  <!-- 홈버튼 사각형 디스플레이 광고 초기화 -->
+  <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+
   <script>
   /* ================= AdSense ================= */
   const AD_CLIENT = 'ca-pub-6713974265397310';
-  const AD_SLOT   = '7668007538'; // 실제 AdSense 광고 단위 ID(있다면) 입력
+  const AD_SLOT   = '7668007538'; // 홈버튼 사각형 디스플레이 광고 단위 ID
 
   function fallbackAdHTML(){
     return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
   }
+
+  // 공식 디스플레이 단위 코드는 위에서 한 번 push 해두었고,
+  // 여기서는 모달만 열어준다.
   function showInterstitialAd(){
-    const box=document.getElementById('adContainer');
-    box.innerHTML='';
-    const ins=document.createElement('ins');
-    ins.className='adsbygoogle';
-    ins.style.display='block';
-    ins.setAttribute('data-ad-client', AD_CLIENT);
-    if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-    ins.setAttribute('data-ad-format','auto');
-    ins.setAttribute('data-full-width-responsive','true');
-    box.appendChild(ins);
-    try{
-      (window.adsbygoogle=window.adsbygoogle||[]).push({});
-    }catch(e){
-      console.warn(e);
-      box.innerHTML=fallbackAdHTML();
+    const box = document.getElementById('adContainer');
+    if (!box) return;
+    // 광고 로딩에 실패했을 경우를 대비한 폴백
+    if (!box.querySelector('ins.adsbygoogle')) {
+      box.innerHTML = fallbackAdHTML();
     }
-    document.getElementById('adModal').style.display='flex';
+    const modal = document.getElementById('adModal');
+    if (modal) modal.style.display = 'flex';
   }
+
   let _afterAd=null;
   function showAdThen(fn){
     _afterAd = (typeof fn==='function') ? fn : null;
@@ -732,18 +744,6 @@
     const f=_afterAd; _afterAd=null;
     if(f) try{ f(); }catch(e){ console.error(e); }
   });
-
-  /* 좌우 세로 배너 초기화 */
-  function initSideBanners(){
-    try{
-      const insList=document.querySelectorAll('.sideAdInner ins.adsbygoogle');
-      if(!insList.length) return;
-      (window.adsbygoogle = window.adsbygoogle || []);
-      insList.forEach(()=>{ window.adsbygoogle.push({}); });
-    }catch(e){
-      console.warn('side banner init error', e);
-    }
-  }
 
   /* ================= Neon FX ================= */
   (function(){
@@ -1001,7 +1001,7 @@
     const el = document.getElementById('bgm');
     if(!el) return;
 
-    el.src = BGM_SRC; // 안전하게 경로 보장
+    el.src = BGM_SRC;
     el.loop = true;
     el.volume = 0.3;
 
@@ -1011,7 +1011,7 @@
       if(!el) return;
       const p = el.play();
       if(p && typeof p.then === 'function'){
-        p.catch(()=>{ /* autoplay block – 최초 인터랙션까지 무시 */ });
+        p.catch(()=>{});
       }
     }
     function pause(){
@@ -1023,13 +1023,11 @@
       play();
     }
 
-    // 사용자 첫 인터랙션에서만 해제
     ['click','touchstart'].forEach(ev=>{
       window.addEventListener(ev, unlockOnce, { once:true, passive:true });
     });
     window.addEventListener('keydown', unlockOnce, { once:true });
 
-    // 탭 비활성화 시 일시정지, 복귀 시 재생
     document.addEventListener('visibilitychange',()=>{
       if(document.hidden){
         pause();
@@ -1049,7 +1047,6 @@
       this.best= +(localStorage.getItem(LS_KEYS.best)||0);
       this.level=1;
 
-      // 캔버스 기본 크기 세팅 (16:9 비율, bezel과 동일 / CSS는 width:100%로 스케일)
       this._setBaseSize();
 
       this.reset(1);
@@ -1063,11 +1060,9 @@
 
     _setBaseSize(){
       const d=DPR();
-      // 현재 CSS 레이아웃 기준 폭을 우선 사용, 없으면 960px 기준
       let cssW = this.c.clientWidth || 960;
       if(cssW <= 0) cssW = 960;
 
-      // ★ bezel(.screen)과 동일한 16:9 비율 유지 → 게임 화면이 캐비닛을 벗어나지 않도록 정렬
       const aspect = 16/9;
       let cssH = cssW / aspect;
 
@@ -1083,7 +1078,7 @@
       const lvl=$('#lvlRange');
       const applyTier=t=>{
         let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1;
-        lvl.value=lv;
+        if(lvl) lvl.value=lv;
         this.setLevel(lv);
       };
       if(tier){
@@ -1107,7 +1102,7 @@
       const endBtn  = $('#endBtn');
 
       if(newBtn) newBtn.addEventListener('click',()=> this.reset(this.level));
-      if(undoBtn) newBtn && undoBtn.addEventListener('click',()=>{ this.paused=!this.paused; });
+      if(undoBtn) undoBtn.addEventListener('click',()=>{ this.paused=!this.paused; });
 
       if(homeBtn){
         homeBtn.addEventListener('click',()=>
@@ -1168,7 +1163,6 @@
       this.level=lv||1;
       this.params=paramsForLevel(this.level);
 
-      // 레벨 리셋 시에도 캔버스 크기 한번 정렬
       this._setBaseSize();
 
       this.score=0;
@@ -1193,9 +1187,8 @@
       this.paused=false;
       this._ended=false;
 
-      /* ★ 10초마다 속도 증가용 상태값 초기화 */
       this.timeSinceStart = 0;
-      this.nextSpeedUpAt = 10;   // 10초, 20초, 30초...
+      this.nextSpeedUpAt = 10;
       this.speedScale = 1;
 
       const ov=document.getElementById('gameOver');
@@ -1264,7 +1257,6 @@
     }
 
     spawnBall(px){
-      /* ★ 현재 speedScale 반영해서 항상 “점점 빨라진 상태”를 유지 */
       const speed=this.params.baseSpeed*DPR()*this.speedScale;
       const angle = -Math.PI/3 + (Math.random()*Math.PI/6);
       const x = px|| this.paddle.x;
@@ -1492,7 +1484,6 @@
         if(this.comboTimer<=0) this.combo=1;
       }
 
-      /* ★ 10초마다 전체 볼 속도 약 6%씩 증가 */
       this.timeSinceStart += dt;
       const STEP = 8;
       const INC = 1.08;
@@ -1505,7 +1496,6 @@
         });
       }
 
-      // lasers
       for(let i=this.lasers.length-1;i>=0;i--){
         const L=this.lasers[i];
         L.y += L.vy*dt;
@@ -1523,7 +1513,6 @@
         if(L.y<0) this.lasers.splice(i,1);
       }
 
-      // powers
       for(let i=0;i<this.powers.length;i++){
         this.powers[i].y += this.powers[i].vy*dt;
       }
@@ -1537,7 +1526,6 @@
         }
       }
 
-      // balls
       for(let i=this.balls.length-1;i>=0;i--){
         const b=this.balls[i];
         b.x += b.vx*dt;
@@ -1562,7 +1550,6 @@
           continue;
         }
 
-        // 패들 충돌
         if(b.y+b.r>=this.paddle.y &&
            Math.abs(b.x - this.paddle.x) <= this.paddle.w*0.5 &&
            b.vy>0){
@@ -1581,7 +1568,6 @@
         }
       }
 
-      // 공 소진
       if(this.balls.length===0){
         this.lives--;
         this.stageDeaths++;
@@ -1591,7 +1577,6 @@
         this.spawnBall();
       }
 
-      // 벽돌 충돌/정리
       for(const br of this.bricks){
         if(br.remove) continue;
         for(const b of this.balls){
@@ -1600,7 +1585,6 @@
       }
       this.bricks = this.bricks.filter(b=> !b.remove);
 
-      // 스테이지 클리어
       if(this.bricks.length===0){
         this.awardPoints(80);
         if(this.stageDeaths===0){
@@ -1667,7 +1651,6 @@
       }
       ctx.restore();
 
-      // 레이저
       ctx.strokeStyle='#7ad7ff';
       ctx.lineWidth=2*d;
       for(const L of this.lasers){
@@ -1677,13 +1660,11 @@
         ctx.stroke();
       }
 
-      // 패들
       ctx.fillStyle='#8ea3ff';
       const px=this.paddle.x-this.paddle.w*0.5;
       const py=this.paddle.y;
       ctx.fillRect(px,py,this.paddle.w,this.paddle.h);
 
-      // 볼
       for(const ball of this.balls){
         const gr=ctx.createRadialGradient(ball.x-2*d,ball.y-2*d,1,ball.x,ball.y,ball.r);
         gr.addColorStop(0,'#fff');
@@ -1694,7 +1675,6 @@
         ctx.fill();
       }
 
-      // 벽돌
       for(const br of this.bricks){
         ctx.fillStyle= br.steel
           ? '#556'
@@ -1704,7 +1684,6 @@
         ctx.strokeRect(br.x,br.y,br.w,br.h);
       }
 
-      // 파워업
       for(const p of this.powers){
         ctx.fillStyle=
           p.kind==='D'? '#ff6b6b':
@@ -1719,7 +1698,6 @@
         ctx.fillText(p.kind,p.x,p.y+1);
       }
 
-      // CRT 스캔라인
       ctx.globalAlpha=0.12;
       ctx.fillStyle='#000';
       for(let sy=0;sy<this.c.height;sy+=2*d){
@@ -1771,9 +1749,7 @@
     }catch(e){}
   }
 
-  document.addEventListener('visibilitychange', () => {
-    // 필요 시 추후에 일시정지/재개 로직 추가 가능
-  });
+  document.addEventListener('visibilitychange', () => {});
 
   /* ================= Sanity Tests ================= */
   (function runTests(){
@@ -1811,9 +1787,8 @@
     }
 
     updateTicketUI();
-    initSideBanners();
     fitCabinet();
-    initBgm(); // ★ 배경음악 초기화 (볼륨 30%, 반복재생)
+    initBgm();
   }
 
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
@@ -1861,9 +1836,7 @@
         try{ localStorage.setItem(KEY,'no'); }catch(e){}
         el.style.display='none';
       });
-    }catch(e){
-      /* no-op */
-    }
+    }catch(e){}
   })();
   </script>
 

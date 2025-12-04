@@ -71,7 +71,7 @@
 <header>
   <nav class="nav" aria-label="주요 메뉴">
     <div class="brand">🕹️ JINBIZ Arcade</div>
-    <a class="btn" href="/index.html">홈</a>
+    <a class="btn" href="/index.html" id="btnHomeNav">홈</a>
     <a class="btn" href="/shop.html">상점</a>
     <a class="btn" href="/features/today-lucky.html">오늘의 행운</a>
     <div class="sp"></div>
@@ -133,100 +133,357 @@
 </main>
 
 <footer class="muted">
-  ©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI<a href="/about.html">About</a> · <a href="/help.html">Help</a>
+  ©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI
+  <a href="/about.html">About</a> · <a href="/help.html">Help</a>
 </footer>
+
 <script>
   // Safe analytics init hook (if consent.js sets window.analyticsInit elsewhere)
   window.analyticsInit = window.analyticsInit || function(){ try{ console.debug('analyticsInit (extra pages)'); }catch(e){} };
 </script>
-  <div id="site-footer"></div>
-</body></html>
 
 <script>
+/* ------------------------------------------------------------------
+ *  공통 상수 / 유틸
+ * ------------------------------------------------------------------ */
+const RG_BASE           = "/";
+const RG_AUTH_ME_URLS   = ["/api/auth/me","/api/me","/auth/me"];
+const RG_WALLET_URLS    = ["/wallet/summary","/api/wallet","/users/me/wallet"];
+const RG_INV_URLS       = ["/shop/inventory","/api/inventory","/users/me/inventory"];
+const RG_EFF_URLS       = ["/shop/effects","/api/effects","/users/me/effects"];
+const RG_RUNS_URLS      = ["/games/runs","/api/game-runs","/users/me/game-runs"];
+const RG_ANALYTICS_URLS = ["/api/analytics/events","/analytics/events"];
+
+/* ------------------------------------------------------------------
+ *  🔊 메인 허브 BGM (main-background.mp3)
+ *  - /assets/music/main-background.mp3
+ *  - 볼륨 30%, loop
+ *  - rg_user_settings(soundMaster / bgm)와 연동
+ * ------------------------------------------------------------------ */
+const BGM_SRC_MAIN = "/assets/music/main-background.mp3";
+let bgmMainEl = null;
+let bgmMainReady = false;
+
+function rgLoadSettings(){
+  try{
+    const raw = localStorage.getItem("rg_user_settings");
+    if(!raw){
+      return {
+        soundMaster:true,
+        bgm:true,
+        backgroundFx:true,
+        reducedMotion:false,
+        gameCountdown:true,
+        gameHints:true
+      };
+    }
+    const parsed = JSON.parse(raw) || {};
+    return {
+      soundMaster: parsed.soundMaster !== false,
+      bgm:         parsed.bgm         !== false,
+      backgroundFx:parsed.backgroundFx !== false,
+      reducedMotion:!!parsed.reducedMotion,
+      gameCountdown: parsed.gameCountdown !== false,
+      gameHints:     parsed.gameHints     !== false
+    };
+  }catch(e){
+    return {
+      soundMaster:true,
+      bgm:true,
+      backgroundFx:true,
+      reducedMotion:false,
+      gameCountdown:true,
+      gameHints:true
+    };
+  }
+}
+function rgShouldPlayMainBgm(){
+  const s = rgLoadSettings();
+  return !!(s.soundMaster && s.bgm);
+}
+function rgEnsureMainBgm(){
+  if(bgmMainEl) return bgmMainEl;
+  bgmMainEl = document.createElement("audio");
+  bgmMainEl.src = BGM_SRC_MAIN;
+  bgmMainEl.loop = true;
+  bgmMainEl.volume = 0.3; // 🔊 30%
+  bgmMainEl.setAttribute("preload","auto");
+  bgmMainEl.style.display = "none";
+  document.body.appendChild(bgmMainEl);
+  return bgmMainEl;
+}
+async function rgTryPlayMainBgm(){
+  const audio = rgEnsureMainBgm();
+  if(!rgShouldPlayMainBgm()){
+    try{ audio.pause(); }catch(_){}
+    return;
+  }
+  try{
+    await audio.play();
+    bgmMainReady = true;
+  }catch(e){
+    bgmMainReady = false;
+  }
+}
+function rgHandleMainBgmUserGesture(){
+  if(bgmMainReady) return;
+  rgTryPlayMainBgm();
+}
+document.addEventListener("click", rgHandleMainBgmUserGesture, { once:true });
+document.addEventListener("keydown", rgHandleMainBgmUserGesture, { once:true });
+window.addEventListener("storage", function(e){
+  if(e.key === "rg_user_settings"){
+    rgTryPlayMainBgm();
+  }
+});
+document.addEventListener("DOMContentLoaded", function(){
+  setTimeout(rgTryPlayMainBgm, 300);
+});
+
+/* ------------------------------------------------------------------
+ *  메인 로직 (마이페이지 데이터 + 게임 연동 브릿지)
+ * ------------------------------------------------------------------ */
 (async function(){
   const $ = s => document.querySelector(s);
-  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
-  async function tryFetch(urls, opt){
+  const setText = (id, v) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = v;
+  };
+  async function tryFetchJson(urls, opt){
     for(const u of urls){
-      try{ const r = await fetch(u, opt); if(r.ok) return await r.json(); }catch(e){}
+      try{
+        const r = await fetch(u, opt);
+        if(r.ok) return await r.json();
+      }catch(e){}
     }
     return null;
   }
 
+  /* -------------------------------
+   *  홈 버튼: 유저 인식 후 메인으로
+   * ------------------------------- */
+  async function rgDetectUser(){
+    const me = await tryFetchJson(RG_AUTH_ME_URLS, {
+      method:"GET",
+      credentials:"include",
+      headers:{ "Accept":"application/json","Cache-Control":"no-store" }
+    });
+    if(!me || me.error) return null;
+    return me.user || me;
+  }
+  async function rgGoHome(){
+    try{
+      const user = await rgDetectUser();
+      if(user){
+        // 로그인 상태 → 메인 허브로
+        window.location.href = RG_BASE + "user-retro-games.html";
+        return;
+      }
+    }catch(e){
+      console.warn("[RG][mypage] auth check failed on HOME:", e);
+    }
+    // 세션 없음/오류 → 로그인 페이지로, 완료 후 메인 허브로 복귀
+    try{
+      const next = encodeURIComponent(RG_BASE + "user-retro-games.html");
+      window.location.href = RG_BASE + "login.html?next=" + next;
+    }catch(e){
+      window.location.href = RG_BASE + "login.html";
+    }
+  }
+  const homeNav = document.getElementById("btnHomeNav");
+  if(homeNav){
+    homeNav.addEventListener("click", function(ev){
+      ev.preventDefault();
+      rgGoHome();
+    });
+  }
+
   $('#btnRefresh')?.addEventListener('click', ()=>location.reload());
 
-  // 1) 프로필
-  const me = await tryFetch(['/api/me','/users/me','/auth/me']);
-  if(me){
-    set('nick', me.nickname || me.name || me.username || '-');
-    set('email', me.email || '-');
-    try{ set('joined', (me.createdAt || me.joinedAt || '').slice(0,10)); }catch(e){}
+  /* -------------------------------
+   *  1) 프로필
+   * ------------------------------- */
+  async function refreshProfile(){
+    const me = await tryFetchJson(RG_AUTH_ME_URLS.concat(['/api/me','/users/me']));
+    if(me){
+      const user = me.user || me;
+      setText('nick', user.nickname || user.name || user.username || '-');
+      setText('email', user.email || '-');
+      try{
+        const joinedRaw = user.createdAt || user.joinedAt || user.created_at || "";
+        const s = (joinedRaw || "").toString().slice(0,10);
+        if(s) setText('joined', s);
+      }catch(e){}
+    }
   }
 
-  // 2) 지갑
-  const wallet = await tryFetch(['/wallet/summary','/api/wallet','/users/me/wallet']);
-  if(wallet){
-    set('coins', wallet.coins ?? wallet.coin ?? 0);
-    set('xp', wallet.xp ?? wallet.exp ?? 0);
-    set('streak', wallet.streak ?? 0);
+  /* -------------------------------
+   *  2) 지갑
+   * ------------------------------- */
+  function fmt(n){ return Number(n||0).toLocaleString('ko-KR'); }
+  async function refreshWallet(){
+    const wallet = await tryFetchJson(RG_WALLET_URLS);
+    if(wallet){
+      const coins  = wallet.coins ?? wallet.coin ?? wallet.points ?? 0;
+      const xp     = wallet.xp    ?? wallet.exp  ?? wallet.experience ?? 0;
+      const streak = wallet.streak ?? wallet.attendanceStreak ?? 0;
+      setText('coins', fmt(coins));
+      setText('xp', fmt(xp));
+      setText('streak', streak);
+    }
   }
 
-  // 3) 인벤토리
-  const inv = await tryFetch(['/shop/inventory','/api/inventory','/users/me/inventory']);
-  const invBox = $('#inventory');
-  if(invBox && inv && Array.isArray(inv.items||inv.inventory)){
-    const items = inv.items || inv.inventory;
-    if(items.length){
-      invBox.innerHTML = '<div class="list" id="invList"></div><div class="muted" style="margin-top:6px">* 일부 효과는 자동 적용됩니다.</div>';
-      const list = document.getElementById('invList');
-      for(const it of items){
-        const row = document.createElement('div');
-        row.className='row';
-        row.innerHTML = `<div class="tag">${it.sku || it.code || it.name || 'item'}</div>
-                         <div>${it.title || it.label || it.name || ''}</div>
-                         <div class="muted">${it.qty ?? it.quantity ?? 1}개</div>`;
-        list.appendChild(row);
+  /* -------------------------------
+   *  3) 인벤토리
+   * ------------------------------- */
+  async function refreshInventory(){
+    const inv = await tryFetchJson(RG_INV_URLS);
+    const invBox = document.getElementById('inventory');
+    if(!invBox) return;
+    if(inv && Array.isArray(inv.items||inv.inventory)){
+      const items = inv.items || inv.inventory;
+      if(items.length){
+        invBox.innerHTML = '<div class="list" id="invList"></div><div class="muted" style="margin-top:6px">* 일부 효과는 자동 적용됩니다.</div>';
+        const list = document.getElementById('invList');
+        for(const it of items){
+          const row = document.createElement('div');
+          row.className='row';
+          row.innerHTML =
+            '<div class="tag">'+(it.sku || it.code || it.name || 'item')+'</div>'+
+            '<div>'+(it.title || it.label || it.name || '')+'</div>'+
+            '<div class="muted">'+(it.qty ?? it.quantity ?? 1)+'개</div>';
+          list.appendChild(row);
+        }
       }
     }
   }
 
-  // 4) 효과
-  const eff = await tryFetch(['/shop/effects','/api/effects','/users/me/effects']);
-  const effBox = $('#effects');
-  if(effBox && eff && Array.isArray(eff.effects || eff.active)){
-    const arr = eff.effects || eff.active;
-    if(arr.length){
-      effBox.innerHTML = '<div class="list" id="effList"></div>';
-      const list = document.getElementById('effList');
-      for(const e of arr){
-        const row = document.createElement('div');
-        row.className='row';
-        row.innerHTML = `<div class="tag">${e.key || e.code}</div>
-                         <div>${e.title || e.name || ''}</div>
-                         <div class="muted">${e.multiplier ? (e.multiplier+'x') : ''}</div>`;
-        list.appendChild(row);
+  /* -------------------------------
+   *  4) 효과
+   * ------------------------------- */
+  async function refreshEffects(){
+    const eff = await tryFetchJson(RG_EFF_URLS);
+    const effBox = document.getElementById('effects');
+    if(!effBox) return;
+    if(eff && Array.isArray(eff.effects || eff.active)){
+      const arr = eff.effects || eff.active;
+      if(arr.length){
+        effBox.innerHTML = '<div class="list" id="effList"></div>';
+        const list = document.getElementById('effList');
+        for(const e of arr){
+          const row = document.createElement('div');
+          row.className='row';
+          row.innerHTML =
+            '<div class="tag">'+(e.key || e.code || '-')+'</div>'+
+            '<div>'+(e.title || e.name || '')+'</div>'+
+            '<div class="muted">'+(e.multiplier ? (e.multiplier+"x") : '')+'</div>';
+          list.appendChild(row);
+        }
       }
     }
   }
 
-  // 5) 최근 게임 기록
-  const runs = await tryFetch(['/games/runs','/api/game-runs','/users/me/game-runs']);
-  const tbody = document.querySelector('#runs tbody');
-  if(tbody && runs && Array.isArray(runs.items || runs.runs)){
-    const arr = runs.items || runs.runs;
-    if(arr.length){
-      tbody.innerHTML='';
-      for(const r of arr.slice(0,20)){
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.game || r.slug || r.title || '-'}</td>
-                        <td>${r.score ?? '-'}</td>
-                        <td>${r.duration ? (Math.round(r.duration/1000)+'s') : '-'}</td>
-                        <td>${(r.playedAt || r.createdAt || '').toString().slice(0,19).replace('T',' ')}</td>`;
-        tbody.appendChild(tr);
+  /* -------------------------------
+   *  5) 최근 게임 기록
+   * ------------------------------- */
+  async function refreshRuns(){
+    const runs = await tryFetchJson(RG_RUNS_URLS);
+    const tbody = document.querySelector('#runs tbody');
+    if(!tbody) return;
+    if(runs && Array.isArray(runs.items || runs.runs)){
+      const arr = runs.items || runs.runs;
+      if(arr.length){
+        tbody.innerHTML='';
+        for(const r of arr.slice(0,20)){
+          const tr = document.createElement('tr');
+          const playedRaw = (r.playedAt || r.createdAt || r.timestamp || '')+'';
+          const playedStr = playedRaw ? playedRaw.slice(0,19).replace('T',' ') : '-';
+          const durationSec = r.duration ? Math.round(r.duration/1000)+'s' : (r.playSeconds ? (r.playSeconds+'s') : '-');
+          tr.innerHTML =
+            '<td>'+(r.game || r.slug || r.title || '-')+'</td>'+
+            '<td>'+(r.score ?? '-')+'</td>'+
+            '<td>'+durationSec+'</td>'+
+            '<td>'+playedStr+'</td>';
+          tbody.appendChild(tr);
+        }
+      }else{
+        tbody.innerHTML='<tr><td colspan="4" class="muted">아직 게임 기록이 없습니다.</td></tr>';
       }
-    }else{
-      tbody.innerHTML='<tr><td colspan="4" class="muted">아직 게임 기록이 없습니다.</td></tr>';
     }
   }
+
+  /* -------------------------------
+   *  초기 로딩
+   * ------------------------------- */
+  await Promise.all([
+    refreshProfile(),
+    refreshWallet(),
+    refreshInventory(),
+    refreshEffects(),
+    refreshRuns()
+  ]);
+
+  /* ------------------------------------------------------------------
+   *  🔗 게임 연동 브릿지
+   *  - 각 게임 파일에서 호출하는 훅을 여기서 구현
+   *  - window.RG_addReward(gameId, payload)
+   *  - window.gameStart(gameId)
+   *  - window.gameFinish(gameId, finalScore)
+   * ------------------------------------------------------------------ */
+
+  // 보상 수신 훅: 지갑 + 기록 UI 갱신
+  window.RG_addReward = function(gameId, payload){
+    try{
+      console.log("[RG][mypage] reward from game:", gameId, payload);
+    }catch(e){}
+    // 서버에선 각 게임 페이지에서 /api/wallet 호출 완료.
+    // 마이페이지에서는 최신 상태를 다시 불러와 UI를 동기화.
+    refreshWallet();
+    refreshRuns();
+  };
+
+  // 게임 시작 훅: 분석/로그용 (가능하면 서버로 전송)
+  window.gameStart = function(gameId){
+    try{
+      console.log("[RG][mypage] gameStart:", gameId);
+    }catch(e){}
+    // 선택: 서버 이벤트 전송 (실패해도 무시)
+    (async function(){
+      try{
+        await tryFetchJson(RG_ANALYTICS_URLS, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          keepalive:true,
+          body:JSON.stringify({ type:"game_start", game:gameId, ts:Date.now() })
+        });
+      }catch(e){}
+    })();
+  };
+
+  // 게임 종료 훅: 분석 + 기록/지갑 갱신
+  window.gameFinish = function(gameId, finalScore){
+    try{
+      console.log("[RG][mypage] gameFinish:", gameId, finalScore);
+    }catch(e){}
+    (async function(){
+      try{
+        await tryFetchJson(RG_ANALYTICS_URLS, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          keepalive:true,
+          body:JSON.stringify({ type:"game_finish", game:gameId, score:finalScore|0, ts:Date.now() })
+        });
+      }catch(e){}
+      // 종료 후 최신 지갑/기록 다시 조회
+      refreshWallet();
+      refreshRuns();
+    })();
+  };
+
+  console.log("[RG][mypage] ready.");
 })();
 </script>
+
+  <div id="site-footer"></div>
+</body>
+</html>

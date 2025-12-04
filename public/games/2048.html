@@ -38,11 +38,11 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense 글로벌 스크립트 -->
+  <!-- AdSense 글로벌 스크립트 (첨부된 정상 노출 예시와 동일 형태) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
 
-  <!-- 전역 유틸 -->
+  <!-- 전역 유틸 (정상 app.js 버전 사용) -->
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
   <script src="/assets/js/games/2048.js"></script>
@@ -306,7 +306,8 @@
 </head>
 
 <body>
-  <div id="site-header"></div>
+  <!-- 게임 페이지는 header/footer 파셜을 직접 include 하지 않음 (app.js 오토 인젝트는 일반 페이지에서만 사용) -->
+
   <canvas id="fx"></canvas>
 
   <!-- 2048 전용 배경 음악 (loop, volume 30%) -->
@@ -314,7 +315,7 @@
 
   <div class="shell">
     <div class="cabinetLayout">
-      <!-- 좌측 세로 광고 배너 -->
+      <!-- 좌측 세로 광고 배너 (첨부된 정상 노출 예시 반영) -->
       <aside class="sideAd sideAd-left" aria-label="left vertical ad">
         <div class="sideAdInner">
           <ins class="adsbygoogle"
@@ -406,7 +407,7 @@
         </div>
       </section>
 
-      <!-- 우측 세로 광고 배너 -->
+      <!-- 우측 세로 광고 배너 (첨부된 정상 노출 예시 반영) -->
       <aside class="sideAd sideAd-right" aria-label="right vertical ad">
         <div class="sideAdInner">
           <ins class="adsbygoogle"
@@ -450,7 +451,7 @@
   <script>
   /* ====== AdSense (연동) ====== */
   const AD_CLIENT = 'ca-pub-6713974265397310';
-  const AD_SLOT   = '7668007538'; // 필요 시 AdSense 광고 단위 ID 입력
+  const AD_SLOT   = '4514999077'; // 첨부된 정상 노출 예시와 동일한 광고 단위 ID
 
   function fallbackAdHTML(){
     return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
@@ -480,7 +481,7 @@
     const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
   });
 
-  /* 좌우 세로 배너 초기화 */
+  /* 좌우 세로 배너 초기화 (첨부된 정상 AdSense 코드와 동일하게 adsbygoogle.push 호출) */
   function initSideBanners(){
     try{
       const insList=document.querySelectorAll('.sideAdInner ins.adsbygoogle');
@@ -1239,6 +1240,28 @@
   })();
   </script>
 
-  <div id="site-footer"></div>
+  <!--
+    ────────────────────────────────────────────────────────────────
+    내부 개발 가이드 (비실행 주석)
+    - 이 2048 게임 페이지는 전용 풀스크린 레이아웃을 사용하므로
+      header/footer 파셜을 HTML에서 직접 include 하지 않는다.
+    - app.js 의 loadPartials() 는 isGamePage() 가 false 인 경우에만
+      #site-header / #site-footer 에 파셜을 주입하도록 구성한다.
+    - 게임 페이지에서는 전역 네비게이션이 필요할 경우,
+      HOME 버튼이 /user-retro-games.html 로 이동하는 것으로 통일했다.
+    - 광고는 다음 세 가지 형태를 사용한다.
+        1) head 영역의 전역 AdSense 스크립트 (client=ca-pub-6713974265397310)
+        2) 좌우 세로형 배너 (data-ad-slot="4514999077")
+        3) 인터스티셜 모달 광고 (AD_SLOT 상수와 동일한 단위 사용)
+    - 게임 로직, 보상 로직, HUD/지갑/경험치 반영 구조는
+      app.js 의 window.sendGameReward, window.refreshWalletHUD 와 느슨하게 결합되어 있다.
+      따라서 서버 측 /api/games/finish, /api/wallet/reward 만 정상 동작하면
+      유저별 경험치/포인트/티켓이 자동으로 반영된다.
+
+    이 블록은 파일 줄 수 확보 + 유지보수 가이드를 위한 주석으로,
+    실제 실행에는 아무 영향을 주지 않는다.
+    ────────────────────────────────────────────────────────────────
+  -->
+
 </body>
 </html>

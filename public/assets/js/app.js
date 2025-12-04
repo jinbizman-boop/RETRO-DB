@@ -117,7 +117,8 @@
    */
   async function sha256Hex(text) {
     const enc = new TextEncoder();
-    const data = enc.encode(text);
+    the_data = enc.encode(text);
+    const data = the_data;
     const hash = await crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(hash))
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -298,8 +299,31 @@
     return data;
   };
 
+  /* ───────────────────────────── 경로 헬퍼 ───────────────────────────── */
+  // ✔ 게임 HTML(2048 / Brick / Match / Runner / Tetris 등)에서는
+  //    로그인 모달이 게임 화면 위에 겹쳐 보이지 않도록 분기 처리.
+  const isGamePage = () => {
+    const p = location.pathname.toLowerCase();
+    // /games/ 경로 또는 개별 게임 HTML 파일명 기준
+    return (
+      p.includes("/games/") ||
+      p.endsWith("/2048.html") ||
+      p.endsWith("/brick-breaker.html") ||
+      p.endsWith("/brick-match.html") ||
+      p.endsWith("/retro-runner.html") ||
+      p.endsWith("/tetris.html")
+    );
+  };
+
   /* ─────────────────────── 파셜(header/footer) 주입 ─────────────────────── */
   const loadPartials = async () => {
+    // 🔒 게임 페이지에서는 header/footer 파셜 주입을 아예 건너뛴다.
+    //    (게임 캔버스 위에 사이트맵/헤더가 겹쳐 나오는 현상 방지)
+    if (isGamePage()) {
+      debugLog("[partials] skip header/footer inject on game page");
+      return;
+    }
+
     // data-include="partials/header.html" 등으로 직접 지시된 요소 우선
     const includes = qsa("[data-include]");
     for (const el of includes) {
@@ -335,22 +359,6 @@
         debugLog("[partials] footer load fail:", e);
       }
     }
-  };
-
-  /* ───────────────────────────── 경로 헬퍼 ───────────────────────────── */
-  // ✔ 게임 HTML(2048 / Brick / Match / Runner / Tetris 등)에서는
-  //    로그인 모달이 게임 화면 위에 겹쳐 보이지 않도록 분기 처리.
-  const isGamePage = () => {
-    const p = location.pathname.toLowerCase();
-    // /games/ 경로 또는 개별 게임 HTML 파일명 기준
-    return (
-      p.includes("/games/") ||
-      p.endsWith("/2048.html") ||
-      p.endsWith("/brick-breaker.html") ||
-      p.endsWith("/brick-match.html") ||
-      p.endsWith("/retro-runner.html") ||
-      p.endsWith("/tetris.html")
-    );
   };
 
   /* ───────────────────────────── 인증 & 세션 ───────────────────────────── */
@@ -459,8 +467,24 @@
   };
 
   /* ───────────────────────────── 네비게이션 ───────────────────────────── */
+
+  /**
+   * nav(path)
+   *
+   * - 기본적으로 location.href 설정
+   * - 만약 iframe 안(게임 화면 등)에서 호출되면 window.top 으로 올려서
+   *   user-retro-games.html 이 "게임기 안에" 뜨지 않고 전체 페이지로 이동하게 처리
+   */
   const nav = (path) => {
-    location.href = path;
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.href = path;
+      } else {
+        window.location.href = path;
+      }
+    } catch {
+      window.location.href = path;
+    }
   };
 
   /**
@@ -957,10 +981,19 @@
 
     const path = location.pathname.toLowerCase();
 
-    // 유저 페이지에서 프로필 바인딩
+    // 유저 페이지에서만: 로그인 반드시 요구 + 프로필/HUD 추가 싱크
     if (path.endsWith("/user-retro-games.html")) {
+      const ok = await requireAuth();
+      if (!ok) {
+        debugLog("[init] user-retro-games requires auth; redirected/login modal");
+        return;
+      }
       await refreshProfile();
-      // 필요 시: const hist = await jsonFetch(CFG.endpoints.history + '?limit=20');
+      try {
+        await refreshWalletFromBalance();
+      } catch (e) {
+        debugLog("[init] refreshWalletFromBalance failed", e);
+      }
     }
 
     debugLog("[app] initialized at", nowISO(), { path });

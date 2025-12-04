@@ -335,6 +335,23 @@
     text-align:center;
   }
 
+  /* Toast (게임 보상/미션 안내) */
+  .toast{
+    position:absolute;
+    left:50%;
+    top:16px;
+    transform:translateX(-50%);
+    background:#0f1d48;
+    border:1px solid #224aa8;
+    border-radius:12px;
+    padding:8px 12px;
+    font-weight:700;
+    box-shadow:0 10px 20px #0008;
+    display:none;
+    z-index:6;
+    font-size:12px;
+  }
+
   /* Deck */
   .deck{
     display:flex;
@@ -604,6 +621,8 @@
         <main class="play">
           <div class="screen">
             <div class="bezel">
+              <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
               <div class="canvasWrap" id="canvasWrap">
                 <canvas id="game"></canvas>
               </div>
@@ -782,9 +801,17 @@ const $=sel=>document.querySelector(sel);
 const DPR=()=>Math.min(2, window.devicePixelRatio||1);
 const clamp=(n,a,b)=>Math.max(a, Math.min(b,n));
 const fmt=n=>n.toLocaleString('ko-KR');
+const todayKey=()=> new Date().toISOString().slice(0,10);
 
-/* ✅ Tetris 전용 키 */
-const LS_KEYS={plays:'plays_tetris',tickets:'tickets_tetris',records:'records_tetris',best:'best_tetris'};
+/* ✅ Tetris 전용 키 (+ 일일 미션 공유 키) */
+const LS_KEYS={
+  plays:'plays_tetris',
+  tickets:'tickets_tetris',
+  records:'records_tetris',
+  best:'best_tetris',
+  mission:'daily_mission_flags',
+  missionRewarded:'daily_mission_rewarded'
+};
 
 function loadJSON(k,def){
   try{
@@ -798,6 +825,16 @@ function saveJSON(k,v){
   localStorage.setItem(k, JSON.stringify(v));
 }
 
+/***** Toast *****/
+function showToast(msg, ms=2000){
+  const t=$('#toast'); if(!t) return;
+  t.textContent=msg;
+  t.style.display='block';
+  clearTimeout(showToast._timer);
+  showToast._timer=setTimeout(()=>{ t.style.display='none'; }, ms);
+}
+
+/***** 플레이/티켓 카운트 & 광고 주기 (3회당 1회) *****/
 function updateTicketUI(){
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
   const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
@@ -809,7 +846,7 @@ function updateTicketUI(){
   if(bar) bar.style.width = (((plays%10)/10*100).toFixed(1))+'%';
 }
 
-/***** 플레이/티켓 카운트 & 광고 주기 (3회당 1회) *****/
+/***** 3회당 1회 광고 + 로컬 티켓 적립 (서버 월렛과는 별도, 연동 시 서버 스냅샷이 우선) *****/
 function addPlay(){
   let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
   let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
@@ -820,6 +857,7 @@ function addPlay(){
   if(plays % 3 === 0){ showInterstitialAd(); }
 }
 
+/***** 기록 관리 *****/
 function addRecord(score, points){
   const recs=loadJSON(LS_KEYS.records,[]);
   const now=new Date();
@@ -842,27 +880,86 @@ function showRecords(){
   $('#recModal').style.display='flex';
 }
 
-/***** 난이도 배율 *****/
+/***** 난이도 배율 (게임 자체 포인트 계산용) *****/
 function difficultyMult(){
   const v=$('#tier')?.value||'beginner';
   return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
 }
 
-/***** 🔗 RG Wallet 공통 허브 연동 *****/
+/***** 🔗 RG Wallet 공통 허브 연동 (retro-running 과 동일 계약) *****/
+/**
+ * /api/wallet 엔드포인트 스펙 (게임 리워드 적립 + 허브 동기화)
+ *
+ * 1) 게임 리워드 적립
+ *   POST /api/wallet
+ *   {
+ *     "action": "addGameReward",
+ *     "game": "tetris",
+ *     "score": 12340,
+ *     "points": 120,
+ *     "meta": {
+ *       "level": 12,
+ *       "mode": "beginner",
+ *       "timeLeft": 0,
+ *       "manualEnd": false,
+ *       "clientTs": "2025-11-17T12:34:56.789Z",
+ *       "page": "tetris.html"
+ *     }
+ *   }
+ *
+ *   [RESPONSE] 200 OK
+ *   {
+ *     "ok": true,
+ *     "wallet": {
+ *       "points": 3120,
+ *       "tickets": 4,
+ *       "playCount": 18
+ *     },
+ *     "reward": {
+ *       "pointsDelta": 120,
+ *       "ticketsDelta": 1
+ *     }
+ *   }
+ *
+ * 2) 허브 동기화(로그인된 유저 기준 통합 월렛 조회)
+ *   POST /api/wallet
+ *   { "action": "syncWallet", "game": "tetris" }
+ */
 const RG_WALLET_ENDPOINT = '/api/wallet';
 const RG_GAME_ID         = 'tetris';
 
-async function RG_safeFetch(url, options){
+/** 서버 wallet 스냅샷을 HUD/로컬에 반영 */
+function applyWalletSnapshot(wallet){
+  if(!wallet) return;
   try{
-    const res = await fetch(url, {
-      method: (options && options.method) || 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Accept':'application/json',
-        ...(options && options.headers || {})
-      },
-      body: options && options.body || undefined,
-      credentials: 'include'
+    if(typeof wallet.points === 'number'){
+      const cap = 5000;
+      $('#pointsAmt').textContent = wallet.points.toLocaleString('ko-KR');
+      $('#pointsBar').style.width = Math.min(100,(wallet.points/cap*100)).toFixed(1)+'%';
+    }
+    if(typeof wallet.tickets === 'number'){
+      localStorage.setItem(LS_KEYS.tickets, String(wallet.tickets));
+      $('#ticketsAmt').textContent = wallet.tickets;
+      updateTicketUI();
+    }
+    if(typeof wallet.playCount === 'number'){
+      const m = wallet.playCount % 10;
+      $('#ticketsCap').textContent = m + ' / 10';
+      $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
+    }
+  }catch(e){
+    console.warn('applyWalletSnapshot error', e);
+  }
+}
+
+/** 안전 래퍼 */
+async function RG_safeFetch(body){
+  try{
+    const res = await fetch(RG_WALLET_ENDPOINT, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      credentials:'include',
+      body: JSON.stringify(body)
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json().catch(()=>null);
@@ -873,71 +970,68 @@ async function RG_safeFetch(url, options){
   }
 }
 
-/** 서버 기준 월렛 상태로 HUD 동기화 */
+/** 허브 진입 시, 로그인된 계정 기준 통합 월렛 동기화 */
 async function RG_syncWalletHUD(){
-  try{
-    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
-      method:'POST',
-      body: JSON.stringify({ action:'SYNC', gameId: RG_GAME_ID })
-    });
-    if(!result.ok || !result.data) return;
-    const res = result.data;
-    if(res.ok === false) return;
-
-    const cap = 5000;
-    if(typeof res.balance === 'number'){
-      $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
-      $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
-    }
-    if(typeof res.tickets === 'number'){
-      $('#ticketsAmt').textContent = res.tickets;
-    }
-    if(typeof res.playCount === 'number'){
-      const m = res.playCount % 10;
-      $('#ticketsCap').textContent = m + ' / 10';
-      $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
-    }
-  }catch(e){
-    console.warn('[RG][wallet] sync HUD failed:', e);
-  }
+  const result = await RG_safeFetch({ action:'syncWallet', game: RG_GAME_ID });
+  if(!result.ok || !result.data) return;
+  const data = result.data;
+  if(data.ok === false) return;
+  if(data.wallet) applyWalletSnapshot(data.wallet);
 }
 
-/** 게임 종료 시 보상 적립 Helper */
-async function RG_addReward(payload){
+/**
+ * RG_addReward(payload)
+ * - payload: { score, points, level, timeLeft, manualEnd, mode }
+ * - 게임 종료 시 통합 월렛에 리워드 적립
+ */
+window.RG_addReward = async function RG_addReward(payload){
   try{
-    const base = {
-      action: 'ADD_REWARD',
-      gameId: RG_GAME_ID
+    const body = {
+      action: 'addGameReward',
+      game: RG_GAME_ID,
+      score: (payload.score|0),
+      points: (payload.points|0),
+      meta: {
+        level: payload.level|0,
+        mode: payload.mode || ($('#tier')?.value || 'beginner'),
+        timeLeft: payload.timeLeft ?? null,
+        manualEnd: !!payload.manualEnd,
+        clientTs: new Date().toISOString(),
+        page: 'tetris.html'
+      }
     };
-    const result = await RG_safeFetch(RG_WALLET_ENDPOINT, {
-      method:'POST',
-      body: JSON.stringify({ ...base, ...(payload || {}) })
-    });
-    if(result.ok && result.data){
-      const res = result.data;
-      const cap = 5000;
-      if(typeof res.balance === 'number'){
-        $('#pointsAmt').textContent = res.balance.toLocaleString('ko-KR');
-        $('#pointsBar').style.width = Math.min(100, (res.balance/cap*100)).toFixed(1)+'%';
-      }
-      if(typeof res.tickets === 'number'){
-        $('#ticketsAmt').textContent = res.tickets;
-      }
-      if(typeof res.playCount === 'number'){
-        const m = res.playCount % 10;
-        $('#ticketsCap').textContent = m + ' / 10';
-        $('#ticketsBar').style.width = ((m/10)*100).toFixed(1)+'%';
-      }
-      if(res.message){
-        console.log('[RG][wallet] reward message:', res.message);
+    const result = await RG_safeFetch(body);
+    if(!result.ok || !result.data) return;
+    const data = result.data;
+    if(data.wallet) applyWalletSnapshot(data.wallet);
+    if(data.reward && typeof data.reward.pointsDelta === 'number'){
+      const delta = data.reward.pointsDelta;
+      if(delta > 0){
+        showToast(`+${delta.toLocaleString('ko-KR')}P 적립!`, 2200);
       }
     }
-    return result;
   }catch(e){
     console.warn('[RG][wallet] addReward failed:', e);
-    return { ok:false, error:e };
+  }
+};
+
+/***** 배경 음악 (반복 재생, 볼륨 30%) *****/
+let _bgm, _bgmInitialized=false;
+function initBgm(){
+  if(_bgmInitialized) return;
+  _bgmInitialized=true;
+  try{
+    _bgm = new Audio('/assets/music/tetris-background.mp3');
+    _bgm.loop = true;
+    _bgm.volume = 0.3; // 30%
+    const p = _bgm.play();
+    if(p && p.catch) p.catch(()=>{ /* 자동재생 차단 시 무시 */ });
+  }catch(e){
+    console.warn('BGM init error:', e);
   }
 }
+function pauseBgm(){ try{ if(_bgm && !_bgm.paused) _bgm.pause(); }catch(e){} }
+function resumeBgm(){ try{ if(_bgm && _bgm.paused) _bgm.play().catch(()=>{}); }catch(e){} }
 
 /***** Canvas Tetris *****/
 (function(){
@@ -1032,8 +1126,6 @@ async function RG_addReward(payload){
       const cssH = rect.height;
       if(!cssW || !cssH) return;
 
-      /* 🔧 보이는 크기는 CSS(폭 100%, 높이 100%)에 맡기고,
-         여기서는 내부 해상도만 맞춰서 베젤 밖으로 안 튀게 처리 */
       this.c.width  = Math.floor(cssW * d);
       this.c.height = Math.floor(cssH * d);
 
@@ -1049,7 +1141,7 @@ async function RG_addReward(payload){
     }
     updatePointsUI(){
       const cap=5000;
-      $('#pointsAmt').textContent=this.points;
+      $('#pointsAmt').textContent=this.points.toLocaleString('ko-KR');
       $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
     }
     setLevel(lv){
@@ -1060,14 +1152,18 @@ async function RG_addReward(payload){
 
     bindDeck(){
       $('#newBtn').addEventListener('click',()=>{
+        initBgm();
         this.running=true;
         this.paused=false;
         this.reset();
       });
       $('#undoBtn').addEventListener('click',()=>{
-        if(this.running){ this.paused=!this.paused; }
+        if(this.running){
+          initBgm();
+          this.paused=!this.paused;
+        }
       });
-      $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver()));
+      $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver(true)));
 
       $('#homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/user-retro-games.html'; }));
 
@@ -1104,6 +1200,10 @@ async function RG_addReward(payload){
 
       document.addEventListener('keydown',(e)=>{
         if(e.repeat) return;
+
+        // ✅ 최초 키 입력 시 BGM 시도
+        initBgm();
+
         if(e.code==='Enter' || e.code==='KeyN'){
           this.running=true;
           this.paused=false;
@@ -1170,7 +1270,7 @@ async function RG_addReward(payload){
       if(this.queue.length<7) this.queue.push(...bag7());
       this.current = new Piece(this.queue.shift());
       this.current.x=3; this.current.y=0; this.holdUsed=false; this.lockAcc=0; this.dropAcc=0;
-      if(!this.valid(this.current)){ this.gameOver(); }
+      if(!this.valid(this.current)){ this.gameOver(false); }
     }
 
     valid(p){
@@ -1302,7 +1402,7 @@ async function RG_addReward(payload){
         this.spawn();
       }
       this.holdUsed=true;
-      if(!this.valid(this.current)) this.gameOver();
+      if(!this.valid(this.current)) this.gameOver(false);
     }
 
     addGarbageRow(){
@@ -1312,7 +1412,7 @@ async function RG_addReward(payload){
       this.grid.push(row);
       if(!this.valid(this.current)){
         this.current.y-=1;
-        if(!this.valid(this.current)) this.gameOver();
+        if(!this.valid(this.current)) this.gameOver(false);
       }
     }
 
@@ -1340,28 +1440,48 @@ async function RG_addReward(payload){
       return {is:true, mini};
     }
 
-    gameOver(){
+    _tryMissionBonus(){
+      const key=todayKey();
+      const flags=loadJSON(LS_KEYS.mission,{});
+      flags[key]=flags[key]||{};
+      flags[key].tetris = true;
+      saveJSON(LS_KEYS.mission,flags);
+
+      const rewarded=loadJSON(LS_KEYS.missionRewarded,{});
+      if(rewarded[key]) return;
+      const f=flags[key];
+      if(f.runner && f['2048'] && f.tetris){
+        this.points = Math.min(5000, this.points + 300);
+        this.updatePointsUI();
+        rewarded[key]=true;
+        saveJSON(LS_KEYS.missionRewarded, rewarded);
+        showToast('세트 미션 보상 +300P!', 1800);
+      }
+    }
+
+    gameOver(manual){
       if(!this.running) return;
       this.running=false;
       this.paused=false;
 
       addRecord(this.score, this.points);
       addPlay();
+      this._tryMissionBonus();
 
       const finalScore = this.score|0;
       const earnedPoints = this.points|0;
 
       try{
-        RG_addReward({
-          score: finalScore,
-          reward: earnedPoints,
-          reason: 'GAME_CLEAR',
-          meta: {
-            tier: $('#tier')?.value || 'beginner',
+        if(typeof window.RG_addReward === 'function'){
+          window.RG_addReward({
+            score: finalScore,
+            points: earnedPoints,
             level: this.level|0,
-            client: 'retro-tetris'
-          }
-        });
+            timeLeft: 0,
+            manualEnd: !!manual,
+            mode: $('#tier')?.value || 'beginner'
+          });
+        }
       }catch(e){
         console.warn('[RG][wallet] RG_addReward call error:', e);
       }
@@ -1518,10 +1638,12 @@ function notifyFinish(finalScore){
   }catch(e){}
 }
 
-/***** 가시성 훅 *****/
+/***** 가시성 훅 (배경음 제어 등) *****/
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    // 필요 시 추가 로깅/기록 처리
+    pauseBgm();
+  }else{
+    resumeBgm();
   }
 });
 </script>

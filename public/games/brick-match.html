@@ -787,6 +787,54 @@
     const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
     const fmt = n => n.toLocaleString('ko-KR');
 
+    /* ================= Background Music (brick-match) =================
+       - Source : /assets/music/brick-match-background.mp3
+       - Volume: 30%
+       - Loop   : true
+       - Start  : first user interaction(pointer / key)
+       - Auto-pause on tab hidden
+    ================================================================ */
+    const BGM_SRC = '/assets/music/brick-match-background.mp3';
+    let bgmAudio = null;
+    let bgmStarted = false;
+
+    function ensureBgm(){
+      if(bgmAudio) return bgmAudio;
+      try{
+        const a = new Audio(BGM_SRC);
+        a.loop = true;
+        a.volume = 0.3; // 30% volume
+        bgmAudio = a;
+        return a;
+      }catch(e){
+        console.warn('bgm init failed', e);
+        return null;
+      }
+    }
+
+    function requestBgmStart(){
+      if(bgmStarted) return;
+      const a = ensureBgm();
+      if(!a) return;
+      bgmStarted = true;
+      a.play().catch(err=>{
+        console.warn('bgm play blocked', err);
+        bgmStarted = false;
+      });
+    }
+
+    window.addEventListener('pointerdown', requestBgmStart, {once:true, passive:true});
+    window.addEventListener('keydown', requestBgmStart, {once:true});
+
+    document.addEventListener('visibilitychange', ()=>{
+      if(!bgmAudio) return;
+      if(document.hidden){
+        try{ bgmAudio.pause(); }catch(e){}
+      }else if(bgmStarted){
+        bgmAudio.play().catch(()=>{});
+      }
+    });
+
     /* Match-3 전용 키 (로컬 플레이/티켓 기록: 게임별 통계용) */
     const LS_KEYS = {
       plays   : 'plays_match',

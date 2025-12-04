@@ -38,11 +38,11 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- ✅ Google AdSense (요청한 실제 코드, head 안에 위치) -->
+  <!-- ✅ Google AdSense (공식 스크립트, 모든 광고 단위 공통) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
 
-  <!-- 전역 유틸 -->
+  <!-- 전역 유틸 (정상 app.js 버전: header/footer 자동 주입, 단 game 페이지는 data-rg-page="game"으로 skip) -->
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
   <script src="/assets/js/games/brick-match.js"></script>
@@ -65,6 +65,10 @@
       background:#0b001e radial-gradient(circle at 40% -10%, #320076, #0b001e 70%) no-repeat;
       background-size:cover;
     }
+
+    /* ✅ user-retro-games.html 의 .wrap 오버레이가 게임 위로 뜨는 것 차단 */
+    .wrap{display:none !important;}
+
     #fx{
       position:fixed;
       inset:0;
@@ -82,7 +86,7 @@
       padding-bottom:calc(20px + env(safe-area-inset-bottom,0))
     }
 
-    /* === 새로 추가: 좌/우 세로형 광고 레이아웃 래퍼 === */
+    /* === 좌/우 세로형 광고 레이아웃 래퍼 === */
     .cabinet-row{
       display:flex;
       align-items:stretch;
@@ -116,22 +120,6 @@
     .side-adsense{
       width:100%;
       height:100%;
-    }
-    .side-ad-placeholder{
-      position:absolute;
-      inset:6px;
-      border-radius:12px;
-      border:1px dashed #3b4aa3;
-      display:grid;
-      place-items:center;
-      font-size:11px;
-      text-align:center;
-      color:#dde5ff;
-      background:linear-gradient(135deg,rgba(41,58,136,.6),rgba(10,19,55,.9));
-    }
-    .side-ad-placeholder strong{
-      display:block;
-      margin-bottom:4px;
     }
 
     .cabinet{
@@ -515,12 +503,8 @@
   </style>
 </head>
 
-<!-- ✅ 공통 Analytics JS만 남기고, index를 주입하는 app.js는 제거 -->
-<script defer src="/assets/js/analytics.js"></script>
-
-<body>
-  <!-- 🔻 허브/로그인 전 index 화면을 끌어오던 site-header DOM/스크립트 제거
-       → 이 페이지에서는 순수 게임 화면 + 광고만 표시 -->
+<body data-rg-page="game">
+  <!-- ✅ header/footer include / partial 절대 금지. app.js에서 data-rg-page="game"을 보고 자동 인젝트 skip -->
   <canvas id="fx"></canvas>
 
   <div class="shell">
@@ -528,19 +512,13 @@
       <!-- ◀ 좌측 세로형 광고 배너 -->
       <aside class="side-ad" aria-label="왼쪽 세로형 광고">
         <div class="side-ad-inner">
+          <!-- 좌우측 사이드 수직형 광고 (slot: 4514999077) -->
           <ins class="adsbygoogle side-adsense side-adsense-left"
                style="display:block"
                data-ad-client="ca-pub-6713974265397310"
                data-ad-slot="4514999077"
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
-          <div class="side-ad-placeholder">
-            <div>
-              <strong>세로 배너 광고</strong>
-              개발/테스트 환경에서는 플레이스홀더가 보입니다.<br>
-              AdSense 유닛 슬롯 ID를 연결하면 실제 광고가 여기에 노출됩니다.
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -629,23 +607,23 @@
       <!-- ▶ 우측 세로형 광고 배너 -->
       <aside class="side-ad" aria-label="오른쪽 세로형 광고">
         <div class="side-ad-inner">
+          <!-- 좌우측 사이드 수직형 광고 (slot: 4514999077) -->
           <ins class="adsbygoogle side-adsense side-adsense-right"
                style="display:block"
                data-ad-client="ca-pub-6713974265397310"
                data-ad-slot="4514999077"
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
-          <div class="side-ad-placeholder">
-            <div>
-              <strong>세로 배너 광고</strong>
-              개발/테스트 환경에서는 플레이스홀더가 보입니다.<br>
-              AdSense 유닛 슬롯 ID를 연결하면 실제 광고가 여기에 노출됩니다.
-            </div>
-          </div>
         </div>
       </aside>
     </div>
   </div>
+
+  <!-- 좌우측 사이드 수직형 광고 초기화 (왼쪽/오른쪽 2개) -->
+  <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
 
   <!-- Records Modal -->
   <div id="recModal">
@@ -665,45 +643,39 @@
         <h3 id="adTitle" style="margin:0;color:#ffdf6e">광고</h3>
         <button id="adClose">닫기</button>
       </div>
+
+      <!-- 홈버튼 사각형 디스플레이 광고 (slot: 7668007538) -->
       <div id="adContainer" class="adPlaceholder">
-        <div style="text-align:center;opacity:.9">
-          <div style="font-weight:900;margin-bottom:6px">여기에 광고가 표시됩니다</div>
-          <div style="font-size:12px;opacity:.8">개발/테스트 환경에서는 플레이스홀더가 보입니다</div>
-        </div>
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6713974265397310"
+             data-ad-slot="7668007538"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
       </div>
     </div>
   </div>
 
+  <!-- 홈버튼 사각형 디스플레이 광고 초기화 -->
   <script>
-    /***** Ad 연동 (클라이언트 ID 정확히 일치, 전역 설정) *****/
-    const AD_CLIENT = 'ca-pub-6713974265397310';  // ✔ meta / head 스니펫과 동일한 ID
-    const AD_SLOT   = ''; // 실제 광고 유닛 슬롯 ID가 있으면 '1234567890' 형태로 입력
-    const AD_SLOT_SIDE_LEFT  = ''; // 좌측 세로배너용(옵션)
-    const AD_SLOT_SIDE_RIGHT = ''; // 우측 세로배너용(옵션)
+    (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
 
+  <script>
+    /***** Ad 모달 연동 (실제 광고는 위에서 1회 초기화, 여기서는 열기/닫기만 담당) *****/
     function fallbackAdHTML(){
       return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
     }
 
     function showInterstitialAd(){
-      const box=document.getElementById('adContainer');
+      const box = document.getElementById('adContainer');
       if(!box) return;
-      box.innerHTML='';
-      const ins=document.createElement('ins');
-      ins.className='adsbygoogle';
-      ins.style.display='block';
-      ins.setAttribute('data-ad-client', AD_CLIENT);
-      if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-      ins.setAttribute('data-ad-format','auto');
-      ins.setAttribute('data-full-width-responsive','true');
-      box.appendChild(ins);
-      try{
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      }catch(e){
-        console.warn(e);
+      // 광고 ins가 없는 예외 상황에서만 폴백
+      if(!box.querySelector('ins.adsbygoogle')){
         box.innerHTML = fallbackAdHTML();
       }
-      document.getElementById('adModal').style.display='flex';
+      const modal = document.getElementById('adModal');
+      if(modal) modal.style.display = 'flex';
     }
 
     let _afterAd = null;
@@ -716,34 +688,10 @@
       document.getElementById('adModal').style.display='none';
       const f = _afterAd;
       _afterAd = null;
-      if(f) {
+      if(f){
         try{ f(); }catch(e){ console.error(e); }
       }
     });
-
-    /*** 좌/우 세로형 사이드 배너 AdSense 초기화 ***/
-    function initSideAds(){
-      const left  = document.querySelector('.side-adsense-left');
-      const right = document.querySelector('.side-adsense-right');
-
-      function initUnit(insEl, slotId){
-        if(!insEl) return;
-        if(slotId) insEl.setAttribute('data-ad-slot', slotId);
-        try{
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-          // 광고 유닛 초기화가 시도되면 플레이스홀더는 숨김
-          const ph = insEl.nextElementSibling;
-          if(ph && ph.classList.contains('side-ad-placeholder')){
-            ph.style.display='none';
-          }
-        }catch(e){
-          console.warn('side ad init fail', e);
-        }
-      }
-
-      initUnit(left,  AD_SLOT_SIDE_LEFT);
-      initUnit(right, AD_SLOT_SIDE_RIGHT);
-    }
 
     /***** Neon FX (background stars) *****/
     (function(){
@@ -1755,9 +1703,6 @@
         lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
         updateTicketUI();
       })();
-
-      // 게임 초기화 후, 사이드 배너 광고도 함께 초기화
-      initSideAds();
     })();
 
     /***** Cabinet fit (뷰포트에 맞게 비율 유지) *****/
@@ -1823,7 +1768,7 @@
           if(el) el.style.display='none';
           return;
         }
-        if(!el){ return; } // no banner -> do not init
+        if(!el){ return; }
 
         el.style.display='flex';
         var agree=el.querySelector('.agree');

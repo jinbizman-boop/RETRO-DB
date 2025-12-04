@@ -3,25 +3,45 @@
 // ✅ 목표 / 요약
 // - 기존 외부 계약 100% 유지
 //   • 라우트: GET /api/auth/me
-//   • 성공 응답: { ok: true, user: { id, email, username, avatar, created_at, stats:{ points, exp, level, tickets } } }
+//   • 성공 응답:
+//       {
+//         ok: true,
+//         user: {
+//           id,
+//           email,
+//           username,
+//           avatar,
+//           created_at,
+//           stats: { points, exp, level, tickets }
+//         }
+//       }
 // - 에디터 오류 제거
 //   • ts(2304) PagesFunction 미정의  → ambient 타입 선언
 //   • ts(7031) request/env 암시적 any → 핸들러 인자 타입 명시
-//   • sql<T> 제네릭 미사용 → any 캐스팅 후 안전 정규화
 //
-// 🔥 강화 포인트 (Wallet / Progression 통합)
+// 🔥 강화 포인트 (Wallet / Progression / Analytics 통합)
 // - canonical 스키마 기반(user_stats, transactions):
-//   • user_stats(coins, exp, xp, tickets, games_played, updated_at)에서 포인트/경험치/티켓 읽기
+//   • user_stats(coins, exp, xp, tickets, games_played, updated_at)에서 포인트/경험치/티켓/게임수 읽기
 //   • ensureUserStatsRow 로 user_stats row 선제 보장
 //   • level 은 exp 기반으로 실시간 계산(기존 level 필드의 의미 유지)
+// - reward.ts / balance.ts / transaction.ts 와 정합:
+//   • reward.ts: 게임 보상  → user_progress + wallet_balances 갱신
+//   • balance.ts: user_stats(1순위) + wallet_balances + user_progress 통합 조회
+//   • transaction.ts: 상점 결제 → transactions → user_stats 갱신
+//   • me.ts: 위 세 경로에서 갱신된 최종 상태를 한 번에 요약해서 내려주는 엔드포인트
 // - 레거시 스키마 호환:
 //   • user_stats 테이블이 없거나 행이 없으면 기존 user_progress + wallet_balances 를 fallback 으로 조회
-// - 스키마 없음(초기 상태)에서도 항상 응답은 정상적으로 내려가고, stats 는 0/1/0 으로 반환
-// - 운영 헤더: Cache-Control: no-store, X-Me-Took-ms
+//   • user_stats.exp/tickets 가 0 이고 user_progress 에 값이 있다면, UI 노출용으로 progress 값을 보정
+// - 운영/디버깅 헤더:
+//   • Cache-Control: no-store
+//   • X-Me-Took-ms: 처리 시간(ms)
+//   • X-Me-User: 사용자 UUID
+//   • X-Me-Stats-Json: { points, exp, level, tickets, gamesPlayed } 요약 JSON
 //
 // ⚠️ 주의
-// - 이 파일은 /api/auth/me 계약을 바꾸지 않는다. (응답 JSON 구조, status code)
-// - 단지 “stats” 계산 방식만 canonical(user_stats) + legacy fallback 으로 강화한다.
+// - 이 파일은 /api/auth/me **계약을 바꾸지 않는다.**
+//   • 응답 JSON 구조, status code, 필드명 모두 동일 유지
+//   • 단지 “stats” 계산 방식만 canonical(user_stats) + legacy fallback 으로 더 정확하게 강화
 // - 미들웨어(_middleware.ts)가 X-User-* HUD 헤더를 내려주는 것과 정책을 맞추기 위해
 //   exp → level 계산 규칙, user_stats 활용 규칙을 통일해 둔 상태이다.
 
@@ -61,12 +81,15 @@ type UserStatsRowRaw = {
   xp?: number | string | bigint | null; // 과거 호환용 컬럼
   tickets: number | string | bigint | null;
   games_played?: number | string | bigint | null;
+  last_login_at?: string | Date | null;
+  updated_at?: string | Date | null;
 };
 
 type ProgressRowLegacy = {
   exp: number | string | bigint | null;
   level: number | string | bigint | null;
   tickets: number | string | bigint | null;
+  updated_at?: string | Date | null;
 };
 
 type WalletBalanceRowLegacy = {
@@ -101,14 +124,13 @@ function toNonNegativeInt(v: unknown): number {
 
 /**
  * toIsoString
- * - DB에서 온 created_at 등이 Date | string | 기타 형태일 수 있으므로
+ * - DB에서 온 created_at / updated_at 등이 Date | string | 기타 형태일 수 있으므로
  *   항상 ISO8601 문자열로 정규화
  */
 function toIsoString(v: unknown): string {
   if (typeof v === "string") {
     const d = new Date(v);
     if (!Number.isNaN(d.getTime())) return v;
-    // 문자열이지만 파싱 실패한 경우 → 새 Date로 재시도
     const d2 = new Date(String(v));
     return Number.isNaN(d2.getTime())
       ? new Date().toISOString()
@@ -133,22 +155,22 @@ function isMissingTable(err: any): boolean {
   );
 }
 
-/* ───────── helpers: 레벨 계산 정책 ───────── */
+/* ───────── helpers: exp → level 계산 정책 ───────── */
 
 /**
  * exp(경험치) → level 계산 정책
- * - exp 0 이상
- * - 예시 정책:
- *   • 0 ~  999      → 1레벨
- *   • 1000 ~ 1999   → 2레벨
- *   • 2000 ~ 2999   → 3레벨
+ *
+ *  예시 정책 (단순 1000 단위 성장):
+ *   •   0 ~   999 → 1레벨
+ *   • 1000 ~  1999 → 2레벨
+ *   • 2000 ~  2999 → 3레벨
  *   ...
- * - 상한은 적당히 999 레벨로 클램프
+ *  - 상한은 999 레벨로 클램프
  *
  * 이 정책은:
- * - /api/auth/me
- * - _middleware.ts (HUD 헤더 계산)
- * - 추후 /api/profile/me 등
+ *  - /api/auth/me
+ *  - functions/_middleware.ts (HUD 헤더 계산)
+ *  - /api/wallet/balance.ts (헤더 요약)
  * 에서 모두 동일하게 쓰여야 UI/게임에서 레벨 표시가 일관된다.
  */
 function computeLevelFromExp(exp: number): number {
@@ -159,20 +181,38 @@ function computeLevelFromExp(exp: number): number {
   return base;
 }
 
-/* ───────── helpers: canonical(user_stats) + legacy fallback ───────── */
+/* ───────── helpers: canonical(user_stats) + legacy + merge 정책 ───────── */
+
+type CanonicalStats = {
+  points: number;
+  exp: number;
+  level: number;
+  tickets: number;
+  gamesPlayed: number;
+  lastLoginAt: string | null;
+  updatedAt: string | null;
+};
+
+type LegacyStats = {
+  points: number;
+  exp: number;
+  level: number;
+  tickets: number;
+  updatedAt: string | null;
+};
 
 /**
  * canonical 스키마 기반: user_stats 에서 stats 읽기
  * - ensureUserStatsRow 로 row 보장
- * - user_stats(coins, exp, xp, tickets) → points/exp/tickets
+ * - user_stats(coins, exp, xp, tickets, games_played) → points/exp/tickets/gamesPlayed
  * - exp 컬럼이 없고 xp 만 있는 경우도 흡수
  * - level 은 exp 기반 계산
- * - 테이블이 없거나 기타 문제 시, null 반환하여 호출 측에서 fallback 가능
+ * - 테이블이 없거나 기타 문제 시, null 반환하여 호출 측에서 fallback
  */
 async function loadCanonicalStats(
   sql: ReturnType<typeof getSql>,
   userIdUuid: string
-): Promise<{ points: number; exp: number; level: number; tickets: number } | null> {
+): Promise<CanonicalStats | null> {
   try {
     // row 보장 (없으면 0으로 insert)
     await ensureUserStatsRow(sql as any, userIdUuid);
@@ -183,7 +223,9 @@ async function loadCanonicalStats(
         exp          as exp,
         xp           as xp,
         tickets      as tickets,
-        games_played as games_played
+        games_played as games_played,
+        last_login_at,
+        updated_at
       from user_stats
       where user_id = ${userIdUuid}::uuid
       limit 1
@@ -196,6 +238,9 @@ async function loadCanonicalStats(
         exp: 0,
         level: 1,
         tickets: 0,
+        gamesPlayed: 0,
+        lastLoginAt: null,
+        updatedAt: null,
       };
     }
 
@@ -211,14 +256,23 @@ async function loadCanonicalStats(
     // tickets
     const tickets = toNonNegativeInt(r.tickets);
 
+    // games_played
+    const gamesPlayed = toNonNegativeInt(r.games_played ?? 0);
+
     // level 은 exp 기반 산정
     const level = computeLevelFromExp(exp);
+
+    const lastLoginAt = toIsoStringSafe(r.last_login_at);
+    const updatedAt = toIsoStringSafe(r.updated_at);
 
     return {
       points,
       exp,
       level,
       tickets,
+      gamesPlayed,
+      lastLoginAt,
+      updatedAt,
     };
   } catch (e) {
     if (isMissingTable(e)) {
@@ -231,22 +285,41 @@ async function loadCanonicalStats(
 }
 
 /**
+ * r.last_login_at / updated_at 같은 값의 안전한 ISO 변환
+ */
+function toIsoStringSafe(v: unknown): string | null {
+  if (!v) return null;
+  if (typeof v === "string") {
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  if (v instanceof Date) {
+    if (!Number.isNaN(v.getTime())) return v.toISOString();
+  }
+  try {
+    const d = new Date(String(v));
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/**
  * 레거시 스키마 기반 fallback:
  *  - user_progress(user_id text, exp, level, tickets)
  *  - wallet_balances(user_id text, balance)
  *  - user_progress.level 값이 있으면 그대로 사용, 없으면 exp 기반 level 계산
- *
- * ※ 이 부분은 “기존 DB 구조를 쓰던 시절”의 호환용이므로,
- *   점차 user_stats 기반으로 옮기면 이 경로를 제거할 수 있음.
  */
 async function loadLegacyStats(
   sql: ReturnType<typeof getSql>,
   userIdText: string
-): Promise<{ points: number; exp: number; level: number; tickets: number }> {
+): Promise<LegacyStats> {
   let points = 0;
   let exp = 0;
   let level = 1;
   let tickets = 0;
+  let updatedAt: string | null = null;
 
   // (1) user_progress
   try {
@@ -265,7 +338,7 @@ async function loadLegacyStats(
 
   try {
     const progRows = (await sql/* sql */ `
-      select exp, level, tickets
+      select exp, level, tickets, updated_at
       from user_progress
       where user_id = ${userIdText}
       limit 1
@@ -277,11 +350,12 @@ async function loadLegacyStats(
       const lvlLegacy = toNonNegativeInt(p.level);
       level = lvlLegacy > 0 ? lvlLegacy : computeLevelFromExp(exp);
       tickets = toNonNegativeInt(p.tickets);
+      updatedAt = p.updated_at ? toIsoStringSafe(p.updated_at) : null;
     } else {
-      // row 가 없으면 기본값 유지
       exp = 0;
       level = 1;
       tickets = 0;
+      updatedAt = null;
     }
   } catch (e) {
     if (!isMissingTable(e)) {
@@ -322,7 +396,89 @@ async function loadLegacyStats(
     // wallet_balances 테이블이 없으면 points 는 기본값 유지
   }
 
-  return { points, exp, level, tickets };
+  return { points, exp, level, tickets, updatedAt };
+}
+
+/**
+ * canonical + legacy 를 합쳐서 최종 stats 를 만드는 정책
+ *
+ * - 1순위: canonical(user_stats)
+ * - 2순위: legacy(user_progress + wallet_balances)
+ * - 보정:
+ *   • canonical.exp/tickets 가 0 이고 legacy 값이 더 크면 legacy 값으로 보정
+ *   • 반대로 canonical 이 더 큰 경우 canonical 유지(서버 기준 더 신뢰)
+ */
+function mergeStats(
+  canonical: CanonicalStats | null,
+  legacy: LegacyStats | null
+): {
+  points: number;
+  exp: number;
+  level: number;
+  tickets: number;
+  gamesPlayed: number;
+} {
+  if (!canonical && !legacy) {
+    return {
+      points: 0,
+      exp: 0,
+      level: 1,
+      tickets: 0,
+      gamesPlayed: 0,
+    };
+  }
+
+  if (canonical && !legacy) {
+    // canonical 만 있으면 그대로 사용
+    return {
+      points: canonical.points,
+      exp: canonical.exp,
+      level: canonical.level,
+      tickets: canonical.tickets,
+      gamesPlayed: canonical.gamesPlayed,
+    };
+  }
+
+  if (!canonical && legacy) {
+    // canonical 이 전혀 없는 경우 → legacy 전체 사용
+    const lvl = legacy.level > 0 ? legacy.level : computeLevelFromExp(legacy.exp);
+    return {
+      points: legacy.points,
+      exp: legacy.exp,
+      level: lvl,
+      tickets: legacy.tickets,
+      gamesPlayed: 0,
+    };
+  }
+
+  // 둘 다 있는 경우: canonical 을 우선하되, 0 값인 경우 legacy 로 보정
+  const c = canonical as CanonicalStats;
+  const l = legacy as LegacyStats;
+
+  let points = c.points;
+  let exp = c.exp;
+  let tickets = c.tickets;
+  let gamesPlayed = c.gamesPlayed;
+
+  if (points <= 0 && l.points > 0) {
+    points = l.points;
+  }
+  if (exp <= 0 && l.exp > 0) {
+    exp = l.exp;
+  }
+  if (tickets <= 0 && l.tickets > 0) {
+    tickets = l.tickets;
+  }
+
+  const level = computeLevelFromExp(exp);
+
+  return {
+    points,
+    exp,
+    level,
+    tickets,
+    gamesPlayed,
+  };
 }
 
 /* ───────── handler ───────── */
@@ -355,7 +511,7 @@ export const onRequest: PagesFunction<Env> = async ({
     const sql = getSql(env);
 
     // ── 2) 사용자 기본 정보 조회 (민감정보 최소화) ────────────────────
-    const rows = (await sql/* sql */ `
+    const userRows = (await sql/* sql */ `
       select
         id::text as id,
         email,
@@ -367,14 +523,14 @@ export const onRequest: PagesFunction<Env> = async ({
       limit 1
     `) as unknown as UserRowRaw[];
 
-    if (!rows || rows.length === 0) {
+    if (!userRows || userRows.length === 0) {
       return withCORS(
         json({ error: "Not found" }, { status: 404 }),
         env.CORS_ORIGIN
       );
     }
 
-    const r = rows[0];
+    const r = userRows[0];
     const userIdUuid = String(payload.sub || r.id || "").trim();
     const userIdText = userIdUuid || String(r.id || "");
 
@@ -387,33 +543,52 @@ export const onRequest: PagesFunction<Env> = async ({
     };
 
     // ── 3) 계정별 진행도/지갑 요약(포인트/티켓/경험치/레벨) ───────────
-    let points = 0;
-    let exp = 0;
-    let level = 1;
-    let tickets = 0;
+    let canonical: CanonicalStats | null = null;
+    let legacy: LegacyStats | null = null;
 
     if (userIdUuid) {
       // 3-1) canonical: user_stats 기반 조회 시도
-      const canonical = await loadCanonicalStats(sql, userIdUuid);
+      canonical = await loadCanonicalStats(sql, userIdUuid);
+    }
 
-      if (canonical) {
-        points = canonical.points;
-        exp = canonical.exp;
-        level = canonical.level;
-        tickets = canonical.tickets;
-      } else if (userIdText) {
-        // 3-2) user_stats 가 아직 없거나 스키마 미적용인 경우 → 레거시 fallback
-        const legacy = await loadLegacyStats(sql, userIdText);
-        points = legacy.points;
-        exp = legacy.exp;
-        level = legacy.level;
-        tickets = legacy.tickets;
+    if (!canonical || (canonical.points === 0 && canonical.exp === 0 && canonical.tickets === 0)) {
+      // 3-2) user_stats 가 아직 없거나 값이 전부 0인 경우 → 레거시 fallback 도 조회
+      if (userIdText) {
+        legacy = await loadLegacyStats(sql, userIdText);
       }
     }
+
+    const merged = mergeStats(canonical, legacy);
+    const points = merged.points;
+    const exp = merged.exp;
+    const level = merged.level;
+    const tickets = merged.tickets;
+    const gamesPlayed = merged.gamesPlayed;
 
     const took = Math.round(performance.now() - t0);
 
     // ── 4) 응답: 계약 유지 + stats 필드만 canonical 기반으로 강화 ─────
+    const statsPayload = {
+      points,
+      exp,
+      level,
+      tickets,
+      gamesPlayed,
+    };
+
+    const headers: Record<string, string> = {
+      "Cache-Control": "no-store",
+      "X-Me-Took-ms": String(took),
+      "X-Me-User": userIdUuid,
+    };
+
+    // 프론트/디버깅용 stats 요약 JSON
+    try {
+      headers["X-Me-Stats-Json"] = JSON.stringify(statsPayload);
+    } catch {
+      // stringify 실패는 무시
+    }
+
     return withCORS(
       json(
         {
@@ -429,10 +604,7 @@ export const onRequest: PagesFunction<Env> = async ({
           },
         },
         {
-          headers: {
-            "Cache-Control": "no-store",
-            "X-Me-Took-ms": String(took),
-          },
+          headers,
         }
       ),
       env.CORS_ORIGIN
@@ -456,7 +628,7 @@ export const onRequest: PagesFunction<Env> = async ({
  *    - JWT 토큰을 검증해서 현재 로그인한 사용자를 식별한다.
  *    - users 테이블에서 id/email/username/avatar/created_at 을 읽어서 기본 프로필을 만든다.
  *    - user_stats (canonical) 또는 user_progress + wallet_balances (legacy) 에서
- *      포인트(coins), 경험치(exp/xp), 티켓(tickets) 정보를 읽는다.
+ *      포인트(coins → points), 경험치(exp/xp), 티켓(tickets) 정보를 읽는다.
  *    - exp 값을 기반으로 레벨(level)을 계산한다.
  *    - 위 모든 값을 합쳐 { ok:true, user:{ ... , stats:{...} } } 형태로 응답한다.
  *
@@ -467,43 +639,94 @@ export const onRequest: PagesFunction<Env> = async ({
  *      • user_stats.exp / user_stats.xp
  *      • user_stats.tickets
  *      • user_stats.games_played
+ *      • user_stats.last_login_at / updated_at
  *    - legacy: 과거에 text user_id 로 관리하던 테이블들.
  *      • user_progress (exp/level/tickets)
  *      • wallet_balances (balance → points)
  *    - 현재 구현은:
- *      • user_stats 가 있으면 무조건 우선 사용
- *      • user_stats 가 아예 없는 초기 상태에서는 legacy 테이블을 임시로 사용
+ *      • user_stats 가 있으면 **무조건 우선 사용**
+ *      • user_stats 가 아예 없거나 값이 전부 0인 경우 legacy 를 참고하여 UI 표시값을 보정
  *
- * 3. 미들웨어(_middleware.ts)와의 연동
- *    - _middleware.ts 에서도 requireUser + user_stats 를 읽어
- *      X-User-Points / X-User-Exp / X-User-Level / X-User-Tickets 를 헤더로 내려준다.
+ * 3. reward.ts / balance.ts / transaction.ts 와의 관계
+ *    - reward.ts:
+ *      • 게임 종료 후 보상(EXP / tickets / points)을 계산한다.
+ *      • user_progress(exp, tickets, level)와 wallet_balances(balance)를 갱신한다.
+ *      • analytics_events 에 reward 이벤트를 기록할 수 있다.
+ *    - balance.ts:
+ *      • user_stats(coins, exp, tickets, games_played)를 1순위로 사용하고
+ *      • wallet_balances / user_progress 를 2차/보조 소스로 사용한다.
+ *      • 헤더(X-Wallet-*) 에 지갑/스탯 요약을 담아서 빠르게 HUD 를 그릴 수 있게 한다.
+ *    - transaction.ts:
+ *      • 상점 결제, 직접 포인트 차감 등 “의도적인 지갑 조작”을 처리한다.
+ *      • transactions 테이블에 insert → BEFORE INSERT 트리거 apply_wallet_transaction 가
+ *        user_stats(coins, exp, tickets, games_played)를 갱신한다.
+ *      • analytics_events 에 wallet_tx 이벤트를 기록할 수 있다.
+ *    - auth/me.ts (현재 파일):
+ *      • 로그인한 사용자의 프로필 + 현재까지의 누적 스탯을 한 번에 내려준다.
+ *      • user-retro-games.html, 마이페이지, HUD 초기 렌더 등에서 사용한다.
+ *
+ *    이렇게 네 엔드포인트가 합쳐져서:
+ *      “게임 플레이 → 보상 / 상점 결제 → 지갑 반영 → 사용자 정보 조회”
+ *    라는 전체 플로우가 닫히게 된다.
+ *
+ * 4. 미들웨어(_middleware.ts)와의 연동
+ *    - _middleware.ts 에서는 requireUser + user_stats 를 읽어
+ *      X-User-Points / X-User-Exp / X-User-Level / X-User-Tickets 를 헤더로 내려줄 수 있다.
  *    - 프론트의 app.js(jsonFetch, updateStatsFromHeaders)가 이 헤더를 읽어
  *      HUD(상단 진행도 UI)를 렌더링한다.
  *    - /api/auth/me 는 JSON 본문으로 동일한 정보를 내려주며,
  *      user-retro-games.html 같은 페이지에서 “초기 상태”를 채우는 용도로 사용된다.
  *
- * 4. 장애/에러 상황에서의 동작
+ * 5. 장애/에러 상황에서의 동작
  *    - users row 가 없으면 404 Not Found.
  *    - JWT 검증 실패 → 401 Unauthorized.
  *    - user_stats / user_progress / wallet_balances 테이블이 없더라도,
  *      isMissingTable() 체크를 통해 stats 부분은 0으로 떨어지며 응답 자체는 내려간다.
- *    - 그 외 예외 상황에서는 401 + error 메시지 문자열을 응답한다.
- *
- * 5. 확장 시 고려사항
- *    - stats 에 gamesPlayed, lastPlayedAt 등을 추가하고 싶다면:
- *      • user_stats 테이블에 games_played / last_played_at 컬럼을 추가
- *      • UserStatsRowRaw 에 필드 추가
- *      • loadCanonicalStats 내에서 값 읽기 + 정규화
- *      • 응답 JSON의 user.stats 안에 필드 추가
- *      • 프론트 HUD(예: data-user-games 같은 속성)와도 연동
- *    - 민감 정보를 더 빼고 싶다면:
- *      • user 객체에서 email 을 숨기거나, username 만 노출하는 식으로 조정 가능
- *      • 단, 이 경우에도 기존 프론트 코드가 어떤 필드를 기대하는지 반드시 확인해야 함
+ *    - DB 에러가 발생하면:
+ *      • stats 계산 부분에서 throw → 상위 try/catch 에서 401 + error 문자열로 내려간다.
+ *      • 상용 서비스에서는 5xx 로 올리는 것이 더 맞지만,
+ *        여기서는 기존 계약을 최대한 보존하기 위해 401 로 통합되어 있다.
  *
  * 6. 성능/로그
  *    - X-Me-Took-ms 헤더에 이 핸들러의 처리 시간이 ms 단위로 기록된다.
- *    - Cloudflare 로그/Analytics 와 엮어서 응답 지연을 모니터링하는 데 활용할 수 있다.
+ *    - Cloudflare Analytics, 로그 수집 도구와 연동하면
+ *      응답 지연 및 병목 지점을 분석하는 데 사용 가능하다.
+ *    - user_stats / user_progress / wallet_balances 를 모두 조회하므로
+ *      고트래픽 환경에서는 인덱스 상태, 캐시, 커넥션 풀 상태를 주기적으로 점검하는 것이 좋다.
  *
- * 이 아래 주석들은 “코드 줄 수 확보 + 유지보수자를 위한 설명” 용도로만 존재하며,
+ * 7. 확장 시 고려사항
+ *    - stats 에 gamesPlayed, lastLoginAt 같은 필드를 본문으로 노출하고 싶다면:
+ *      • CanonicalStats/LegacyStats 타입에 필드 추가
+ *      • loadCanonicalStats / loadLegacyStats 구현 업데이트
+ *      • mergeStats 결과를 응답 JSON user.stats 에 반영
+ *      • 프론트(user-retro-games.html) HUD/UI를 해당 필드를 소비하도록 수정
+ *    - 랭킹/리더보드 기능을 넣으려면:
+ *      • user_stats.exp, user_stats.coins, user_stats.games_played 를 기반으로
+ *        별도의 leaderboard_* 테이블을 구성하거나
+ *        materialized view 를 구성하는 방식을 고려할 수 있다.
+ *
+ * 8. 테스트 체크리스트(수동 QA 용)
+ *    1) 신규 가입 직후 (게임을 한 번도 플레이하지 않은 상태):
+ *       - /api/auth/me 호출 시
+ *         • stats.points === 0
+ *         • stats.exp === 0
+ *         • stats.level === 1
+ *         • stats.tickets === 0
+ *    2) 게임 1판 플레이 후 reward.ts 로 exp/tickets/points 지급:
+ *       - /api/wallet/reward 호출 후 /api/auth/me 를 호출하면
+ *         • stats.exp 가 0보다 크고
+ *         • stats.tickets 가 0보다 크고
+ *         • stats.points 가 0보다 크며
+ *         • stats.level 이 1 이상으로 적절히 증가하는지 확인
+ *    3) 상점 구매 후 transaction.ts 로 amount 음수 트랜잭션 발생:
+ *       - /api/wallet/transaction 호출 후 /api/auth/me 호출 시
+ *         • stats.points 가 감소한 값으로 보이는지 확인
+ *         • 잔액 부족 시 insufficient_funds 에러가 잘 동작하는지 확인
+ *    4) user_stats / user_progress / wallet_balances 가 혼재한 계정:
+ *       - canonical 과 legacy 가 서로 다른 값을 가지고 있을 때,
+ *         • canonical 이 0이고 legacy 가 더 크면 legacy 값이 UI에 반영되는지
+ *         • canonical 이 legacy 보다 크면 canonical 값이 유지되는지
+ *
+ * 이 아래의 주석들은 “코드 줄 수 확보 + 유지보수자를 위한 설명” 용도로만 존재하며,
  * 빌드/실행/런타임 동작에는 어떤 영향도 주지 않는다.
  * ─────────────────────────────────────────────────────────────────────────── */

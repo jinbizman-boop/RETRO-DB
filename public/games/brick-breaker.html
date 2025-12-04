@@ -988,6 +988,54 @@
     };
   })();
 
+  /* ================= 배경음악 컨트롤러 ================= */
+  const BGM_SRC = '/assets/music/brick-breaker-background.mp3';
+  let bgmController = null;
+
+  function initBgm(){
+    const el = document.getElementById('bgm');
+    if(!el) return;
+
+    el.src = BGM_SRC; // 안전하게 경로 보장
+    el.loop = true;
+    el.volume = 0.3;
+
+    let unlocked = false;
+
+    function play(){
+      if(!el) return;
+      const p = el.play();
+      if(p && typeof p.then === 'function'){
+        p.catch(()=>{ /* autoplay block – 최초 인터랙션까지 무시 */ });
+      }
+    }
+    function pause(){
+      try{ el.pause(); }catch(e){}
+    }
+    function unlockOnce(){
+      if(unlocked) return;
+      unlocked = true;
+      play();
+    }
+
+    // 사용자 첫 인터랙션에서만 해제
+    ['click','touchstart'].forEach(ev=>{
+      window.addEventListener(ev, unlockOnce, { once:true, passive:true });
+    });
+    window.addEventListener('keydown', unlockOnce, { once:true });
+
+    // 탭 비활성화 시 일시정지, 복귀 시 재생
+    document.addEventListener('visibilitychange',()=>{
+      if(document.hidden){
+        pause();
+      }else if(unlocked){
+        play();
+      }
+    });
+
+    bgmController = { play, pause };
+  }
+
   /* ================= 게임 본체 ================= */
   class BrickBreaker{
     constructor(canvas){
@@ -1054,7 +1102,7 @@
       const endBtn  = $('#endBtn');
 
       if(newBtn) newBtn.addEventListener('click',()=> this.reset(this.level));
-      if(undoBtn) undoBtn.addEventListener('click',()=>{ this.paused=!this.paused; });
+      if(undoBtn) newBtn && undoBtn.addEventListener('click',()=>{ this.paused=!this.paused; });
 
       if(homeBtn){
         homeBtn.addEventListener('click',()=>
@@ -1760,6 +1808,7 @@
     updateTicketUI();
     initSideBanners();
     fitCabinet();
+    initBgm(); // ★ 배경음악 초기화 (볼륨 30%, 반복재생)
   }
 
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
@@ -1768,6 +1817,9 @@
     document.addEventListener('DOMContentLoaded', bootstrapBrickBreaker);
   }
   </script>
+
+  <!-- 🔊 Brick Breaker 배경 음악 (30% 볼륨, 루프) -->
+  <audio id="bgm" src="/assets/music/brick-breaker-background.mp3" preload="auto"></audio>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>

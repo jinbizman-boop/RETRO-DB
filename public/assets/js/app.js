@@ -1002,6 +1002,50 @@
   if (document.readyState !== "loading") init();
   else document.addEventListener("DOMContentLoaded", init);
 
+// ──────────────────────────────────────────────────────────────
+// RG.requireAuth post-login hook (ensureLoggedIn 연동)
+// - 기존 RG.requireAuth 로직은 그대로 사용
+// - 로그인 성공 후에만 window.ensureLoggedIn()을 1회 호출
+//   (페이지별 HUD/지갑 동기화용)
+// ──────────────────────────────────────────────────────────────
+(function attachRequireAuthHook(){
+  try {
+    if (!window.RG || typeof window.RG.requireAuth !== "function") {
+      return; // RG 또는 requireAuth가 아직 없다면 아무 것도 하지 않음
+    }
+    // 중복 패치 방지용 플래그
+    if (window.RG.__requireAuthPatched) {
+      return;
+    }
+
+    const originalRequireAuth = window.RG.requireAuth;
+
+    // 기존 requireAuth를 감싸는 래퍼
+    window.RG.requireAuth = async function patchedRequireAuth(options) {
+      // 1) 원래 requireAuth 동작 그대로 수행
+      //    - 세션 체크 / 비로그인 시 로그인 페이지 또는 모달 띄우기 등
+      const result = await originalRequireAuth.call(window.RG, options);
+
+      // 2) 로그인 상태라면 HUD/지갑/인사말 동기화를 위해 ensureLoggedIn 훅 호출
+      //    - ensureLoggedIn이 없는 페이지는 그냥 무시
+      if (typeof window.ensureLoggedIn === "function") {
+        try {
+          await window.ensureLoggedIn();
+        } catch (e) {
+          console.warn("[RG] ensureLoggedIn hook error:", e);
+        }
+      }
+
+      // 3) 기존 requireAuth가 리턴하던 값은 그대로 반환 (호환성 유지)
+      return result;
+    };
+
+    window.RG.__requireAuthPatched = true;
+  } catch (e) {
+    console.warn("[RG] attachRequireAuthHook failed:", e);
+  }
+})();
+
   /* ───────────────────────────── 내부 메모용 주석 블록 ─────────────────────────────
    * 이 하단 주석들은 기능에 영향을 주지 않는 프로젝트 메모이다.
    *

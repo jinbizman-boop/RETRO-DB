@@ -1,181 +1,326 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>오늘의 행운 슬롯 – RETRO GAMES</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>오늘의 행운 슬롯 – RETRO GAMES</title>
 
-<!-- Google AdSense 소유권 확인 메타 태그 -->
-<meta name="google-adsense-account" content="ca-pub-6713974265397310" />
+  <!-- Google AdSense 소유권 확인 메타 태그 -->
+  <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
 
-<!-- === Common SEO/A11y (auto-inserted) === -->
-<link rel="icon" href="/assets/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1b34">
-<meta name="description" content="오늘의 행운 슬롯 | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="robots" content="index,follow">
-<meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="오늘의 행운 슬롯">
-<meta property="og:description" content="오늘의 행운 슬롯 | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta property="og:type" content="website">
-<meta property="og:image" content="/assets/og/retro-games-card.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="오늘의 행운 슬롯">
-<meta name="twitter:description" content="오늘의 행운 슬롯 | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-<meta name="twitter:image" content="/assets/og/retro-games-card.png">
-<script>
-  // fixed environment flags for analytics/runtime
-  (function(d){
-    d.documentElement.dataset.env = 'production';
-    d.documentElement.dataset.analytics = 'on';
-    window.__ENV__ = 'production';
-    window.__ANALYTICS_ON__ = true;
-  })(document);
-</script>
-<!-- === /Common SEO/A11y === -->
+  <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0e1b34">
+  <meta name="description" content="오늘의 행운 슬롯 | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="robots" content="index,follow">
+  <meta property="og:site_name" content="RETRO GAMES">
+  <meta property="og:title" content="오늘의 행운 슬롯">
+  <meta property="og:description" content="오늘의 행운 슬롯 | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og/retro-games-card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="오늘의 행운 슬롯">
+  <meta name="twitter:description" content="오늘의 행운 슬롯 | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 
-  <!-- AdSense 글로벌 스크립트 -->
+  <script>
+    // fixed environment flags for analytics/runtime
+    (function(d){
+      d.documentElement.dataset.env = 'production';
+      d.documentElement.dataset.analytics = 'on';
+      window.__ENV__ = 'production';
+      window.__ANALYTICS_ON__ = true;
+    })(document);
+  </script>
+  <!-- === /Common SEO/A11y === -->
+
+  <!-- ✅ AdSense 글로벌 스크립트 (사이트 공통) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-     crossorigin="anonymous"></script>
+          crossorigin="anonymous"></script>
 
-<script defer src="/assets/js/app.js"></script>
-<script defer src="/assets/js/analytics.js"></script>
+  <!-- ✅ 프로젝트 공통 스크립트 (정상 app.js 버전 / 오토 인젝트는 app.js 내부 조건으로 게임 페이지에서 스킵) -->
+  <script defer src="/assets/js/app.js"></script>
+  <script defer src="/assets/js/analytics.js"></script>
 
+  <style>
+    :root {
+      --gold1:#ffdf6e;
+      --gold2:#ffb84d;
+      --blue1:#2b7bff;
+      --blue2:#0048ff;
+      --bg:#0b001e;
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      font-family:'Segoe UI',system-ui,"Apple SD Gothic Neo",sans-serif;
+      color:#fff;
+      overflow:hidden;
+    }
 
-<style>
-  :root {--gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--blue2:#0048ff;--bg:#0b001e}
-  html,body{
-    height:100%;margin:0;
-    background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
-    font-family:'Segoe UI',system-ui,Apple SD Gothic Neo,sans-serif;
-    color:#fff;overflow:hidden
-  }
-  .machine{
-    position:relative;width:960px;height:700px;
-    margin:24px auto;
-    background:linear-gradient(180deg,#0a0030,#000);
-    border-radius:30px;border:6px solid #3e2b7b;
-    box-shadow:0 0 40px #0009,inset 0 0 30px #2a0085
-  }
-  .header{
-    text-align:center;padding-top:14px;
-    font-weight:900;font-size:28px;
-    color:var(--gold1);text-shadow:0 0 10px #ffb84d
-  }
-  .stats-row{
-    display:flex;justify-content:center;gap:60px;
-    margin-top:10px;font-weight:700;font-size:16px;
-    color:#fff;text-shadow:0 0 6px #000
-  }
-  canvas{
-    position:absolute;top:130px;left:50%;
-    transform:translateX(-50%);
-    width:860px;height:380px;
-    background:#071726;border:8px solid #0048ff;
-    border-radius:16px;
-    box-shadow:0 0 20px #0048ffbb,inset 0 0 15px #001a44
-  }
-  .panel{
-    position:absolute;bottom:0;width:100%;height:140px;
-    background:linear-gradient(180deg,#0b0050,#00002a);
-    border-top:3px solid #4a2a88;border-radius:0 0 24px 24px;
-    display:flex;align-items:center;justify-content:center;gap:32px
-  }
-  .panel button{
-    border:none;border-radius:12px;
-    font-size:20px;font-weight:900;
-    padding:14px 42px;color:#fff;cursor:pointer;
-    box-shadow:0 5px 10px #0008;transition:.1s
-  }
-  .panel button:active{transform:scale(.95)}
-  #betBtn{background:linear-gradient(180deg,#4da8ff,#0048ff)}
-  #spinBtn{
-    background:linear-gradient(180deg,var(--gold1),var(--gold2));
-    color:#4a2a00;box-shadow:0 0 20px #ffb84dcc
-  }
-  #stopBtn{
-    background:linear-gradient(180deg,#2b7bff,#0048ff);
-    box-shadow:0 0 20px #0077ffcc
-  }
-  #homeBtn{
-    background:linear-gradient(180deg,#4b5563,#111827);
-    color:#f9fafb
-  }
+    /* ===== 페이지 레이아웃 (좌측 세로 광고 + 슬롯 머신) ===== */
+    .page-wrap{
+      width:100%;
+      height:100%;
+      max-width:1280px;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:24px;
+      padding:16px;
+      box-sizing:border-box;
+    }
+    .side-ad{
+      flex:0 0 auto;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    .side-ad-inner{
+      width:120px;
+      height:600px;
+      border-radius:16px;
+      border:1px solid #283a73;
+      box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 0 24px rgba(46,74,163,.45);
+      padding:8px;
+      background:radial-gradient(circle at 20% 0%,#233a72,#06091a 70%);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    .side-ad-inner .adsbygoogle{
+      display:block;
+      width:100%;
+      height:100%;
+    }
 
-  /* 쿠키 배너 (공통) */
-  .cookie-banner{
-    position:fixed;left:12px;right:12px;bottom:12px;
-    display:none;align-items:center;gap:10px;
-    padding:10px 12px;border-radius:12px;
-    border:1px solid #2b3f8f;
-    background:linear-gradient(180deg,#0b1f40,#0a1730);
-    box-shadow:0 10px 18px rgba(0,0,0,.45),
-               inset 0 0 18px rgba(255,255,255,.05);
-    z-index:10000;font-size:12px
-  }
-  .cookie-banner .spacer{flex:1}
-  .cookie-banner button{
-    padding:8px 12px;border-radius:10px;
-    border:1px solid #2d3690;
-    background:linear-gradient(180deg,#1a2b7a,#0a1a64);
-    font-weight:800;color:#e9f0ff;cursor:pointer
-  }
-  .cookie-banner .agree{
-    background:linear-gradient(180deg,#ffdf6e,#ffb84d);
-    color:#3a2400;border-color:#7a5600
-  }
+    /* 모바일 / 작은 화면에서는 세로 광고를 슬롯 아래로 배치 */
+    @media (max-width: 1100px){
+      .page-wrap{
+        flex-direction:column;
+        justify-content:flex-start;
+      }
+      .side-ad-inner{
+        width:320px;
+        height:100px;
+      }
+    }
+    @media (max-width: 640px){
+      .page-wrap{
+        padding:12px;
+      }
+      .side-ad-inner{
+        width:280px;
+        height:80px;
+      }
+    }
 
-  /* 광고 모달 (인터스티셜 용) */
-  #adModal{
-    display:none;position:fixed;inset:0;
-    background:rgba(0,0,0,.65);backdrop-filter:blur(2px);
-    align-items:center;justify-content:center;z-index:9999
-  }
-  #adBox{
-    width:min(680px,92vw);min-height:280px;
-    border:2px solid #3e2b7b;border-radius:20px;
-    box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
-    padding:18px;display:flex;flex-direction:column;gap:10px;
-    background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)
-  }
-  #adHead{display:flex;justify-content:space-between;align-items:center}
-  #adClose{
-    border:0;background:#1b2b7a;
-    color:#fff;border-radius:10px;
-    padding:6px 10px;cursor:pointer
-  }
-  .adPlaceholder{
-    display:grid;place-items:center;
-    height:220px;border-radius:14px;
-    border:1px dashed #3952c3;
-    background:linear-gradient(135deg,#18224a,#0e1636)
-  }
-</style>
+    .machine{
+      position:relative;
+      width:960px;
+      height:700px;
+      margin:24px 0;
+      background:linear-gradient(180deg,#0a0030,#000);
+      border-radius:30px;
+      border:6px solid #3e2b7b;
+      box-shadow:0 0 40px #0009,inset 0 0 30px #2a0085;
+      flex:0 1 auto;
+    }
+    .header{
+      text-align:center;
+      padding-top:14px;
+      font-weight:900;
+      font-size:28px;
+      color:var(--gold1);
+      text-shadow:0 0 10px #ffb84d;
+    }
+    .stats-row{
+      display:flex;
+      justify-content:center;
+      gap:60px;
+      margin-top:10px;
+      font-weight:700;
+      font-size:16px;
+      color:#fff;
+      text-shadow:0 0 6px #000;
+    }
+    canvas{
+      position:absolute;
+      top:130px;
+      left:50%;
+      transform:translateX(-50%);
+      width:860px;
+      height:380px;
+      background:#071726;
+      border:8px solid #0048ff;
+      border-radius:16px;
+      box-shadow:0 0 20px #0048ffbb,inset 0 0 15px #001a44;
+    }
+    .panel{
+      position:absolute;
+      bottom:0;
+      width:100%;
+      height:140px;
+      background:linear-gradient(180deg,#0b0050,#00002a);
+      border-top:3px solid #4a2a88;
+      border-radius:0 0 24px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:32px;
+    }
+    .panel button{
+      border:none;
+      border-radius:12px;
+      font-size:20px;
+      font-weight:900;
+      padding:14px 42px;
+      color:#fff;
+      cursor:pointer;
+      box-shadow:0 5px 10px #0008;
+      transition:.1s;
+    }
+    .panel button:active{transform:scale(.95)}
+    #betBtn{background:linear-gradient(180deg,#4da8ff,#0048ff)}
+    #spinBtn{
+      background:linear-gradient(180deg,var(--gold1),var(--gold2));
+      color:#4a2a00;
+      box-shadow:0 0 20px #ffb84dcc;
+    }
+    #stopBtn{
+      background:linear-gradient(180deg,#2b7bff,#0048ff);
+      box-shadow:0 0 20px #0077ffcc;
+    }
+    #homeBtn{
+      background:linear-gradient(180deg,#4b5563,#111827);
+      color:#f9fafb;
+    }
+
+    /* 쿠키 배너 (공통) */
+    .cookie-banner{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:12px;
+      display:none;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #2b3f8f;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),
+                 inset 0 0 18px rgba(255,255,255,.05);
+      z-index:10000;
+      font-size:12px;
+    }
+    .cookie-banner .spacer{flex:1}
+    .cookie-banner button{
+      padding:8px 12px;
+      border-radius:10px;
+      border:1px solid #2d3690;
+      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+      font-weight:800;
+      color:#e9f0ff;
+      cursor:pointer;
+    }
+    .cookie-banner .agree{
+      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
+      color:#3a2400;
+      border-color:#7a5600;
+    }
+
+    /* 광고 모달 (인터스티셜 용) */
+    #adModal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.65);
+      backdrop-filter:blur(2px);
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+    }
+    #adBox{
+      width:min(680px,92vw);
+      min-height:280px;
+      border:2px solid #3e2b7b;
+      border-radius:20px;
+      box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);
+    }
+    #adHead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    #adClose{
+      border:0;
+      background:#1b2b7a;
+      color:#fff;
+      border-radius:10px;
+      padding:6px 10px;
+      cursor:pointer;
+    }
+    .adPlaceholder{
+      display:grid;
+      place-items:center;
+      height:220px;
+      border-radius:14px;
+      border:1px dashed #3952c3;
+      background:linear-gradient(135deg,#18224a,#0e1636);
+    }
+  </style>
 </head>
 
-<!-- 프로젝트 스크립트(경로 절대 경로로 유지) -->
-<script defer src="/assets/js/app.js"></script>
-<script defer src="/assets/js/analytics.js"></script>
+<body data-page-scope="game" data-no-auto-shell="true">
+  <!--
+    ⚠ header/footer는 app.js의 "페이지 오토 인젝트"에 맡기고,
+       게임 페이지에서는 data-page-scope="game" 플래그로 스킵 (app.js 내부 조건문)
+  -->
 
-<body>
-  <div id="site-header"></div>
+  <div class="page-wrap">
+    <!-- ✅ 좌우측 사이드 수직형 광고 (120×600) -->
+    <aside class="side-ad" aria-label="좌측 사이드 수직형 광고">
+      <div class="side-ad-inner">
+        <!-- Google AdSense: 좌측 세로형 광고 단위 -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6713974265397310"
+             data-ad-slot="4514999077"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
+    </aside>
 
-  <div class="machine" role="application" aria-label="오늘의 행운 슬롯 머신">
-    <div class="header">오늘의 행운을 확인해보세요!</div>
-    <div class="stats-row" aria-live="polite">
-      <div>POINTS: <span id="bank">10000</span></div>
-      <div>BET: <span id="bet">100</span></div>
-      <div>WIN: <span id="win">0</span></div>
-    </div>
+    <!-- 🎰 오늘의 행운 슬롯 머신 -->
+    <div class="machine" role="application" aria-label="오늘의 행운 슬롯 머신">
+      <div class="header">오늘의 행운을 확인해보세요!</div>
+      <div class="stats-row" aria-live="polite">
+        <div>POINTS: <span id="bank">10000</span></div>
+        <div>BET: <span id="bet">100</span></div>
+        <div>WIN: <span id="win">0</span></div>
+      </div>
 
-    <canvas id="slot" aria-label="슬롯 릴"></canvas>
+      <canvas id="slot" aria-label="슬롯 릴"></canvas>
 
-    <div class="panel">
-      <button id="homeBtn" title="RETRO GAMES 홈으로 이동">HOME</button>
-      <button id="betBtn" title="참여하기(티켓 5장 소모)">참여하기</button>
-      <button id="spinBtn">행운의 룰렛</button>
-      <button id="stopBtn">행운 확인하기</button>
+      <div class="panel">
+        <button id="homeBtn" title="RETRO GAMES 홈으로 이동">HOME</button>
+        <button id="betBtn" title="참여하기(티켓 5장 소모)">참여하기</button>
+        <button id="spinBtn">행운의 룰렛</button>
+        <button id="stopBtn">행운 확인하기</button>
+      </div>
     </div>
   </div>
 
@@ -195,27 +340,46 @@
     </div>
   </div>
 
-<script>
-/* ------------------------------------------------------------------
- *  공통 상수 (AUTH / BASE 경로)
- * ------------------------------------------------------------------ */
-const BASE = "/";
-const AUTH_API_BASE = "/api/auth";
+  <script>
+  /* ------------------------------------------------------------------
+   *  공통 상수 (AUTH / BASE 경로)
+   * ------------------------------------------------------------------ */
+  const BASE = "/";
+  const AUTH_API_BASE = "/api/auth";
 
-/* ------------------------------------------------------------------
- *  🔊 오늘의 행운 전용 BGM
- *  - /assets/music/today-lucky-background.mp3
- *  - 기본 볼륨 30%, loop 재생
- *  - rg_user_settings(soundMaster / bgm)와 연동
- * ------------------------------------------------------------------ */
-const BGM_SRC_TODAY_LUCKY = "/assets/music/today-lucky-background.mp3";
-let bgmLuckyEl = null;
-let bgmLuckyReady = false;
+  /* ------------------------------------------------------------------
+   *  🔊 오늘의 행운 전용 BGM
+   *  - /assets/music/today-lucky-background.mp3
+   *  - 기본 볼륨 30%, loop 재생
+   *  - rg_user_settings(soundMaster / bgm)와 연동
+   * ------------------------------------------------------------------ */
+  const BGM_SRC_TODAY_LUCKY = "/assets/music/today-lucky-background.mp3";
+  let bgmLuckyEl = null;
+  let bgmLuckyReady = false;
 
-function loadRgSettings(){
-  try{
-    const raw = localStorage.getItem("rg_user_settings");
-    if(!raw){
+  function loadRgSettings(){
+    try{
+      const raw = localStorage.getItem("rg_user_settings");
+      if(!raw){
+        return {
+          soundMaster:true,
+          bgm:true,
+          backgroundFx:true,
+          reducedMotion:false,
+          gameCountdown:true,
+          gameHints:true
+        };
+      }
+      const parsed = JSON.parse(raw) || {};
+      return {
+        soundMaster: parsed.soundMaster !== false,
+        bgm:         parsed.bgm         !== false,
+        backgroundFx:parsed.backgroundFx !== false,
+        reducedMotion:!!parsed.reducedMotion,
+        gameCountdown: parsed.gameCountdown !== false,
+        gameHints:     parsed.gameHints     !== false
+      };
+    }catch(e){
       return {
         soundMaster:true,
         bgm:true,
@@ -225,710 +389,691 @@ function loadRgSettings(){
         gameHints:true
       };
     }
-    const parsed = JSON.parse(raw) || {};
-    return {
-      soundMaster: parsed.soundMaster !== false,
-      bgm:         parsed.bgm         !== false,
-      backgroundFx:parsed.backgroundFx !== false,
-      reducedMotion:!!parsed.reducedMotion,
-      gameCountdown: parsed.gameCountdown !== false,
-      gameHints:     parsed.gameHints     !== false
-    };
-  }catch(e){
-    return {
-      soundMaster:true,
-      bgm:true,
-      backgroundFx:true,
-      reducedMotion:false,
-      gameCountdown:true,
-      gameHints:true
-    };
   }
-}
-function shouldPlayLuckyBgm(){
-  const s = loadRgSettings();
-  return !!(s.soundMaster && s.bgm);
-}
-function ensureLuckyBgm(){
-  if(bgmLuckyEl) return bgmLuckyEl;
-  bgmLuckyEl = document.createElement("audio");
-  bgmLuckyEl.src = BGM_SRC_TODAY_LUCKY;
-  bgmLuckyEl.loop = true;
-  bgmLuckyEl.volume = 0.3; // 🔊 30%
-  bgmLuckyEl.setAttribute("preload","auto");
-  bgmLuckyEl.style.display = "none";
-  document.body.appendChild(bgmLuckyEl);
-  return bgmLuckyEl;
-}
-async function tryPlayLuckyBgm(){
-  const audio = ensureLuckyBgm();
-  if(!shouldPlayLuckyBgm()){
-    try{ audio.pause(); }catch(_){}
-    return;
+  function shouldPlayLuckyBgm(){
+    const s = loadRgSettings();
+    return !!(s.soundMaster && s.bgm);
   }
-  try{
-    await audio.play();
-    bgmLuckyReady = true;
-  }catch(e){
-    // 자동재생 차단 시: 사용자 인터랙션 이후 재시도
-    bgmLuckyReady = false;
+  function ensureLuckyBgm(){
+    if(bgmLuckyEl) return bgmLuckyEl;
+    bgmLuckyEl = document.createElement("audio");
+    bgmLuckyEl.src = BGM_SRC_TODAY_LUCKY;
+    bgmLuckyEl.loop = true;
+    bgmLuckyEl.volume = 0.3; // 🔊 30%
+    bgmLuckyEl.setAttribute("preload","auto");
+    bgmLuckyEl.style.display = "none";
+    document.body.appendChild(bgmLuckyEl);
+    return bgmLuckyEl;
   }
-}
-function handleLuckyBgmUserGesture(){
-  if(bgmLuckyReady) return;
-  tryPlayLuckyBgm();
-}
-document.addEventListener("click", handleLuckyBgmUserGesture, { once:true });
-document.addEventListener("keydown", handleLuckyBgmUserGesture, { once:true });
-window.addEventListener("storage", function(e){
-  if(e.key === "rg_user_settings"){
+  async function tryPlayLuckyBgm(){
+    const audio = ensureLuckyBgm();
+    if(!shouldPlayLuckyBgm()){
+      try{ audio.pause(); }catch(_){}
+      return;
+    }
+    try{
+      await audio.play();
+      bgmLuckyReady = true;
+    }catch(e){
+      // 자동재생 차단 시: 사용자 인터랙션 이후 재시도
+      bgmLuckyReady = false;
+    }
+  }
+  function handleLuckyBgmUserGesture(){
+    if(bgmLuckyReady) return;
     tryPlayLuckyBgm();
   }
-});
-document.addEventListener("DOMContentLoaded", function(){
-  // DOM 준비 후 약간의 딜레이 뒤에 첫 재생 시도
-  setTimeout(tryPlayLuckyBgm, 300);
-});
+  document.addEventListener("click", handleLuckyBgmUserGesture, { once:true });
+  document.addEventListener("keydown", handleLuckyBgmUserGesture, { once:true });
+  window.addEventListener("storage", function(e){
+    if(e.key === "rg_user_settings"){
+      tryPlayLuckyBgm();
+    }
+  });
+  document.addEventListener("DOMContentLoaded", function(){
+    // DOM 준비 후 약간의 딜레이 뒤에 첫 재생 시도
+    setTimeout(tryPlayLuckyBgm, 300);
+  });
 
-/* ------------------------------------------------------------------
- *  AdSense 연동 (인터스티셜 광고: n회 스핀마다 노출)
- *  - head에 삽입된 auto-ads 코드 + 여기서 ins 태그로 수동 슬롯 호출
- * ------------------------------------------------------------------ */
-const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 실제 클라이언트 ID
-const AD_SLOT   = ''; // 필요 시 개별 광고 유닛 slot ID 설정
+  /* ------------------------------------------------------------------
+   *  AdSense 연동 (인터스티셜 광고: n회 스핀마다 노출)
+   *  - head에 삽입된 auto-ads 코드 + 여기서 ins 태그로 수동 슬롯 호출
+   * ------------------------------------------------------------------ */
+  const AD_CLIENT = 'ca-pub-6713974265397310'; // ✅ 실제 클라이언트 ID
+  const AD_SLOT   = ''; // 필요 시 개별 광고 유닛 slot ID 설정
 
-function fallbackAdHTML(){
-  return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center">' +
-           '<div style="text-align:center">' +
-             '<div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div>' +
-             '<div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div>' +
-           '</div>' +
-         '</div>';
-}
-
-function showInterstitialAd(){
-  const box = document.getElementById('adContainer');
-  if(!box) return;
-  box.innerHTML = '';
-  const ins = document.createElement('ins');
-  ins.className = 'adsbygoogle';
-  ins.style.display = 'block';
-  ins.setAttribute('data-ad-client', AD_CLIENT);
-  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-  ins.setAttribute('data-ad-format', 'auto');
-  ins.setAttribute('data-full-width-responsive', 'true');
-  box.appendChild(ins);
-
-  try{
-    (window.adsbygoogle = window.adsbygoogle || []).push({});
-  }catch(e){
-    console.warn('[AdSense] push error:', e);
-    box.innerHTML = fallbackAdHTML();
+  function fallbackAdHTML(){
+    return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center">' +
+             '<div style="text-align:center">' +
+               '<div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div>' +
+               '<div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div>' +
+             '</div>' +
+           '</div>';
   }
-  document.getElementById('adModal').style.display = 'flex';
-}
 
-let _afterAd = null;
-function showAdThen(fn){
-  _afterAd = (typeof fn === 'function') ? fn : null;
-  showInterstitialAd();
-}
+  function showInterstitialAd(){
+    const box = document.getElementById('adContainer');
+    if(!box) return;
+    box.innerHTML = '';
+    const ins = document.createElement('ins');
+    ins.className = 'adsbygoogle';
+    ins.style.display = 'block';
+    ins.setAttribute('data-ad-client', AD_CLIENT);
+    if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
+    ins.setAttribute('data-ad-format', 'auto');
+    ins.setAttribute('data-full-width-responsive', 'true');
+    box.appendChild(ins);
 
-document.getElementById('adClose').addEventListener('click', ()=>{
-  document.getElementById('adModal').style.display = 'none';
-  const f = _afterAd;
-  _afterAd = null;
-  if(f){
-    try{ f(); }catch(e){ console.error(e); }
+    try{
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    }catch(e){
+      console.warn('[AdSense] push error:', e);
+      box.innerHTML = fallbackAdHTML();
+    }
+    document.getElementById('adModal').style.display = 'flex';
   }
-});
 
-/* ------------------------------------------------------------------
- *  Canvas setup
- * ------------------------------------------------------------------ */
-const c = document.getElementById('slot');
-const g = c.getContext('2d');
-function resize(){
-  const d = window.devicePixelRatio || 1;
-  c.width  = Math.floor(860*d);
-  c.height = Math.floor(380*d);
-  g.setTransform(d,0,0,d,0,0);
-  g.imageSmoothingEnabled = false;
-}
-resize();
-addEventListener('resize', resize, {passive:true});
+  let _afterAd = null;
+  function showAdThen(fn){
+    _afterAd = (typeof fn === 'function') ? fn : null;
+    showInterstitialAd();
+  }
 
-/* ------------------------------------------------------------------
- *  Tickets (5장 소모, 공용 키)
- *  - user-retro-games.html과 동일 티켓 풀을 공유하기 위해 기존 키 사용
- * ------------------------------------------------------------------ */
-const TICKET_KEY = 'tickets2048';
-const TICKETS_PER_ENTRY = 5;
-const getTickets = ()=> +(localStorage.getItem(TICKET_KEY)||0);
-const setTickets = n => localStorage.setItem(TICKET_KEY, String(Math.max(0, n|0)));
+  document.getElementById('adClose').addEventListener('click', ()=>{
+    document.getElementById('adModal').style.display = 'none';
+    const f = _afterAd;
+    _afterAd = null;
+    if(f){
+      try{ f(); }catch(e){ console.error(e); }
+    }
+  });
 
-/* ------------------------------------------------------------------
- *  Bank / Bet / Win (지속 저장)
- * ------------------------------------------------------------------ */
-const BANK_KEY = 'fortune_points_bank';
-const $ = s => document.querySelector(s);
-const fmt = n => Number(n||0).toLocaleString('ko-KR');
-const bankEl = $('#bank'), betEl = $('#bet'), winEl = $('#win');
+  /* ------------------------------------------------------------------
+   *  Canvas setup
+   * ------------------------------------------------------------------ */
+  const c = document.getElementById('slot');
+  const g = c.getContext('2d');
+  function resize(){
+    const d = window.devicePixelRatio || 1;
+    c.width  = Math.floor(860*d);
+    c.height = Math.floor(380*d);
+    g.setTransform(d,0,0,d,0,0);
+    g.imageSmoothingEnabled = false;
+  }
+  resize();
+  addEventListener('resize', resize, {passive:true});
 
-let bank    = +((localStorage.getItem(BANK_KEY) ?? bankEl.textContent.replace(/,/g,'') ) || 0);
-let bet     = +(betEl.textContent.replace(/,/g,'') || 100);
-let lastWin = 0;
+  /* ------------------------------------------------------------------
+   *  Tickets (5장 소모, 공용 키)
+   *  - user-retro-games.html과 동일 티켓 풀을 공유하기 위해 기존 키 사용
+   * ------------------------------------------------------------------ */
+  const TICKET_KEY = 'tickets2048';
+  const TICKETS_PER_ENTRY = 5;
+  const getTickets = ()=> +(localStorage.getItem(TICKET_KEY)||0);
+  const setTickets = n => localStorage.setItem(TICKET_KEY, String(Math.max(0, n|0)));
 
-function syncBankUI(){
-  bankEl.textContent = fmt(bank);
-  try{ localStorage.setItem(BANK_KEY, String(bank)); }catch(e){}
-}
-function syncBetUI(){ betEl.textContent = fmt(bet); }
-function syncWinUI(v){ winEl.textContent = fmt(v|0); }
+  /* ------------------------------------------------------------------
+   *  Bank / Bet / Win (지속 저장)
+   * ------------------------------------------------------------------ */
+  const BANK_KEY = 'fortune_points_bank';
+  const $ = s => document.querySelector(s);
+  const fmt = n => Number(n||0).toLocaleString('ko-KR');
+  const bankEl = $('#bank'), betEl = $('#bet'), winEl = $('#win');
 
-syncBankUI();
-syncBetUI();
-syncWinUI(0);
+  let bank    = +((localStorage.getItem(BANK_KEY) ?? bankEl.textContent.replace(/,/g,'') ) || 0);
+  let bet     = +(betEl.textContent.replace(/,/g,'') || 100);
+  let lastWin = 0;
 
-/* ------------------------------------------------------------------
- *  💰 /api/wallet 연동 브릿지 (today-lucky 전용)
- *  - 공통 훅 window.RG_addReward(gameId, payload) 호출
- *  - 이후 /api/wallet 로 직접 POST (action='reward')
- *  - user-retro-games.html 쪽 HUD/Wallet 정보와 연동
- * ------------------------------------------------------------------ */
-/**
- * payload 예시:
- * {
- *   score: 1200,           // 스핀 결과 점수 or 당첨액
- *   pointsEarned: 1200,    // 포인트 증감 (없으면 0)
- *   ticketsEarned: -5,     // 티켓 증감 (소비 시 음수)
- *   playsIncrement: 1,     // 플레이 카운트 변화
- *   meta: { ... }          // bankBefore/After, ticketsBefore/After 등
- * }
- */
-async function sendGameReward(gameId, payload){
-  const safePayload = payload || {};
-  const game = gameId || "today-lucky";
+  function syncBankUI(){
+    bankEl.textContent = fmt(bank);
+    try{ localStorage.setItem(BANK_KEY, String(bank)); }catch(e){}
+  }
+  function syncBetUI(){ betEl.textContent = fmt(bet); }
+  function syncWinUI(v){ winEl.textContent = fmt(v|0); }
 
-  // 1) 전역 훅 먼저 호출 (허브에서 HUD/지갑 동기화)
-  try{
-    if (typeof window.RG_addReward === "function") {
-      // 통일된 시그니처: (gameId, payload)
-      window.RG_addReward(game, {
+  syncBankUI();
+  syncBetUI();
+  syncWinUI(0);
+
+  /* ------------------------------------------------------------------
+   *  💰 /api/wallet 연동 브릿지 (today-lucky 전용)
+   *  - 공통 훅 window.RG_addReward(gameId, payload) 호출
+   *  - 이후 /api/wallet 로 직접 POST (action='reward')
+   *  - user-retro-games.html 쪽 HUD/Wallet 정보와 연동
+   * ------------------------------------------------------------------ */
+  /**
+   * payload 예시:
+   * {
+   *   score: 1200,           // 스핀 결과 점수 or 당첨액
+   *   pointsEarned: 1200,    // 포인트 증감 (없으면 0)
+   *   ticketsEarned: -5,     // 티켓 증감 (소비 시 음수)
+   *   playsIncrement: 1,     // 플레이 카운트 변화
+   *   meta: { ... }          // bankBefore/After, ticketsBefore/After 등
+   * }
+   */
+  async function sendGameReward(gameId, payload){
+    const safePayload = payload || {};
+    const game = gameId || "today-lucky";
+
+    // 1) 전역 훅 먼저 호출 (허브에서 HUD/지갑 동기화)
+    try{
+      if (typeof window.RG_addReward === "function") {
+        // 통일된 시그니처: (gameId, payload)
+        window.RG_addReward(game, {
+          score:          safePayload.score        || 0,
+          pointsEarned:   safePayload.pointsEarned || 0,
+          ticketsEarned:  safePayload.ticketsEarned|| 0,
+          playsIncrement: safePayload.playsIncrement||0,
+          meta:           safePayload.meta || {}
+        });
+      }
+    }catch(e){
+      console.warn('[RG][reward] RG_addReward hook error:', e);
+    }
+
+    // 2) /api/wallet POST – 서버 지갑/기록 반영
+    try{
+      const body = {
+        game: game,
+        action: 'reward',
         score:          safePayload.score        || 0,
         pointsEarned:   safePayload.pointsEarned || 0,
         ticketsEarned:  safePayload.ticketsEarned|| 0,
         playsIncrement: safePayload.playsIncrement||0,
         meta:           safePayload.meta || {}
+      };
+
+      const res = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
       });
-    }
-  }catch(e){
-    console.warn('[RG][reward] RG_addReward hook error:', e);
-  }
 
-  // 2) /api/wallet POST – 서버 지갑/기록 반영
-  try{
-    const body = {
-      game: game,
-      action: 'reward',
-      score:          safePayload.score        || 0,
-      pointsEarned:   safePayload.pointsEarned || 0,
-      ticketsEarned:  safePayload.ticketsEarned|| 0,
-      playsIncrement: safePayload.playsIncrement||0,
-      meta:           safePayload.meta || {}
-    };
-
-    const res = await fetch('/api/wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body)
-    });
-
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json().catch(()=>null);
-    console.log('[RG][wallet] today-lucky synced:', data);
-    return data;
-  }catch(err){
-    console.warn('[RG][wallet] today-lucky sync failed:', err);
-    return null;
-  }
-}
-
-/* ------------------------------------------------------------------
- *  Spin + Ad 주기 카운트 (3 스핀마다 광고 1회)
- * ------------------------------------------------------------------ */
-const PLAY_KEY = 'plays_todayLucky';
-function incPlaysAndMaybeAd(){
-  let p = +(localStorage.getItem(PLAY_KEY)||0);
-  p++;
-  try{ localStorage.setItem(PLAY_KEY, String(p)); }catch(e){}
-  if(p % 3 === 0){
-    // 3회 스핀마다 인터스티셜
-    showInterstitialAd();
-  }
-}
-
-/* ------------------------------------------------------------------
- *  Reels Model (ordered strip)
- * ------------------------------------------------------------------ */
-const REELS = 5, ROWS = 5;
-const ORDER = [
-  '🍒','🍋','🍇','🍉','🔔',
-  '⭐','💎','🍀','🔥','🎲',
-  '🧿','🪙','🧁','🌟','🎰',
-  '👑','💰','❤️','💼','🌈'
-];
-const STRIP_LEN = ORDER.length * 4; // repeat ORDER 4x
-const rowH = () => c.height/ROWS;
-const colW = () => c.width/REELS;
-
-// Build strips by repeating ORDER
-let strips = Array.from({length: REELS}, ()=>{
-  const arr=[];
-  while(arr.length < STRIP_LEN){
-    for(const s of ORDER){
-      if(arr.length < STRIP_LEN) arr.push(s);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json().catch(()=>null);
+      console.log('[RG][wallet] today-lucky synced:', data);
+      return data;
+    }catch(err){
+      console.warn('[RG][wallet] today-lucky sync failed:', err);
+      return null;
     }
   }
-  return arr;
-});
-const wrap = (n,m)=> ((n%m)+m)%m;
-const symAt = (reel, idx)=> strips[reel][wrap(idx, STRIP_LEN)];
 
-/* ------------------------------------------------------------------
- *  Spin state (time-based physics)
- * ------------------------------------------------------------------ */
-let spinning = false,
-    paidForThisRound = false;
-
-// per-reel arrays
-let phase   = new Array(REELS).fill(0);     // px position in vertical cycle
-let dir     = new Array(REELS).fill(1);     // +1/-1
-let stopIdx = new Array(REELS).fill(0);     // target strip index
-let state   = new Array(REELS).fill('idle');// 'idle'|'spin'|'brake'
-
-// speed profile
-let speed       = new Array(REELS).fill(0);    // px/sec
-let cruiseSpeed = new Array(REELS).fill(0);    // px/sec
-let rampT       = new Array(REELS).fill(0);    // 0..1 accel progress
-let rampDur     = new Array(REELS).fill(0.25); // seconds to reach cruise
-
-// brake profile
-let brakeT    = new Array(REELS).fill(0);      // 0..1 brake progress
-let brakeDur  = new Array(REELS).fill(1.2);    // seconds (randomized per reel)
-let startP    = new Array(REELS).fill(0);      // phase at brake start
-let deltaP    = new Array(REELS).fill(0);      // shortest wrapped delta to target
-
-// easing
-const easeOutCubic = t => 1 - Math.pow(1-t, 3);
-const easeOutQuint = t => 1 - Math.pow(1-t, 5);
-
-// visuals
-let dashPhase = 0,
-    inited    = false;
-
-/* ------------------------------------------------------------------
- *  Visual helpers
- * ------------------------------------------------------------------ */
-function drawCenterFrame(){
-  const h = rowH(), w = c.width, H = c.height, y = (H - h)/2;
-  dashPhase = (dashPhase + 3) % 40;
-  const pulse = 0.7 + 0.3*Math.sin(performance.now()/280);
-
-  g.save();
-  g.shadowColor = `rgba(255,220,120,${pulse})`;
-  g.shadowBlur  = 22 + 14*pulse;
-  g.strokeStyle = 'rgba(255,230,140,0.95)';
-  g.lineWidth   = 4;
-  g.strokeRect(8, y+6, w-16, h-12);
-  g.restore();
-
-  g.save();
-  g.setLineDash([12,8]);
-  g.lineDashOffset = -dashPhase;
-  g.strokeStyle = 'rgba(255,255,255,0.9)';
-  g.lineWidth   = 2;
-  g.strokeRect(16, y+12, w-32, h-24);
-  g.restore();
-}
-function drawColumnShading(x,w){
-  const grd = g.createLinearGradient(x,0,x+w,0);
-  grd.addColorStop(0,'rgba(0,0,0,0.55)');
-  grd.addColorStop(0.5,'rgba(0,0,0,0.45)');
-  grd.addColorStop(1,'rgba(0,0,0,0.55)');
-  g.fillStyle = grd;
-  g.fillRect(x,6,w,c.height-12);
-}
-
-/* ------------------------------------------------------------------
- *  Spin control
- * ------------------------------------------------------------------ */
-function startSpin(){
-  if(!paidForThisRound){
-    alert('참여하기를 먼저 눌러 티켓 5장을 사용해 주세요.');
-    return;
-  }
-  if(spinning) return;
-
-  spinning = true;
-  syncWinUI(0);
-  lastWin = 0;
-
-  for(let r=0;r<REELS;r++){
-    state[r] = 'spin';
-    dir[r]   = (Math.random()<0.5 ? 1 : -1);
-
-    // 고속 크루즈: 캔버스 높이에 비례
-    const rh    = rowH();
-    const cycle = rh*ROWS;
-    cruiseSpeed[r] = cycle / (0.18 + Math.random()*0.06); // 0.18~0.24초 per 회전
-
-    // 가속 준비
-    speed[r]   = 0;
-    rampT[r]   = 0;
-    rampDur[r] = 0.22 + Math.random()*0.10; // 0.22~0.32s
-
-    // 정지 목표 인덱스(중앙 라인에 오도록)
-    stopIdx[r] = (Math.random()*STRIP_LEN)|0;
-
-    // 브레이크 파라미터는 stopSpin에서 설정
-  }
-}
-
-function stopSpin(){
-  if(!spinning) return;
-  const rh    = rowH();
-  const cycle = rh*ROWS;
-
-  for(let r=0;r<REELS;r++){
-    if(state[r]==='brake') continue;
-
-    state[r]   = 'brake';
-    brakeT[r]  = 0;
-    brakeDur[r] = 0.9 + Math.random()*0.7 + r*0.08; // 릴별 딜레이
-
-    startP[r] = wrap(phase[r], cycle);
-
-    // 중앙 줄에 stopIdx가 위치하도록 타깃 phase
-    const baseTargetIdx = wrap(stopIdx[r]-2, STRIP_LEN);
-    const targetPhase   = (baseTargetIdx * rh) % cycle;
-
-    // 가장 짧은 랩핑 경로 + 여분 회전(1~3바퀴)
-    let d = targetPhase - startP[r];
-    if(d >  cycle/2) d -= cycle;
-    if(d < -cycle/2) d += cycle;
-
-    const extraTurns = (1 + Math.random()*2) * Math.sign(dir[r]||1);
-    d += extraTurns * cycle;
-
-    deltaP[r] = d;
-  }
-}
-
-/* ------------------------------------------------------------------
- *  결과 판정/정산
- * ------------------------------------------------------------------ */
-const PAYTABLE = {
-  // 3/4/5 of a kind 멀티플라이어(배팅액 * 계수)
-  '🍒':[2,5,12],   '🍋':[2,5,12],
-  '🍇':[3,8,18],   '🍉':[3,8,18],
-  '🔔':[4,10,24],  '⭐':[5,12,28],
-  '💎':[8,20,50],  '🍀':[6,16,36],
-  '🔥':[4,10,24],  '🎲':[4,10,24],
-  '🧿':[5,12,28],  '🪙':[5,12,28],
-  '🧁':[3,7,16],   '🌟':[6,16,36],
-  '🎰':[7,18,42],  '👑':[9,22,60],
-  '💰':[8,20,55],  '❤️':[3,7,16],
-  '💼':[4,10,24],  '🌈':[7,18,42]
-};
-
-function evalCenterRow(){
-  // stopSpin에서 스냅한 기준: baseTargetIdx = stopIdx-2가 윗줄, 중앙은 +2
-  const result = [];
-  for(let r=0;r<REELS;r++){
-    const baseTargetIdx = wrap(stopIdx[r]-2, STRIP_LEN);
-    result.push(symAt(r, baseTargetIdx+2));
-  }
-
-  // 왼→오 연속 매칭 길이
-  let runSym = result[0],
-      runLen = 1,
-      best   = {sym:runSym,len:1};
-
-  for(let i=1;i<REELS;i++){
-    if(result[i] === runSym){
-      runLen++;
-    }else{
-      if(runLen > best.len) best = {sym:runSym,len:runLen};
-      runSym = result[i];
-      runLen = 1;
+  /* ------------------------------------------------------------------
+   *  Spin + Ad 주기 카운트 (3 스핀마다 광고 1회)
+   * ------------------------------------------------------------------ */
+  const PLAY_KEY = 'plays_todayLucky';
+  function incPlaysAndMaybeAd(){
+    let p = +(localStorage.getItem(PLAY_KEY)||0);
+    p++;
+    try{ localStorage.setItem(PLAY_KEY, String(p)); }catch(e){}
+    if(p % 3 === 0){
+      // 3회 스핀마다 인터스티셜
+      showInterstitialAd();
     }
   }
-  if(runLen > best.len) best = {sym:runSym,len:runLen};
 
-  let payout = 0;
-  if(best.len >= 3){
-    const table = PAYTABLE[best.sym] || [2,5,12];
-    const idx   = best.len===3 ? 0 : best.len===4 ? 1 : 2;
-    payout = bet * table[idx];
-  }
-  return {symbols:result, best, payout};
-}
+  /* ------------------------------------------------------------------
+   *  Reels Model (ordered strip)
+   * ------------------------------------------------------------------ */
+  const REELS = 5, ROWS = 5;
+  const ORDER = [
+    '🍒','🍋','🍇','🍉','🔔',
+    '⭐','💎','🍀','🔥','🎲',
+    '🧿','🪙','🧁','🌟','🎰',
+    '👑','💰','❤️','💼','🌈'
+  ];
+  const STRIP_LEN = ORDER.length * 4; // repeat ORDER 4x
+  const rowH = () => c.height/ROWS;
+  const colW = () => c.width/REELS;
 
-/* ------------------------------------------------------------------
- *  Loop (time-based)
- * ------------------------------------------------------------------ */
-let lastTs = performance.now();
-
-function update(dt){
-  const rh    = rowH();
-  const cycle = rh*ROWS;
-
-  for(let r=0;r<REELS;r++){
-    if(state[r]==='spin'){
-      // 가속 → 크루즈
-      rampT[r] = Math.min(1, rampT[r] + dt / rampDur[r]);
-      const k  = easeOutQuint(rampT[r]);
-      speed[r] = cruiseSpeed[r] * k;
-      phase[r] = wrap(phase[r] + dir[r]*speed[r]*dt, cycle);
-
-    }else if(state[r]==='brake'){
-      brakeT[r] = Math.min(1, brakeT[r] + dt / brakeDur[r]);
-      const t   = easeOutCubic(brakeT[r]);
-      phase[r]  = wrap(startP[r] + deltaP[r]*t, cycle);
-
-      if(brakeT[r] >= 1){
-        // 최종 스냅
-        const baseTargetIdx = wrap(stopIdx[r]-2, STRIP_LEN);
-        phase[r] = (baseTargetIdx * rh) % cycle;
-        speed[r] = 0;
-        state[r] = 'idle';
+  // Build strips by repeating ORDER
+  let strips = Array.from({length: REELS}, ()=>{
+    const arr=[];
+    while(arr.length < STRIP_LEN){
+      for(const s of ORDER){
+        if(arr.length < STRIP_LEN) arr.push(s);
       }
     }
+    return arr;
+  });
+  const wrap = (n,m)=> ((n%m)+m)%m;
+  const symAt = (reel, idx)=> strips[reel][wrap(idx, STRIP_LEN)];
+
+  /* ------------------------------------------------------------------
+   *  Spin state (time-based physics)
+   * ------------------------------------------------------------------ */
+  let spinning = false,
+      paidForThisRound = false;
+
+  // per-reel arrays
+  let phase   = new Array(REELS).fill(0);     // px position in vertical cycle
+  let dir     = new Array(REELS).fill(1);     // +1/-1
+  let stopIdx = new Array(REELS).fill(0);     // target strip index
+  let state   = new Array(REELS).fill('idle');// 'idle'|'spin'|'brake'
+
+  // speed profile
+  let speed       = new Array(REELS).fill(0);    // px/sec
+  let cruiseSpeed = new Array(REELS).fill(0);    // px/sec
+  let rampT       = new Array(REELS).fill(0);    // 0..1 accel progress
+  let rampDur     = new Array(REELS).fill(0.25); // seconds to reach cruise
+
+  // brake profile
+  let brakeT    = new Array(REELS).fill(0);      // 0..1 brake progress
+  let brakeDur  = new Array(REELS).fill(1.2);    // seconds (randomized per reel)
+  let startP    = new Array(REELS).fill(0);      // phase at brake start
+  let deltaP    = new Array(REELS).fill(0);      // shortest wrapped delta to target
+
+  // easing
+  const easeOutCubic = t => 1 - Math.pow(1-t, 3);
+  const easeOutQuint = t => 1 - Math.pow(1-t, 5);
+
+  // visuals
+  let dashPhase = 0,
+      inited    = false;
+
+  /* ------------------------------------------------------------------
+   *  Visual helpers
+   * ------------------------------------------------------------------ */
+  function drawCenterFrame(){
+    const h = rowH(), w = c.width, H = c.height, y = (H - h)/2;
+    dashPhase = (dashPhase + 3) % 40;
+    const pulse = 0.7 + 0.3*Math.sin(performance.now()/280);
+
+    g.save();
+    g.shadowColor = `rgba(255,220,120,${pulse})`;
+    g.shadowBlur  = 22 + 14*pulse;
+    g.strokeStyle = 'rgba(255,230,140,0.95)';
+    g.lineWidth   = 4;
+    g.strokeRect(8, y+6, w-16, h-12);
+    g.restore();
+
+    g.save();
+    g.setLineDash([12,8]);
+    g.lineDashOffset = -dashPhase;
+    g.strokeStyle = 'rgba(255,255,255,0.9)';
+    g.lineWidth   = 2;
+    g.strokeRect(16, y+12, w-32, h-24);
+    g.restore();
+  }
+  function drawColumnShading(x,w){
+    const grd = g.createLinearGradient(x,0,x+w,0);
+    grd.addColorStop(0,'rgba(0,0,0,0.55)');
+    grd.addColorStop(0.5,'rgba(0,0,0,0.45)');
+    grd.addColorStop(1,'rgba(0,0,0,0.55)');
+    g.fillStyle = grd;
+    g.fillRect(x,6,w,c.height-12);
   }
 
-  // 모든 릴 정지 → 판정/정산 + 서버 보상 연동
-  if(spinning && state.every(s=>s==='idle')){
-    spinning         = false;
-    paidForThisRound = false;
-
-    const bankBefore = bank;
-    const {payout}   = evalCenterRow();
-    lastWin = payout|0;
-    if(lastWin > 0){
-      bank += lastWin;
+  /* ------------------------------------------------------------------
+   *  Spin control
+   * ------------------------------------------------------------------ */
+  function startSpin(){
+    if(!paidForThisRound){
+      alert('참여하기를 먼저 눌러 티켓 5장을 사용해 주세요.');
+      return;
     }
-    syncWinUI(lastWin);
-    syncBankUI();
-    const bankAfter = bank;
+    if(spinning) return;
 
-    // 💰 스핀 결과 보상/지갑 연동
-    sendGameReward('today-lucky', {
-      score:         lastWin|0,
-      pointsEarned:  lastWin|0,
-      ticketsEarned: 0,
-      playsIncrement:1,
-      meta: {
-        kind:          'spinResult',
-        bankBefore,
-        bankAfter,
-        ticketsBefore: getTickets(),
-        ticketsAfter:  getTickets()
-      }
-    });
+    spinning = true;
+    syncWinUI(0);
+    lastWin = 0;
 
-    // 스핀 카운트 + 광고 주기
-    incPlaysAndMaybeAd();
-
-    // 세션 종료 알림
-    notifyFinish(lastWin);
-  }
-}
-
-function draw(){
-  // 초기 중앙 정렬
-  if(!inited){
-    const rh    = rowH();
-    const cycle = rh*ROWS;
     for(let r=0;r<REELS;r++){
-      const baseTarget = wrap(0-2, STRIP_LEN);
-      phase[r] = (baseTarget*rh) % cycle;
+      state[r] = 'spin';
+      dir[r]   = (Math.random()<0.5 ? 1 : -1);
+
+      // 고속 크루즈: 캔버스 높이에 비례
+      const rh    = rowH();
+      const cycle = rh*ROWS;
+      cruiseSpeed[r] = cycle / (0.18 + Math.random()*0.06); // 0.18~0.24초 per 회전
+
+      // 가속 준비
+      speed[r]   = 0;
+      rampT[r]   = 0;
+      rampDur[r] = 0.22 + Math.random()*0.10; // 0.22~0.32s
+
+      // 정지 목표 인덱스(중앙 라인에 오도록)
+      stopIdx[r] = (Math.random()*STRIP_LEN)|0;
+
+      // 브레이크 파라미터는 stopSpin에서 설정
     }
-    inited = true;
   }
 
-  g.clearRect(0,0,c.width,c.height);
-  const W = c.width, H = c.height, cw = colW(), rh = rowH();
+  function stopSpin(){
+    if(!spinning) return;
+    const rh    = rowH();
+    const cycle = rh*ROWS;
 
-  for(let r=0;r<REELS;r++){
-    const x    = r*cw;
-    const base = Math.floor(phase[r]/rh);
-    const off  = phase[r]%rh;
+    for(let r=0;r<REELS;r++){
+      if(state[r]==='brake') continue;
 
-    for(let y=-1;y<ROWS+2;y++){
-      const idx = base + y;
-      const sym = symAt(r,idx);
-      const cx  = x + cw/2;
-      const cy  = y*rh - off + rh/2;
-      const dist  = Math.abs((cy - H/2)/rh);
-      const scale = 1 + (0.24 - 0.12*dist);
+      state[r]   = 'brake';
+      brakeT[r]  = 0;
+      brakeDur[r] = 0.9 + Math.random()*0.7 + r*0.08; // 릴별 딜레이
 
-      g.save();
-      g.translate(cx,cy);
-      g.scale(scale,scale);
-      const tilt = 0.09 * (r-2);
-      g.rotate(tilt);
-      g.font         = `${Math.floor(rh*0.66)}px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji'`;
-      g.textAlign    = 'center';
-      g.textBaseline = 'middle';
-      g.shadowColor  = 'rgba(255,255,255,0.35)';
-      g.shadowBlur   = 4;
-      g.lineWidth    = 2;
-      g.strokeStyle  = (dist<0.6)?'rgba(255,255,255,0.75)':'rgba(255,255,255,0.45)';
-      g.strokeText(sym,0,2);
-      g.fillStyle = '#fff';
-      g.fillText(sym,0,2);
-      g.restore();
+      startP[r] = wrap(phase[r], cycle);
+
+      // 중앙 줄에 stopIdx가 위치하도록 타깃 phase
+      const baseTargetIdx = wrap(stopIdx[r]-2, STRIP_LEN);
+      const targetPhase   = (baseTargetIdx * rh) % cycle;
+
+      // 가장 짧은 랩핑 경로 + 여분 회전(1~3바퀴)
+      let d = targetPhase - startP[r];
+      if(d >  cycle/2) d -= cycle;
+      if(d < -cycle/2) d += cycle;
+
+      const extraTurns = (1 + Math.random()*2) * Math.sign(dir[r]||1);
+      d += extraTurns * cycle;
+
+      deltaP[r] = d;
     }
-
-    drawColumnShading(x,cw);
-    g.fillStyle = 'rgba(0,120,255,0.22)';
-    g.fillRect(Math.round(x-1)+1,6,2,H-12);
   }
 
-  drawCenterFrame();
-}
+  /* ------------------------------------------------------------------
+   *  결과 판정/정산
+   * ------------------------------------------------------------------ */
+  const PAYTABLE = {
+    // 3/4/5 of a kind 멀티플라이어(배팅액 * 계수)
+    '🍒':[2,5,12],   '🍋':[2,5,12],
+    '🍇':[3,8,18],   '🍉':[3,8,18],
+    '🔔':[4,10,24],  '⭐':[5,12,28],
+    '💎':[8,20,50],  '🍀':[6,16,36],
+    '🔥':[4,10,24],  '🎲':[4,10,24],
+    '🧿':[5,12,28],  '🪙':[5,12,28],
+    '🧁':[3,7,16],   '🌟':[6,16,36],
+    '🎰':[7,18,42],  '👑':[9,22,60],
+    '💰':[8,20,55],  '❤️':[3,7,16],
+    '💼':[4,10,24],  '🌈':[7,18,42]
+  };
 
-function loop(ts){
-  const dt = Math.min(0.033, (ts - lastTs)/1000);
-  lastTs = ts;
-  update(dt);
-  draw();
+  function evalCenterRow(){
+    // stopSpin에서 스냅한 기준: baseTargetIdx = stopIdx-2가 윗줄, 중앙은 +2
+    const result = [];
+    for(let r=0;r<REELS;r++){
+      const baseTargetIdx = wrap(stopIdx[r]-2, STRIP_LEN);
+      result.push(symAt(r, baseTargetIdx+2));
+    }
+
+    // 왼→오 연속 매칭 길이
+    let runSym = result[0],
+        runLen = 1,
+        best   = {sym:runSym,len:1};
+
+    for(let i=1;i<REELS;i++){
+      if(result[i] === runSym){
+        runLen++;
+      }else{
+        if(runLen > best.len) best = {sym:runSym,len:runLen};
+        runSym = result[i];
+        runLen = 1;
+      }
+    }
+    if(runLen > best.len) best = {sym:runSym,len:runLen};
+
+    let payout = 0;
+    if(best.len >= 3){
+      const table = PAYTABLE[best.sym] || [2,5,12];
+      const idx   = best.len===3 ? 0 : best.len===4 ? 1 : 2;
+      payout = bet * table[idx];
+    }
+    return {symbols:result, best, payout};
+  }
+
+  /* ------------------------------------------------------------------
+   *  Loop (time-based)
+   * ------------------------------------------------------------------ */
+  let lastTs = performance.now();
+
+  function update(dt){
+    const rh    = rowH();
+    const cycle = rh*ROWS;
+
+    for(let r=0;r<REELS;r++){
+      if(state[r]==='spin'){
+        // 가속 → 크루즈
+        rampT[r] = Math.min(1, rampT[r] + dt / rampDur[r]);
+        const k  = easeOutQuint(rampT[r]);
+        speed[r] = cruiseSpeed[r] * k;
+        phase[r] = wrap(phase[r] + dir[r]*speed[r]*dt, cycle);
+
+      }else if(state[r]==='brake'){
+        brakeT[r] = Math.min(1, brakeT[r] + dt / brakeDur[r]);
+        const t   = easeOutCubic(brakeT[r]);
+        phase[r]  = wrap(startP[r] + deltaP[r]*t, cycle);
+
+        if(brakeT[r] >= 1){
+          // 최종 스냅
+          const baseTargetIdx = wrap(stopIdx[r]-2, STRIP_LEN);
+          phase[r] = (baseTargetIdx * rh) % cycle;
+          speed[r] = 0;
+          state[r] = 'idle';
+        }
+      }
+    }
+
+    // 모든 릴 정지 → 판정/정산 + 서버 보상 연동
+    if(spinning && state.every(s=>s==='idle')){
+      spinning         = false;
+      paidForThisRound = false;
+
+      const bankBefore = bank;
+      const {payout}   = evalCenterRow();
+      lastWin = payout|0;
+      if(lastWin > 0){
+        bank += lastWin;
+      }
+      syncWinUI(lastWin);
+      syncBankUI();
+      const bankAfter = bank;
+
+      // 💰 스핀 결과 보상/지갑 연동
+      sendGameReward('today-lucky', {
+        score:         lastWin|0,
+        pointsEarned:  lastWin|0,
+        ticketsEarned: 0,
+        playsIncrement:1,
+        meta: {
+          kind:          'spinResult',
+          bankBefore,
+          bankAfter,
+          ticketsBefore: getTickets(),
+          ticketsAfter:  getTickets()
+        }
+      });
+
+      // 스핀 카운트 + 광고 주기
+      incPlaysAndMaybeAd();
+
+      // 세션 종료 알림
+      notifyFinish(lastWin);
+    }
+  }
+
+  function draw(){
+    // 초기 중앙 정렬
+    if(!inited){
+      const rh    = rowH();
+      const cycle = rh*ROWS;
+      for(let r=0;r<REELS;r++){
+        const baseTarget = wrap(0-2, STRIP_LEN);
+        phase[r] = (baseTarget*rh) % cycle;
+      }
+      inited = true;
+    }
+
+    g.clearRect(0,0,c.width,c.height);
+    const W = c.width, H = c.height, cw = colW(), rh = rowH();
+
+    for(let r=0;r<REELS;r++){
+      const x    = r*cw;
+      const base = Math.floor(phase[r]/rh);
+      const off  = phase[r]%rh;
+
+      for(let y=-1;y<ROWS+2;y++){
+        const idx = base + y;
+        const sym = symAt(r,idx);
+        const cx  = x + cw/2;
+        const cy  = y*rh - off + rh/2;
+        const dist  = Math.abs((cy - H/2)/rh);
+        const scale = 1 + (0.24 - 0.12*dist);
+
+        g.save();
+        g.translate(cx,cy);
+        g.scale(scale,scale);
+        const tilt = 0.09 * (r-2);
+        g.rotate(tilt);
+        g.font         = `${Math.floor(rh*0.66)}px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji'`;
+        g.textAlign    = 'center';
+        g.textBaseline = 'middle';
+        g.shadowColor  = 'rgba(255,255,255,0.35)';
+        g.shadowBlur   = 4;
+        g.lineWidth    = 2;
+        g.strokeStyle  = (dist<0.6)?'rgba(255,255,255,0.75)':'rgba(255,255,255,0.45)';
+        g.strokeText(sym,0,2);
+        g.fillStyle = '#fff';
+        g.fillText(sym,0,2);
+        g.restore();
+      }
+
+      drawColumnShading(x,cw);
+      g.fillStyle = 'rgba(0,120,255,0.22)';
+      g.fillRect(Math.round(x-1)+1,6,2,H-12);
+    }
+
+    drawCenterFrame();
+  }
+
+  function loop(ts){
+    const dt = Math.min(0.033, (ts - lastTs)/1000);
+    lastTs = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
   requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
 
-/* ------------------------------------------------------------------
- *  UI
- * ------------------------------------------------------------------ */
-const betBtn  = document.getElementById('betBtn');
-const spinBtn = document.getElementById('spinBtn');
-const stopBtn = document.getElementById('stopBtn');
-const homeBtn = document.getElementById('homeBtn');
+  /* ------------------------------------------------------------------
+   *  UI
+   * ------------------------------------------------------------------ */
+  const betBtn  = document.getElementById('betBtn');
+  const spinBtn = document.getElementById('spinBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const homeBtn = document.getElementById('homeBtn');
 
-spinBtn.onclick = () => startSpin();
-stopBtn.onclick = () => stopSpin();
+  spinBtn.onclick = () => startSpin();
+  stopBtn.onclick = () => stopSpin();
 
-// ✅ HOME 버튼: 유저 계정 인식 후 메인 허브로 이동
-async function goRetroHome(){
-  try{
-    const res = await fetch(AUTH_API_BASE + "/me", {
-      method: "GET",
-      credentials: "include",
-      headers: {
-        "Accept": "application/json",
-        "Cache-Control": "no-store"
+  // ✅ HOME 버튼: 유저 계정 인식 후 메인 허브로 이동
+  async function goRetroHome(){
+    try{
+      const res = await fetch(AUTH_API_BASE + "/me", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          "Cache-Control": "no-store"
+        }
+      });
+      if(res.ok){
+        let data = null;
+        try{ data = await res.json(); }catch(_){}
+        if(data && data.ok && data.user){
+          // 로그인 세션 존재 → 곧바로 메인 허브로
+          window.location.href = BASE + "user-retro-games.html";
+          return;
+        }
+      }
+    }catch(e){
+      console.warn("[RG][today-lucky] auth check failed on HOME:", e);
+    }
+    // 세션 없음/오류 → 로그인 후 메인 허브로 복귀
+    try{
+      const next = encodeURIComponent(BASE + "user-retro-games.html");
+      window.location.href = BASE + "login.html?next=" + next;
+    }catch(e){
+      window.location.href = BASE + "login.html";
+    }
+  }
+  homeBtn.onclick = () => { goRetroHome(); };
+
+  // "참여하기" = 티켓 5장 결제 (라운드당 1회)
+  betBtn.onclick = () => {
+    if(paidForThisRound){
+      alert('이미 이번 라운드 참여가 완료되었습니다. "행운의 룰렛"을 눌러주세요!');
+      return;
+    }
+    const beforeTickets = getTickets();
+    if(beforeTickets < TICKETS_PER_ENTRY){
+      alert(`티켓이 부족합니다.\n필요: ${TICKETS_PER_ENTRY}장, 보유: ${beforeTickets}장`);
+      return;
+    }
+    const afterTickets = beforeTickets - TICKETS_PER_ENTRY;
+    setTickets(afterTickets);
+    paidForThisRound = true;
+    alert(`참여 완료! 티켓 ${TICKETS_PER_ENTRY}장을 사용했습니다.\n남은 티켓: ${afterTickets}장\n이제 "행운의 룰렛"을 눌러주세요.`);
+
+    // 💰 티켓 소비 이벤트를 지갑 서버에 반영
+    sendGameReward('today-lucky', {
+      score:          0,
+      pointsEarned:   0,
+      ticketsEarned: -TICKETS_PER_ENTRY,
+      playsIncrement: 0,
+      meta: {
+        kind:          'entry',
+        bankBefore:    bank,
+        bankAfter:     bank,
+        ticketsBefore: beforeTickets,
+        ticketsAfter:  afterTickets
       }
     });
-    if(res.ok){
-      let data = null;
-      try{ data = await res.json(); }catch(_){}
-      if(data && data.ok && data.user){
-        // 로그인 세션 존재 → 곧바로 메인 허브로
-        window.location.href = BASE + "user-retro-games.html";
-        return;
-      }
-    }
-  }catch(e){
-    console.warn("[RG][today-lucky] auth check failed on HOME:", e);
-  }
-  // 세션 없음/오류 → 로그인 후 메인 허브로 복귀
-  try{
-    const next = encodeURIComponent(BASE + "user-retro-games.html");
-    window.location.href = BASE + "login.html?next=" + next;
-  }catch(e){
-    window.location.href = BASE + "login.html";
-  }
-}
-homeBtn.onclick = () => { goRetroHome(); };
+  };
 
-// "참여하기" = 티켓 5장 결제 (라운드당 1회)
-betBtn.onclick = () => {
-  if(paidForThisRound){
-    alert('이미 이번 라운드 참여가 완료되었습니다. "행운의 룰렛"을 눌러주세요!');
-    return;
-  }
-  const beforeTickets = getTickets();
-  if(beforeTickets < TICKETS_PER_ENTRY){
-    alert(`티켓이 부족합니다.\n필요: ${TICKETS_PER_ENTRY}장, 보유: ${beforeTickets}장`);
-    return;
-  }
-  const afterTickets = beforeTickets - TICKETS_PER_ENTRY;
-  setTickets(afterTickets);
-  paidForThisRound = true;
-  alert(`참여 완료! 티켓 ${TICKETS_PER_ENTRY}장을 사용했습니다.\n남은 티켓: ${afterTickets}장\n이제 "행운의 룰렛"을 눌러주세요.`);
-
-  // 💰 티켓 소비 이벤트를 지갑 서버에 반영
-  sendGameReward('today-lucky', {
-    score:          0,
-    pointsEarned:   0,
-    ticketsEarned: -TICKETS_PER_ENTRY,
-    playsIncrement: 0,
-    meta: {
-      kind:          'entry',
-      bankBefore:    bank,
-      bankAfter:     bank,
-      ticketsBefore: beforeTickets,
-      ticketsAfter:  afterTickets
+  // 접근성: 키보드 단축
+  document.addEventListener('keydown', (e)=>{
+    if(e.code==='Enter'){ betBtn.click(); }
+    if(e.code==='Space'){
+      e.preventDefault();
+      if(spinning) stopBtn.click();
+      else spinBtn.click();
     }
   });
-};
 
-// 접근성: 키보드 단축
-document.addEventListener('keydown', (e)=>{
-  if(e.code==='Enter'){ betBtn.click(); }
-  if(e.code==='Space'){
-    e.preventDefault();
-    if(spinning) stopBtn.click();
-    else spinBtn.click();
-  }
-});
-
-/* ------------------------------------------------------------------
- *  초기 검증 로그
- * ------------------------------------------------------------------ */
-(function tests(){
-  console.assert(ORDER.length === 20, 'ORDER should have 20 symbols');
-  for(let r=0;r<REELS;r++){
-    for(let i=0;i<STRIP_LEN;i++){
-      console.assert(strips[r][i] === ORDER[i % ORDER.length], 'strip follows ORDER');
+  /* ------------------------------------------------------------------
+   *  초기 검증 로그
+   * ------------------------------------------------------------------ */
+  (function tests(){
+    console.assert(ORDER.length === 20, 'ORDER should have 20 symbols');
+    for(let r=0;r<REELS;r++){
+      for(let i=0;i<STRIP_LEN;i++){
+        console.assert(strips[r][i] === ORDER[i % ORDER.length], 'strip follows ORDER');
+      }
     }
+    console.log('[Today Lucky] ready.');
+  })();
+
+  /* ------------------------------------------------------------------
+   *  세션 훅 & 가시성
+   *  - gameStart / gameFinish : 허브/analytics와 통합
+   * ------------------------------------------------------------------ */
+  function notifyStart(){
+    try{
+      if(typeof window.gameStart === 'function') window.gameStart('today-lucky');
+    }catch(e){}
   }
-  console.log('[Today Lucky] ready.');
-})();
+  function notifyFinish(finalScore){
+    try{
+      if(typeof window.gameFinish === 'function') window.gameFinish('today-lucky', finalScore|0);
+    }catch(e){}
+  }
 
-/* ------------------------------------------------------------------
- *  세션 훅 & 가시성
- *  - gameStart / gameFinish : 허브/analytics와 통합
- * ------------------------------------------------------------------ */
-function notifyStart(){
-  try{
-    if(typeof window.gameStart === 'function') window.gameStart('today-lucky');
-  }catch(e){}
-}
-function notifyFinish(finalScore){
-  try{
-    if(typeof window.gameFinish === 'function') window.gameFinish('today-lucky', finalScore|0);
-  }catch(e){}
-}
+  // 페이지 진입 시 세션 시작
+  notifyStart();
 
-// 페이지 진입 시 세션 시작
-notifyStart();
-
-// 탭 비가시 상태에서도 게임은 그대로 유지 (자동 정지 방지)
-document.addEventListener('visibilitychange', ()=>{ /* 필요 시 로깅만 */ });
-</script>
+  // 탭 비가시 상태에서도 게임은 그대로 유지 (자동 정지 방지; 필요 시 로깅만)
+  document.addEventListener('visibilitychange', ()=>{ /* no-op */ });
+  </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
@@ -959,7 +1104,5 @@ document.addEventListener('visibilitychange', ()=>{ /* 필요 시 로깅만 */ }
     }catch(e){ /* no-op */ }
   })();
   </script>
-
-  <div id="site-footer"></div>
 </body>
 </html>

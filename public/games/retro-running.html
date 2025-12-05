@@ -48,7 +48,8 @@
   <!-- 전역 유틸 -->
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
-  <script src="/assets/js/games/retro-running.js"></script>
+  <!-- ✅ 2048.html과 동일 구조: 게임 로직은 아래 inline 스크립트에서만 처리하므로
+       중복 실행 가능성이 있는 개별 게임 JS 로더는 제거 -->
 
   <style>
     :root{
@@ -79,7 +80,7 @@
       padding-bottom:calc(20px + env(safe-area-inset-bottom,0))
     }
 
-    /* === 좌/우 세로형 광고 레이아웃 추가 === */
+    /* === 기존 페이지 레이아웃 잔여 클래스 유지 (호환 목적) === */
     .pageLayout{
       display:grid;
       grid-template-columns:auto minmax(0,1fr) auto;
@@ -1091,7 +1092,6 @@ function RG_syncWalletHUD(){
       this.syncHUD();
 
       var hitBox={x:p.x, y:p.y, w:p.duck?58:44, h:p.duck?26:48};
-      for(i=0;i<this.items.length-1;i--){}
       for(i=this.items.length-1;i>=0;i--){
         var it=this.items[i];
         var ib={x:it.x-12,y:it.y, w:24, h:24};

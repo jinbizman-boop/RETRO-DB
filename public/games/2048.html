@@ -45,7 +45,7 @@
   <!-- 전역 유틸 (정상 app.js 버전 사용) -->
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
-  <script src="/assets/js/games/2048.js"></script>
+  <!-- 레거시 게임 스크립트 의존 제거: /assets/js/games/2048.js는 더 이상 로드하지 않음 -->
   
   <style>
     :root{
@@ -507,194 +507,6 @@
   const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
   const fmt=n=> Number(n).toLocaleString('ko-KR');
 
-  /* ===== WALLET API (legacy helpers – reward는 app.js의 sendGameReward 사용) ===== */
-  const WALLET_API_BASE = '/api/wallet';
-
-  async function postWalletReward(payload){
-    try{
-      const res = await fetch(WALLET_API_BASE + '/reward', {
-        method: 'POST',
-        headers: {
-          'Content-Type':'application/json',
-          'Accept':'application/json',
-          'Cache-Control':'no-store'
-        },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
-      if(!res.ok){
-        console.warn('wallet/reward http error', res.status);
-        return null;
-      }
-      const data = await res.json().catch(()=>null);
-      if(!data || !data.ok){
-        console.warn('wallet/reward logical error', data);
-        return null;
-      }
-      const w = data.wallet || {};
-      applyServerWalletToLocal(w);
-      return w;
-    }catch(err){
-      console.warn('wallet/reward failed', err);
-      return null;
-    }
-  }
-
-  /* ===== Global Wallet Totals (hub 공유 – 일부는 app.js의 stats와 병행) ===== */
-  function getOrInitGlobalTotals(){
-    const NUM = v => Number.isFinite(+v) ? +v : 0;
-    const markKey = 'rg_wallet_init';
-    let coins   = NUM(localStorage.getItem('rg_coins'));
-    let tickets = NUM(localStorage.getItem('rg_tickets'));
-    let xp      = NUM(localStorage.getItem('rg_xp'));
-    let xpCap   = NUM(localStorage.getItem('rg_xp_cap') || 20000);
-
-    const inited = localStorage.getItem(markKey);
-    if(!inited && coins===0 && tickets===0 && xp===0){
-      tickets = 10;
-      localStorage.setItem(markKey,'1');
-    }
-    return { coins, tickets, xp, xpCap };
-  }
-  function setGlobalTotals(t){
-    const clean = {
-      coins:   Number(t.coins)||0,
-      tickets: Number(t.tickets)||0,
-      xp:      Number(t.xp)||0,
-      xpCap:   Number(t.xpCap)||20000
-    };
-    try{
-      localStorage.setItem('rg_coins',   String(clean.coins));
-      localStorage.setItem('rg_tickets', String(clean.tickets));
-      localStorage.setItem('rg_xp',      String(clean.xp));
-      localStorage.setItem('rg_xp_cap',  String(clean.xpCap));
-    }catch(e){
-      console.warn('setGlobalTotals failed', e);
-    }
-    renderGlobalWalletHUD();
-  }
-  function applyServerWalletToLocal(w){
-    if(!w) return;
-    setGlobalTotals({
-      coins:   w.coins,
-      tickets: w.tickets,
-      xp:      w.xp ?? w.points ?? 0,
-      xpCap:   w.xpCap ?? w.xp_cap ?? 20000
-    });
-  }
-  function renderGlobalWalletHUD(){
-    const t = getOrInitGlobalTotals();
-    const pointsAmt = $('#pointsAmt');
-    const pointsCap = $('#pointsCap');
-    const pointsBar = $('#pointsBar');
-    const ticketsAmt = $('#ticketsAmt');
-    const ticketsBar = $('#ticketsBar');
-
-    if(pointsAmt) pointsAmt.textContent = fmt(t.xp);
-    if(pointsCap){
-      const capLabel = t.xpCap >= 1000 ? fmt(t.xpCap/1000) + 'K' : fmt(t.xpCap);
-      pointsCap.textContent = capLabel;
-    }
-    if(pointsBar){
-      const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1, t.xpCap)) * 100));
-      pointsBar.style.width = pct.toFixed(1) + '%';
-    }
-    if(ticketsAmt) ticketsAmt.textContent = fmt(t.tickets);
-    if(ticketsBar){
-      const T_CAP = 50;
-      const pct = Math.max(0, Math.min(100, (t.tickets / Math.max(1, T_CAP)) * 100));
-      ticketsBar.style.width = pct.toFixed(1) + '%';
-    }
-  }
-
-  window.addEventListener('storage', function(e){
-    if(['rg_coins','rg_tickets','rg_xp','rg_xp_cap'].includes(e.key)){
-      renderGlobalWalletHUD();
-    }
-  });
-
-  async function syncWalletFromServerAndRender(){
-    try{
-      const res = await fetch(WALLET_API_BASE + '/me', {
-        method: 'GET',
-        headers: {
-          'Accept':'application/json',
-          'Cache-Control':'no-store'
-        },
-        credentials: 'include'
-      });
-      if(!res.ok){
-        renderGlobalWalletHUD();
-        return;
-      }
-      const data = await res.json().catch(()=>null);
-      if(data && data.ok && data.wallet){
-        applyServerWalletToLocal(data.wallet);
-      }else{
-        renderGlobalWalletHUD();
-      }
-    }catch(e){
-      console.warn('wallet/me failed', e);
-      renderGlobalWalletHUD();
-    }
-  }
-
-  /* 2048은 티켓 소모 없이 자유 플레이 (과거 티켓 차감 로직은 사용하지 않음) */
-  function consumeTicketForSession(){
-    const totals = getOrInitGlobalTotals();
-    if(totals.tickets <= 0){
-      alert('플레이 티켓이 부족합니다.\n메인 허브에서 티켓을 먼저 획득한 뒤 다시 시도해 주세요.');
-      renderGlobalWalletHUD();
-      return false;
-    }
-    totals.tickets -= 1;
-    setGlobalTotals(totals);
-
-    // 예전 wallet/reward 포맷은 더 이상 사용하지 않지만, 하위 호환을 위해 남겨둔 형태
-    postWalletReward({
-      game: '2048',
-      delta: { coins:0, xp:0, tickets:-1 },
-      meta:  { score:0, points:0, level:0, maxTile:0 }
-    }).catch(()=>{});
-
-    return true;
-  }
-
-  function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
-    // ⚠ 현재는 app.js의 window.sendGameReward + refreshWalletHUD 를 사용하므로
-    // 이 함수는 직접 호출하지 않는다. (하위 호환 주석용으로 남김)
-    if(!delta) return;
-    const coins   = Number(delta.coins)   || 0;
-    const xp      = Number(delta.xp)      || 0;
-    const tickets = Number(delta.tickets) || 0;
-    if(!(coins || xp || tickets)) return;
-
-    try{
-      if(typeof window.RG_addReward === 'function'){
-        window.RG_addReward({ coins, tickets, xp });
-      }else{
-        const t = getOrInitGlobalTotals();
-        t.coins   += coins;
-        t.tickets += tickets;
-        t.xp      += xp;
-        setGlobalTotals(t);
-      }
-    }catch(e){
-      console.warn('RG_addReward error', e);
-    }
-
-    postWalletReward({
-      game: gameCode,
-      delta: { coins, xp, tickets },
-      meta: {
-        score:   meta && meta.score   || 0,
-        points:  meta && meta.points  || 0,
-        level:   meta && meta.level   || 0,
-        maxTile: meta && meta.maxTile || 0
-      }
-    }).catch(()=>{});
-  }
-
   function calcReward(score, points, maxTile, level){
     const s  = Math.max(0, score|0);
     const p  = Math.max(0, points|0);
@@ -731,7 +543,6 @@
   function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
   function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
   function updateTicketUI(){
-    renderGlobalWalletHUD();
     const plays= +localStorage.getItem(LS_KEYS.plays)||0;
     const capLabel = $('#ticketsCap');
     if(capLabel){
@@ -907,7 +718,6 @@
       $('#score').textContent=this.score|0;
       $('#best').textContent=this.best|0;
       $('#moves').textContent=this.moves|0;
-      renderGlobalWalletHUD();
       updateTicketUI();
     }
 
@@ -1033,14 +843,6 @@
               maxTile: maxT,
               moves: this.moves | 0
             }
-          });
-        } else {
-          // 하위 호환: 예전 helper가 남아있다면 그대로 사용
-          applyGlobalRewardAndSyncWallet('2048', delta, {
-            score:  finalScore,
-            points: this.points || 0,
-            level:  this.level || 1,
-            maxTile:maxT
           });
         }
 
@@ -1180,8 +982,6 @@
     // ✅ 통합 HUD: app.js에 refreshWalletHUD가 있다면 우선 사용
     if (typeof window.refreshWalletHUD === 'function') {
       window.refreshWalletHUD();
-    } else {
-      syncWalletFromServerAndRender();
     }
 
     initSideBanners();

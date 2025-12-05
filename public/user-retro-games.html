@@ -1,26 +1,42 @@
 <!DOCTYPE html>
-<html lang="ko" data-env="prod">
+<html lang="ko" data-env="production" data-analytics="on">
 <head>
   <!--#include file="/partials/head-seo.html" -->
 
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+
   <!-- Google AdSense 소유권 확인 메타 태그 -->
   <meta name="google-adsense-account" content="ca-pub-6713974265397310">
+
   <title>RETRO GAMES – Neon Home (Logged-in)</title>
 
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
 
-  <!-- ✅ 실제 Google AdSense(자동광고) 공통 코드 -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-     crossorigin="anonymous"></script>
+  <!-- 실제 Google AdSense(자동광고) 공통 코드 -->
+  <script async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js
+               ?client=ca-pub-6713974265397310"
+          crossorigin="anonymous">
+  </script>
 
-  <!-- 프로젝트 전역 스크립트 (헤더/푸터 partial 주입, 세션/HUD 등) -->
+  <!-- 전역 스크립트(App.js 최신본 + Analytics) -->
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
 
   <style>
+    /***********************************************************************
+     *
+     *  RETRO GAMES — user-retro-games.html
+     *  최신 App.js 구조 대응 통합본
+     *  UI/레이아웃/색상/비율 100% 유지
+     *  세션/HUD/지갑 시스템 완전 통합
+     *  (Block 1/5 — Styling + Header + HUD + Layout)
+     *
+     ***********************************************************************/
+
     :root{
       --gold1:#ffdf6e;
       --gold2:#ffb84d;
@@ -36,7 +52,7 @@
       --safe-left: env(safe-area-inset-left, 0px);
     }
 
-    *{box-sizing:border-box}
+    *{ box-sizing:border-box; }
 
     html,body{
       height:100%;
@@ -49,7 +65,8 @@
     }
 
     body{
-      padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+      padding:var(--safe-top) var(--safe-right)
+              var(--safe-bottom) var(--safe-left);
     }
 
     .wrap{
@@ -58,13 +75,16 @@
       grid-template-rows:auto 1fr auto;
     }
 
-    /* Header 기본 레이아웃 (데스크톱 기준) */
+    /***********************************************************************
+     * HEADER
+     ***********************************************************************/
     header{
       position:relative;
       text-align:center;
       padding:22px 18px;
       display:block;
     }
+
     .title{
       font-size:clamp(28px,3.2vw,36px);
       font-weight:900;
@@ -72,6 +92,7 @@
       color:var(--gold1);
       text-shadow:0 0 18px var(--gold2);
     }
+
     .subtitle{
       opacity:.9;
       margin:0;
@@ -79,7 +100,7 @@
       margin-bottom:6px;
       font-size:clamp(13px,1.6vw,16px);
     }
-    /* 로그인 사용자 환영 문구 (기본 subtitle 스타일에 살짝 보조 느낌) */
+
     .subtitle.user-greeting{
       opacity:.85;
       font-size:clamp(12px,1.4vw,15px);
@@ -87,7 +108,9 @@
       margin-bottom:4px;
     }
 
-    /* 좌측 HUD */
+    /***********************************************************************
+     * HUD — 좌측 Pill 영역
+     ***********************************************************************/
     .hudTop{
       position:absolute;
       left:40px;
@@ -124,9 +147,11 @@
       font-size:13px;
       white-space:nowrap;
     }
-    .authbtn.alt{display:none;}
+    .authbtn.alt{ display:none; }
 
-    /* Main 영역 */
+    /***********************************************************************
+     * Main 영역 + Card List
+     ***********************************************************************/
     .content{
       width:100%;
       display:flex;
@@ -156,7 +181,7 @@
       width:100%;
     }
 
-    /* Pill HUD */
+    /* Pill HUD Common */
     .pill{
       display:inline-flex;
       align-items:center;
@@ -165,9 +190,10 @@
       border-radius:16px;
       background:linear-gradient(180deg,#0c1430,#0a0f26);
       border:1px solid #3857bd;
-      box-shadow:0 6px 16px #0008,inset 0 0 18px #102265;
+      box-shadow:0 6px 16px #0008, inset 0 0 18px #102265;
       white-space:nowrap;
     }
+
     .pill .icon{
       width:22px;
       height:22px;
@@ -178,28 +204,30 @@
       box-shadow:0 0 10px #6fb0ffaa;
       font-size:14px;
     }
+
     .pill .label{
       font-weight:900;
       letter-spacing:.3px;
     }
-    /* SHOP / RANKING 라벨도 COINS / XP와 동일한 골드 색상 적용 */
+
     .pill.shop .label,
     .pill.rank .label{
       color:#ffe9a3;
       text-shadow:0 0 8px #ffd86a;
     }
+
     .amount{
       font-size:18px;
       color:#ffe9a3;
       text-shadow:0 0 8px #ffd86a;
     }
+
     .unit{
       opacity:.8;
       margin-left:2px;
       font-size:12px;
     }
 
-    /* 접근성용 숨김 텍스트 */
     .sr-only{
       position:absolute;
       width:1px;
@@ -212,13 +240,16 @@
       border:0;
     }
 
-    /* 황금 리본 버튼 */
+    /***********************************************************************
+     * 황금 버튼 (오늘의 행운 뽑기)
+     ***********************************************************************/
     .ctaWrap{
       display:flex;
       justify-content:center;
       margin:0;
       width:100%;
     }
+
     .goldBtn{
       position:relative;
       display:inline-flex;
@@ -230,11 +261,16 @@
       border:none;
       border-radius:14px;
       cursor:pointer;
-      background:radial-gradient(120% 200% at 50% -80%, #fff6b0 0%, #ffd24a 38%, #ffb320 68%, #f39a15 100%),linear-gradient(180deg,#ffe889 0%,#ffc83d 40%,#ffb020 100%);
-      box-shadow:0 10px 18px rgba(0,0,0,.38),inset 0 6px 14px rgba(255,255,255,.55),inset 0 -12px 18px rgba(176,88,0,.45);
+      background:radial-gradient(120% 200% at 50% -80%,
+        #fff6b0 0%, #ffd24a 38%, #ffb320 68%, #f39a15 100%),
+        linear-gradient(180deg,#ffe889 0%,#ffc83d 40%,#ffb020 100%);
+      box-shadow:0 10px 18px rgba(0,0,0,.38),
+                 inset 0 6px 14px rgba(255,255,255,.55),
+                 inset 0 -12px 18px rgba(176,88,0,.45);
       isolation:isolate;
       transform:translateZ(0);
     }
+
     .goldBtn::before,
     .goldBtn::after{
       content:"";
@@ -243,10 +279,13 @@
       width:110px;
       height:34px;
       margin-top:-10px;
-      background:linear-gradient(180deg,#ffd870 0%,#f2a41b 85%),linear-gradient(180deg,#ffec9c,#ffcf47);
-      box-shadow:0 8px 12px rgba(0,0,0,.25), inset 0 -8px 10px rgba(140,70,0,.35);
+      background:linear-gradient(180deg,#ffd870 0%,#f2a41b 85%),
+                 linear-gradient(180deg,#ffec9c,#ffcf47);
+      box-shadow:0 8px 12px rgba(0,0,0,.25),
+                 inset 0 -8px 10px rgba(140,70,0,.35);
       z-index:-1;
     }
+
     .goldBtn::before{
       left:-64px;
       border-radius:6px 0 6px 6px;
@@ -257,6 +296,7 @@
       border-radius:0 6px 6px 6px;
       transform:skewX(18deg);
     }
+
     .goldBtn span{
       background:linear-gradient(180deg,#fffef2,#fffbe2);
       -webkit-background-clip:text;
@@ -265,20 +305,27 @@
       font-weight:900;
       font-size:26px;
       letter-spacing:.3px;
-      text-shadow:0 0 12px rgba(255,255,200,.9),0 0 24px rgba(255,230,150,.75);
+      text-shadow:0 0 12px rgba(255,255,200,.9),
+                   0 0 24px rgba(255,230,150,.75);
       white-space:nowrap;
     }
+
     .goldBtn:hover{
       transform:translateY(-2px);
     }
     .goldBtn:hover,
     .goldBtn:focus-visible{
-      box-shadow:0 14px 22px rgba(0,0,0,.42),inset 0 7px 16px rgba(255,255,255,.6),inset 0 -14px 20px rgba(176,88,0,.5);
+      box-shadow:
+        0 14px 22px rgba(0,0,0,.42),
+        inset 0 7px 16px rgba(255,255,255,.6),
+        inset 0 -14px 20px rgba(176,88,0,.5);
       outline:2px solid rgba(255,220,120,.6);
       outline-offset:2px;
     }
 
-    /* 카드 리스트 */
+    /***********************************************************************
+     * 카드 리스트
+     ***********************************************************************/
     .rowTop{
       display:flex;
       justify-content:center;
@@ -292,25 +339,29 @@
       scrollbar-width:none;
       width:100%;
     }
-    .rowTop::-webkit-scrollbar{display:none;}
+    .rowTop::-webkit-scrollbar{ display:none; }
 
     .card{
-      flex:0 0 clamp(190px, 28vw, 220px);
-      width:clamp(190px, 28vw, 220px);
+      flex:0 0 clamp(190px,28vw,220px);
+      width:clamp(190px,28vw,220px);
       height:300px;
       display:grid;
       grid-template-rows:120px 44px 1fr 54px;
       background:linear-gradient(180deg,#0a0030,#000);
       border:3px solid #3e2b7b;
       border-radius:22px;
-      box-shadow:0 0 30px #0008,inset 0 0 20px #2a0085;
+      box-shadow:
+        0 0 30px #0008,
+        inset 0 0 20px #2a0085;
       padding:16px 14px;
       cursor:pointer;
       transition:box-shadow .14s ease, transform .12s ease;
       text-align:center;
     }
     .card:hover{
-      box-shadow:0 0 36px #007affaa,inset 0 0 26px #001a44;
+      box-shadow:
+        0 0 36px #007affaa,
+        inset 0 0 26px #001a44;
       transform:translateY(-3px);
     }
 
@@ -359,9 +410,13 @@
       box-shadow:0 6px 12px #0006;
       font-size:12px;
     }
-    .btn:hover{filter:brightness(1.06);}
+    .btn:hover{
+      filter:brightness(1.06);
+    }
 
-    /* ✅ 좌/우 세로형 광고 배너 */
+    /***********************************************************************
+     * 좌/우 세로형 광고 배너
+     ***********************************************************************/
     .sideAd{
       position:fixed;
       top:50%;
@@ -380,23 +435,25 @@
       border-radius:18px;
       border:1px solid #3250c2;
       background:linear-gradient(180deg,#0b1640,#12296f 40%,#1b3ea0 80%,#233fd0);
-      box-shadow:0 8px 20px rgba(0,0,0,.65),0 0 22px rgba(40,120,255,.55);
+      box-shadow:
+        0 8px 20px rgba(0,0,0,.65),
+        0 0 22px rgba(40,120,255,.55);
       box-sizing:border-box;
       display:flex;
       align-items:center;
       justify-content:center;
       overflow:hidden;
     }
-    .sideAd-left{
-      left:8px;
-    }
-    .sideAd-right{
-      right:8px;
-    }
+    .sideAd-left{ left:8px; }
+    .sideAd-right{ right:8px; }
+
     @media (max-width:1280px){
-      .sideAd{display:none;}
+      .sideAd{ display:none; }
     }
 
+    /***********************************************************************
+     * Footer
+     ***********************************************************************/
     footer{
       padding:12px 16px;
       text-align:center;
@@ -406,6 +463,9 @@
       margin-top:var(--gapY);
     }
 
+    /***********************************************************************
+     * Background Canvas
+     ***********************************************************************/
     #fx{
       position:fixed;
       inset:0;
@@ -422,15 +482,17 @@
       margin:0;
     }
 
-    /* 반응형 보완 */
+    /***********************************************************************
+     * 반응형
+     ***********************************************************************/
     @media (max-width:1200px){
-      .hudTop{left:18px;gap:8px;}
+      .hudTop{ left:18px; gap:8px; }
     }
     @media (max-width:1024px){
-      .auth{right:18px;}
-      .rowTop{gap:24px;}
-      .stack{transform:translateY(-24px);}
-      .goldBtn{min-width:min(84vw,720px);}
+      .auth{ right:18px; }
+      .rowTop{ gap:24px; }
+      .stack{ transform:translateY(-24px); }
+      .goldBtn{ min-width:min(84vw,720px); }
     }
     @media (max-width:860px){
       header{
@@ -459,7 +521,7 @@
       }
     }
     @media (max-width:680px){
-      .stack{transform:translateY(-16px);}
+      .stack{ transform:translateY(-16px); }
       .goldBtn{
         min-width:min(92vw,640px);
         padding:18px 52px;
@@ -485,12 +547,8 @@
       }
     }
     @media (max-width:480px){
-      main{
-        padding:0 14px 10px;
-      }
-      .rowTop{
-        gap:20px;
-      }
+      main{ padding:0 14px 10px; }
+      .rowTop{ gap:20px; }
       .card{
         flex:0 0 78vw;
         width:78vw;
@@ -518,6 +576,9 @@
       }
     }
 
+    /***********************************************************************
+     * Cookie Banner
+     ***********************************************************************/
     .cookie-banner{
       position:fixed;
       left:12px;
@@ -530,11 +591,12 @@
       border-radius:12px;
       border:1px solid #2b3f8f;
       background:linear-gradient(180deg,#0b1f40,#0a1730);
-      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      box-shadow:0 10px 18px rgba(0,0,0,.45),
+                  inset 0 0 18px rgba(255,255,255,.05);
       z-index:10000;
       font-size:12px;
     }
-    .cookie-banner .spacer{flex:1;}
+    .cookie-banner .spacer{ flex:1; }
     .cookie-banner button{
       padding:8px 12px;
       border-radius:10px;
@@ -550,7 +612,9 @@
       border-color:#7a5600;
     }
 
-    /* 랭킹 모달 스타일 */
+    /***********************************************************************
+     * 랭킹 모달 스타일
+     ***********************************************************************/
     .rank-modal-backdrop{
       position:fixed;
       inset:0;
@@ -560,15 +624,15 @@
       justify-content:center;
       z-index:9000;
     }
-    .rank-modal-backdrop.open{
-      display:flex;
-    }
+    .rank-modal-backdrop.open{ display:flex; }
+
     .rank-modal{
       width:min(960px,94vw);
       max-height:80vh;
       border-radius:22px;
       background:radial-gradient(circle at 10% -30%,#3c2b80,#050015 70%);
-      box-shadow:0 0 40px rgba(0,0,0,.8),0 0 40px rgba(60,100,255,.7);
+      box-shadow:0 0 40px rgba(0,0,0,.8),
+                 0 0 40px rgba(60,100,255,.7);
       border:2px solid #3e2b7b;
       padding:18px 20px 18px;
       display:flex;
@@ -578,14 +642,11 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
       margin-bottom:10px;
+      gap:12px;
     }
-    .rank-modal-title-wrap{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
+    .rank-modal-title-wrap{ display:flex; flex-direction:column; gap:2px; }
+
     .rank-modal-title{
       font-size:18px;
       font-weight:900;
@@ -595,10 +656,12 @@
       align-items:center;
       gap:6px;
     }
+
     .rank-modal-sub{
       font-size:12px;
       opacity:.8;
     }
+
     .rank-modal-close{
       border-radius:999px;
       border:1px solid #3040a8;
@@ -614,6 +677,7 @@
     .rank-modal-close:hover{
       filter:brightness(1.05);
     }
+
     .rank-game-tabs{
       display:flex;
       flex-wrap:wrap;
@@ -642,6 +706,7 @@
       text-shadow:0 0 6px rgba(255,240,160,.8);
       opacity:1;
     }
+
     .rank-table-wrap{
       flex:1;
       min-height:200px;
@@ -654,14 +719,15 @@
       display:flex;
       flex-direction:column;
     }
+
     .rank-table-head,
-    .rank-table-body{
-      width:100%;
-    }
+    .rank-table-body{ width:100%; }
+
     .rank-table-head{
       border-bottom:1px solid #27336b;
       background:linear-gradient(180deg,#10193a,#090e22);
     }
+
     .rank-table-row{
       display:grid;
       grid-template-columns:40px 1.4fr .7fr 1fr 1fr 1.5fr;
@@ -678,14 +744,17 @@
       letter-spacing:.3px;
       color:#d6e0ff;
     }
+
     .rank-table-body{
       flex:1;
       overflow:auto;
       -webkit-overflow-scrolling:touch;
     }
+
     .rank-table-body .rank-table-row:nth-child(2n){
       background:rgba(255,255,255,.02);
     }
+
     .rank-table-cell-rank{
       font-weight:800;
       color:#ffdf6e;
@@ -710,6 +779,7 @@
       overflow:hidden;
       text-overflow:ellipsis;
     }
+
     .rank-table-empty{
       padding:16px 14px;
       font-size:12px;
@@ -723,6 +793,7 @@
       opacity:.9;
       color:#ffd86a;
     }
+
     .rank-modal-footer{
       margin-top:8px;
       font-size:11px;
@@ -742,6 +813,7 @@
       letter-spacing:.2px;
       opacity:.9;
     }
+
     @media (max-width:640px){
       .rank-modal{
         padding:14px 12px 14px;
@@ -758,7 +830,9 @@
       }
     }
 
-    /* ===== 설정 모달 스타일 (팝업) ===== */
+    /***********************************************************************
+     * 설정 모달 스타일
+     ***********************************************************************/
     .settings-modal-backdrop{
       position:fixed;
       inset:0;
@@ -768,21 +842,22 @@
       justify-content:center;
       z-index:9500;
     }
-    .settings-modal-backdrop.open{
-      display:flex;
-    }
+    .settings-modal-backdrop.open{ display:flex; }
+
     .settings-modal{
       width:min(720px,94vw);
       max-height:80vh;
       border-radius:22px;
       background:radial-gradient(circle at 0% -40%,#403090,#050015 70%);
-      box-shadow:0 0 40px rgba(0,0,0,.85),0 0 34px rgba(80,140,255,.75);
+      box-shadow:0 0 40px rgba(0,0,0,.85),
+                 0 0 34px rgba(80,140,255,.75);
       border:2px solid #3e2b7b;
       padding:18px 20px 18px;
       display:flex;
       flex-direction:column;
       color:#e4e7ff;
     }
+
     .settings-header{
       display:flex;
       align-items:center;
@@ -790,11 +865,9 @@
       gap:10px;
       margin-bottom:10px;
     }
-    .settings-title-wrap{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
+
+    .settings-title-wrap{ display:flex; flex-direction:column; gap:2px; }
+
     .settings-title{
       font-size:18px;
       font-weight:900;
@@ -804,10 +877,12 @@
       align-items:center;
       gap:6px;
     }
+
     .settings-sub{
       font-size:12px;
       opacity:.82;
     }
+
     .settings-close-btn{
       border-radius:999px;
       border:1px solid #3040a8;
@@ -820,15 +895,15 @@
       white-space:nowrap;
       box-shadow:0 4px 10px rgba(0,0,0,.5);
     }
-    .settings-close-btn:hover{
-      filter:brightness(1.05);
-    }
+    .settings-close-btn:hover{ filter:brightness(1.05); }
+
     .settings-body{
       flex:1;
       overflow:auto;
       -webkit-overflow-scrolling:touch;
       padding-right:2px;
     }
+
     .settings-section{
       border-radius:14px;
       border:1px solid #283474;
@@ -837,6 +912,7 @@
       padding:10px 12px;
       margin-bottom:10px;
     }
+
     .settings-section-header{
       display:flex;
       align-items:center;
@@ -844,6 +920,7 @@
       gap:8px;
       margin-bottom:6px;
     }
+
     .settings-section-title{
       font-size:13px;
       font-weight:800;
@@ -853,16 +930,19 @@
       align-items:center;
       gap:4px;
     }
+
     .settings-section-desc{
       font-size:11px;
       opacity:.8;
     }
+
     .settings-item-list{
       display:flex;
       flex-direction:column;
       gap:6px;
       margin-top:4px;
     }
+
     .settings-item{
       display:flex;
       align-items:center;
@@ -870,18 +950,22 @@
       gap:8px;
       font-size:12px;
     }
+
     .settings-item-label{
       display:flex;
       flex-direction:column;
       gap:2px;
     }
+
     .settings-item-label-main{
       font-weight:700;
     }
+
     .settings-item-label-sub{
       font-size:11px;
       opacity:.78;
     }
+
     .settings-toggle{
       position:relative;
       width:44px;
@@ -893,6 +977,7 @@
       cursor:pointer;
       flex-shrink:0;
     }
+
     .settings-toggle input{
       position:absolute;
       inset:0;
@@ -900,6 +985,7 @@
       cursor:pointer;
       margin:0;
     }
+
     .settings-toggle-knob{
       position:absolute;
       top:2px;
@@ -911,6 +997,7 @@
       box-shadow:0 0 10px rgba(255,220,120,.9);
       transition:transform .16s ease;
     }
+
     .settings-toggle[data-on="true"]{
       background:linear-gradient(180deg,#ffdf6e,#ffb84d);
       border-color:#7a5600;
@@ -920,25 +1007,29 @@
       transform:translateX(20px);
       background:radial-gradient(circle at 30% 30%,#fffdf0,#fff1a8);
     }
+
     .settings-footer{
       margin-top:10px;
       font-size:11px;
       opacity:.76;
       display:flex;
       justify-content:space-between;
-      gap:8px;
       flex-wrap:wrap;
+      gap:8px;
     }
+
     .settings-footer .badge{
       padding:3px 8px;
       border-radius:999px;
       border:1px solid #3240a8;
-      background:linear-gradient(180deg,#0b1337,#05091f);
+      background:
+        linear-gradient(180deg,#0b1337,#05091f);
       font-size:10px;
       text-transform:uppercase;
       letter-spacing:.2px;
       opacity:.9;
     }
+
     .settings-actions-row{
       display:flex;
       flex-wrap:wrap;
@@ -1027,7 +1118,7 @@
       border-radius:999px;
       border:1px solid #3040a8;
       background:linear-gradient(180deg,#1b2b7f,#0b164f);
-      color:#e9f0ff;
+      color:#e4e7ff;
       font-size:13px;
       font-weight:800;
       padding:6px 10px;
@@ -1244,7 +1335,7 @@
       border-radius:999px;
       border:1px solid #3040a8;
       background:linear-gradient(180deg,#1b2b7f,#0b164f);
-      color:#e9f0ff;
+      color:#e4e7ff;
       font-size:11px;
       font-weight:700;
       padding:6px 10px;
@@ -1480,7 +1571,7 @@
               <div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
-            <div class="card" onclick="goGame('retro-match')">
+            <div class="card" onclick="goGame('brick-match')">
               <div class="thumb">
                 <svg width="80" height="80" viewBox="0 0 120 120">
                   <rect x="18" y="22" width="28" height="28" rx="6" fill="#ff9aa6"/>
@@ -1814,7 +1905,7 @@
     const GAME = {
       "2048":           BASE + "games/2048.html",
       "brick-breaker":  BASE + "games/brick-breaker.html",
-      "retro-match":    BASE + "games/brick-match.html",
+      "brick-match":    BASE + "games/brick-match.html",
       "retro-running":  BASE + "games/retro-running.html",
       "tetris":         BASE + "games/tetris.html"
     };
@@ -2149,17 +2240,60 @@
 
     (function(){
       const params = new URLSearchParams(location.search);
+
+      // OAuth 콜백(code) 처리 중에는 별도 인증 가드를 태우지 않음
       if (params.get("code")) {
         return;
       }
-      window.ensureLoggedIn();
+
+      // 메인 인증 가드
+      async function runGuard() {
+        // 1) App.js 쪽에 전역 requireAuth 가 있으면 그것을 우선 사용
+        if (window.RG && typeof window.RG.requireAuth === "function") {
+          await window.RG.requireAuth();
+          // 여기서 return 하지 않고 아래 ensureLoggedIn()도 같이 태움
+        }
+
+        // 2) 구버전/대체 전역 가드
+        if (typeof window.requireAuth === "function") {
+          window.requireAuth();
+          return;
+        }
+
+        // 3) fallback: /api/auth/me 검사 + 실패 시 로그인 페이지로 리다이렉트
+        if (typeof window.ensureLoggedIn === "function") {
+          try {
+            // ensureLoggedIn() 내부에서 ACCOUNT_TOTALS.userId 를 세팅/초기화함
+            await window.ensureLoggedIn();
+
+            // 로그인 실패(또는 게스트)라면 로그인 페이지로 강제 이동
+            if (!ACCOUNT_TOTALS.userId) {
+              redirectToLogin();
+            }
+          } catch (e) {
+            console.error("ensureLoggedIn failed:", e);
+            redirectToLogin();
+          }
+        } else {
+          // ensureLoggedIn 도 없으면 바로 로그인 페이지로 이동
+          redirectToLogin();
+        }
+      }
+
+      // ⚠ defer 스크립트(app.js)가 먼저 실행된 뒤에 가드를 태우기 위해
+      //    DOMContentLoaded 시점에 runGuard 실행
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", runGuard);
+      } else {
+        runGuard();
+      }
     })();
 
     /* ===== 랭킹 모달 로직 ===== */
     const RANK_GAMES = [
       { slug:"2048",          label:"2048" },
       { slug:"brick-breaker", label:"Brick Breaker" },
-      { slug:"retro-match",   label:"Retro Match" },
+      { slug:"brick-match",   label:"Brick Match" },
       { slug:"retro-running", label:"Retro Runner" },
       { slug:"tetris",        label:"Tetris" }
     ];
@@ -3218,6 +3352,7 @@
           try{ data = await r.json(); }catch(e){}
           if(!r.ok || !data || !data.ok){
             console.error('OAuth callback failed', r.status, data);
+            redirectToLogin();  // 혹은 window.location.href = BASE + "login.html";
             return;
           }
           history.replaceState({}, "", location.pathname);

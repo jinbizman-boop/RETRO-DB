@@ -35,10 +35,13 @@
       window.__ENV__ = 'production';
       window.__ANALYTICS_ON__ = true;
     })(document);
+
+    // ✅ 게임 페이지: app.js의 헤더/푸터 오토 인젝트를 비활성화하는 플래그
+    window.__RG_SKIP_PARTIALS__ = true;
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense 스니펫 -->
+  <!-- AdSense 스니펫 (전역 로더) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
      crossorigin="anonymous"></script>
 
@@ -113,22 +116,67 @@
       color:#ffdf6e;
     }
 
+    /* 현재 마크업(.cabinetLayout / .sideAd / .sideAdInner)을 위한 매핑 */
+    .cabinetLayout{
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      align-items:stretch;
+      gap:16px;
+      width:100%;
+      max-width:1500px;
+      margin:0 auto;
+    }
+    .sideAd{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    .sideAdInner{
+      width:120px;
+      height:600px;
+      max-width:100%;
+      border-radius:14px;
+      border:1px dashed #3952c3;
+      background-image:linear-gradient(180deg,#151b3a,#080d24);
+      box-shadow:0 10px 30px rgba(0,0,0,.65);
+      display:grid;
+      place-items:center;
+      font-size:11px;
+      text-align:center;
+      opacity:.9;
+      padding:8px;
+    }
+
     @media(max-width: 1200px){
       .adSkyscraper{height:480px;}
+      .sideAdInner{height:480px;}
     }
     @media(max-width: 980px){
       .pageLayout{
         grid-template-columns:minmax(0,1fr);
         gap:8px;
       }
+      .cabinetLayout{
+        grid-template-columns:minmax(0,1fr);
+        gap:8px;
+      }
       .adColumn.adLeft{display:none;} /* 모바일에서는 좌측 광고 숨김 */
+      .sideAd.sideAd-left{display:none;}
       .adColumn.adRight{
+        order:2;
+        margin-top:8px;
+      }
+      .sideAd.sideAd-right{
         order:2;
         margin-top:8px;
       }
       .adSkyscraper{
         width:100%;
         height:140px; /* 모바일에서는 가로형에 가깝게 축소 */
+      }
+      .sideAdInner{
+        width:100%;
+        height:140px;
       }
     }
 
@@ -213,6 +261,18 @@
     .deck label{display:flex;align-items:center;gap:8px}
     .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
 
+    /* HOME 버튼 사각형 디스플레이 광고 컨테이너 */
+    .homeDisplayAd{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-width:220px;
+      max-width:260px;
+    }
+    .homeDisplayAd ins.adsbygoogle{
+      width:100%;
+    }
+
     /* Records Modal */
     #recModal{display:none;position:fixed;inset:0;background-color:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
     /* Ad Modal */
@@ -257,6 +317,10 @@
       .deck{gap:8px;padding:10px 12px 16px}
       .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
       .invHud{left:8px;top:8px;transform:scale(.95);transform-origin:top left}
+      .homeDisplayAd{
+        min-width:180px;
+        max-width:220px;
+      }
     }
     @media (max-width: 640px){
       .subtitle{letter-spacing:.08em}
@@ -267,6 +331,10 @@
       .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
       .deck > *{flex:0 0 auto}
       .invHud{transform:scale(.9)}
+      .homeDisplayAd{
+        min-width:140px;
+        max-width:100%;
+      }
     }
 
     .touchLayer{position:absolute; inset:0; display:none; z-index:3;}
@@ -289,10 +357,7 @@
   </style>
 </head>
 
-<!-- ✅ 공통 Analytics JS만 남기고, hub index를 주입하던 app.js 제거 → 로그인 전 화면 문제 해결 -->
-<script defer src="/assets/js/analytics.js"></script>
-
-<body>
+<body data-rg-skip-autoinject="1">
   <canvas id="fx"></canvas>
 
   <!-- 🎵 배경 음악 (30% 볼륨, 반복 재생) -->
@@ -303,12 +368,16 @@
       <!-- 좌측 세로 광고 배너 -->
       <aside class="sideAd sideAd-left" aria-label="left vertical ad">
         <div class="sideAdInner">
+          <!-- 좌우측 사이드 수직형 광고 -->
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-6713974265397310"
                data-ad-slot="4514999077"
                data-ad-format="auto"
-               data-full-width-responsive="false"></ins>
+               data-full-width-responsive="true"></ins>
+          <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
         </div>
       </aside>
 
@@ -379,6 +448,20 @@
         <!-- Control deck -->
         <div class="deck">
           <button class="btn" id="homeBtn">HOME</button>
+
+          <!-- 홈버튼 사각형 디스플레이 광고 -->
+          <div class="homeDisplayAd" aria-label="home button display ad">
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-6713974265397310"
+                 data-ad-slot="7668007538"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+              (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+          </div>
+
           <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
           <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
           <label>모드
@@ -404,12 +487,16 @@
       <!-- 우측 세로 광고 배너 -->
       <aside class="sideAd sideAd-right" aria-label="right vertical ad">
         <div class="sideAdInner">
+          <!-- 좌우측 사이드 수직형 광고 -->
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-6713974265397310"
                data-ad-slot="4514999077"
                data-ad-format="auto"
-               data-full-width-responsive="false"></ins>
+               data-full-width-responsive="true"></ins>
+          <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
         </div>
       </aside>
     </div>
@@ -1004,6 +1091,7 @@ function RG_syncWalletHUD(){
       this.syncHUD();
 
       var hitBox={x:p.x, y:p.y, w:p.duck?58:44, h:p.duck?26:48};
+      for(i=0;i<this.items.length-1;i--){}
       for(i=this.items.length-1;i>=0;i--){
         var it=this.items[i];
         var ib={x:it.x-12,y:it.y, w:24, h:24};

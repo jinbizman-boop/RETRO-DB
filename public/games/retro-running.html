@@ -1,4 +1,120 @@
+  <!-- 중앙 아케이드 캐비닛(기존 게임 UI 그대로) -->
+  <section class="cabinet" aria-label="retro arcade cabinet">
+    <header class="marquee">
+      <div class="title">
+        <h1>RETRO DINO</h1>
+        <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
+      </div>
+    </header>
+
+    <!-- HUD -->
+    <div class="hud">
+      <div class="chip">점수 <b id="score">0</b></div>
+      <div class="chip">최고 <b id="best">0</b></div>
+      <div class="chip">이동 <b id="moves">0</b></div>
+
+      <div class="pill points" aria-label="사용자 포인트">
+        <div class="icon">🏅</div>
+        <div>
+          <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span>
+          </div>
+          <div class="bar"><span id="pointsBar"></span></div>
+        </div>
+      </div>
+
+      <div class="pill tickets" aria-label="티켓 진행">
+        <div class="icon">🎟️</div>
+        <div>
+          <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+          <div class="bar"><span id="ticketsBar"></span></div>
+        </div>
+        <div class="playCount" id="ticketsCap">0 / 10</div>
+      </div>
+
+      <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+    </div>
+
+    <main class="play">
+      <div class="screen">
+        <div class="bezel">
+          <div class="invHud" aria-label="인게임 아이템">
+            <div class="tag">🎒 ITEMS</div>
+            <div id="invHudList" class="list" aria-live="polite"></div>
+          </div>
+
+          <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+          <div class="canvasWrap" id="canvasWrap">
+            <canvas id="game"></canvas>
+            <div class="touchLayer" id="touchLayer" aria-hidden="true">
+              <div class="touchZone tzLeft" id="tzLeft"></div>
+              <div class="touchZone tzRight" id="tzRight"></div>
+              <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
+            </div>
+          </div>
+
+          <div id="gameOver" class="overlay" aria-live="polite" role="alert">
+            <div>
+              <div class="msg">GAME OVER</div>
+              <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Control deck -->
+    <div class="deck">
+      <button class="btn" id="homeBtn">HOME</button>
+
+      <!-- 홈버튼 사각형 디스플레이 광고 -->
+      <div class="homeDisplayAd" aria-label="home button display ad">
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
+          data-ad-slot="7668007538" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
+
+      <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
+      <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
+      <label>모드
+        <select id="tier">
+          <option value="beginner">초급 (1–10)</option>
+          <option value="intermediate">중급 (11–20)</option>
+          <option value="advanced">고급 (21–30)</option>
+          <option value="hell">지옥 (40)</option>
+          <option value="doom">파멸 (50)</option>
+          <option value="insane">극악무도 (100)</option>
+        </select>
+      </label>
+      <label>레벨
+        <input id="lvlRange" type="range" min="1" max="100" value="1" step="1">
+      </label>
+      <label>보드
+        <select id="sizeSel" disabled>
+          <option value="12" selected>고정</option>
+        </select>
+      </label>
+      <button class="btn" id="endBtn">게임 종료</button>
+    </div>
+  </section>
+
+  <!-- 우측 세로 광고 배너 -->
+  <aside class="sideAd sideAd-right" aria-label="right vertical ad">
+    <div class="sideAdInner">
+      <!-- 좌우측 사이드 수직형 광고 -->
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
+        data-ad-slot="4514999077" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+  </aside>
+</div>
+
 <!DOCTYPE html>
+
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
   <meta charset="utf-8" />
@@ -44,11 +160,14 @@
   <!-- === /Common SEO/A11y === -->
 
   <!-- AdSense 스니펫 (전역 로더) -->
+
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
     crossorigin="anonymous"></script>
 
   <!-- 전역 유틸 -->
+
   <script defer src="/assets/js/app.js"></script>
+
   <script defer src="/assets/js/analytics.js"></script>
 
   <!-- ✅ 2048.html과 동일 구조 -->
@@ -418,8 +537,10 @@
       background-image: linear-gradient(180deg, #0a1530, #031125)
     }
 
+    /* ✅ Dino 논리 캔버스(800×300 = 8:3)에 맞춰 화면 비율을 8:3으로 고정하여
+       위·아래 여백(잘린 얇은 줄) 없이 Brick Breaker와 동일한 느낌으로 꽉 차게 표시 */
     .screen {
-      aspect-ratio: 16/9;
+      aspect-ratio: 8/3;
       display: grid;
       place-items: center;
       padding: 18px
@@ -509,7 +630,7 @@
       background-image: linear-gradient(180deg, #1b3a7a, #102a66);
       touch-action: manipulation;
 
-      /* ✅ UI/UX 오류 수정: 글로벌 .btn 스타일 무시 */
+      /* ✅ UI/UX 오류 수정: 글로벌 .btn 스타일 무시 (세로 글자 방지) */
       flex: 0 0 auto;
       min-height: var(--touchMin);
       height: auto;
@@ -869,7 +990,8 @@
   <canvas id="fx"></canvas>
 
   <!-- 🎵 배경 음악 (30% 볼륨, 반복 재생) -->
-  <audio id="bgm" src="/assets/music/retro-running-background.mp3" preload="auto" loop></audio>
+
+<audio id="bgm" src="/assets/music/retro-running-background.mp3" preload="auto" loop></audio>
 
   <div class="shell">
     <div class="cabinetLayout">
@@ -885,123 +1007,127 @@
         </div>
       </aside>
 
-      <!-- 중앙 아케이드 캐비닛(기존 게임 UI 그대로) -->
-      <section class="cabinet" aria-label="retro arcade cabinet">
-        <header class="marquee">
-          <div class="title">
-            <h1>RETRO DINO</h1>
-            <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
+```
+  <!-- 중앙 아케이드 캐비닛(기존 게임 UI 그대로) -->
+  <section class="cabinet" aria-label="retro arcade cabinet">
+    <header class="marquee">
+      <div class="title">
+        <h1>RETRO DINO</h1>
+        <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
+      </div>
+    </header>
+
+    <!-- HUD -->
+    <div class="hud">
+      <div class="chip">점수 <b id="score">0</b></div>
+      <div class="chip">최고 <b id="best">0</b></div>
+      <div class="chip">이동 <b id="moves">0</b></div>
+
+      <div class="pill points" aria-label="사용자 포인트">
+        <div class="icon">🏅</div>
+        <div>
+          <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span>
           </div>
-        </header>
-
-        <!-- HUD -->
-        <div class="hud">
-          <div class="chip">점수 <b id="score">0</b></div>
-          <div class="chip">최고 <b id="best">0</b></div>
-          <div class="chip">이동 <b id="moves">0</b></div>
-
-          <div class="pill points" aria-label="사용자 포인트">
-            <div class="icon">🏅</div>
-            <div>
-              <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span>
-              </div>
-              <div class="bar"><span id="pointsBar"></span></div>
-            </div>
-          </div>
-
-          <div class="pill tickets" aria-label="티켓 진행">
-            <div class="icon">🎟️</div>
-            <div>
-              <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
-              <div class="bar"><span id="ticketsBar"></span></div>
-            </div>
-            <div class="playCount" id="ticketsCap">0 / 10</div>
-          </div>
-
-          <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+          <div class="bar"><span id="pointsBar"></span></div>
         </div>
+      </div>
 
-        <main class="play">
-          <div class="screen">
-            <div class="bezel">
-              <div class="invHud" aria-label="인게임 아이템">
-                <div class="tag">🎒 ITEMS</div>
-                <div id="invHudList" class="list" aria-live="polite"></div>
-              </div>
-
-              <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-              <div class="canvasWrap" id="canvasWrap">
-                <canvas id="game"></canvas>
-                <div class="touchLayer" id="touchLayer" aria-hidden="true">
-                  <div class="touchZone tzLeft" id="tzLeft"></div>
-                  <div class="touchZone tzRight" id="tzRight"></div>
-                  <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
-                </div>
-              </div>
-
-              <div id="gameOver" class="overlay" aria-live="polite" role="alert">
-                <div>
-                  <div class="msg">GAME OVER</div>
-                  <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <!-- Control deck -->
-        <div class="deck">
-          <button class="btn" id="homeBtn">HOME</button>
-
-          <!-- 홈버튼 사각형 디스플레이 광고 -->
-          <div class="homeDisplayAd" aria-label="home button display ad">
-            <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
-              data-ad-slot="7668007538" data-ad-format="auto" data-full-width-responsive="true"></ins>
-            <script>
-              (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
-          </div>
-
-          <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
-          <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
-          <label>모드
-            <select id="tier">
-              <option value="beginner">초급 (1–10)</option>
-              <option value="intermediate">중급 (11–20)</option>
-              <option value="advanced">고급 (21–30)</option>
-              <option value="hell">지옥 (40)</option>
-              <option value="doom">파멸 (50)</option>
-              <option value="insane">극악무도 (100)</option>
-            </select>
-          </label>
-          <label>레벨
-            <input id="lvlRange" type="range" min="1" max="100" value="1" step="1">
-          </label>
-          <label>보드
-            <select id="sizeSel" disabled>
-              <option value="12" selected>고정</option>
-            </select>
-          </label>
-          <button class="btn" id="endBtn">게임 종료</button>
+      <div class="pill tickets" aria-label="티켓 진행">
+        <div class="icon">🎟️</div>
+        <div>
+          <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+          <div class="bar"><span id="ticketsBar"></span></div>
         </div>
-      </section>
+        <div class="playCount" id="ticketsCap">0 / 10</div>
+      </div>
 
-      <!-- 우측 세로 광고 배너 -->
-      <aside class="sideAd sideAd-right" aria-label="right vertical ad">
-        <div class="sideAdInner">
-          <!-- 좌우측 사이드 수직형 광고 -->
-          <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
-            data-ad-slot="4514999077" data-ad-format="auto" data-full-width-responsive="true"></ins>
-          <script>
-            (adsbygoogle = window.adsbygoogle || []).push({});
-          </script>
-        </div>
-      </aside>
+      <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
     </div>
+
+    <main class="play">
+      <div class="screen">
+        <div class="bezel">
+          <div class="invHud" aria-label="인게임 아이템">
+            <div class="tag">🎒 ITEMS</div>
+            <div id="invHudList" class="list" aria-live="polite"></div>
+          </div>
+
+          <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+          <div class="canvasWrap" id="canvasWrap">
+            <canvas id="game"></canvas>
+            <div class="touchLayer" id="touchLayer" aria-hidden="true">
+              <div class="touchZone tzLeft" id="tzLeft"></div>
+              <div class="touchZone tzRight" id="tzRight"></div>
+              <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
+            </div>
+          </div>
+
+          <div id="gameOver" class="overlay" aria-live="polite" role="alert">
+            <div>
+              <div class="msg">GAME OVER</div>
+              <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Control deck -->
+    <div class="deck">
+      <button class="btn" id="homeBtn">HOME</button>
+
+      <!-- 홈버튼 사각형 디스플레이 광고 -->
+      <div class="homeDisplayAd" aria-label="home button display ad">
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
+          data-ad-slot="7668007538" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
+
+      <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
+      <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
+      <label>모드
+        <select id="tier">
+          <option value="beginner">초급 (1–10)</option>
+          <option value="intermediate">중급 (11–20)</option>
+          <option value="advanced">고급 (21–30)</option>
+          <option value="hell">지옥 (40)</option>
+          <option value="doom">파멸 (50)</option>
+          <option value="insane">극악무도 (100)</option>
+        </select>
+      </label>
+      <label>레벨
+        <input id="lvlRange" type="range" min="1" max="100" value="1" step="1">
+      </label>
+      <label>보드
+        <select id="sizeSel" disabled>
+          <option value="12" selected>고정</option>
+        </select>
+      </label>
+      <button class="btn" id="endBtn">게임 종료</button>
+    </div>
+  </section>
+
+  <!-- 우측 세로 광고 배너 -->
+  <aside class="sideAd sideAd-right" aria-label="right vertical ad">
+    <div class="sideAdInner">
+      <!-- 좌우측 사이드 수직형 광고 -->
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
+        data-ad-slot="4514999077" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+  </aside>
+</div>
+```
+
   </div>
 
   <!-- Records Modal -->
+
   <div id="recModal">
     <div
       style="width:min(640px,94vw);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px; background-image:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);">
@@ -1015,6 +1141,7 @@
   </div>
 
   <!-- Ad Modal -->
+
   <div id="adModal" role="dialog" aria-modal="true" aria-labelledby="adTitle">
     <div id="adBox">
       <div id="adHead">
@@ -1357,7 +1484,7 @@
           this.scoreSpeedBonusPerStep = 12;    // 단계당 속도 보너스
           this.scoreSpeedBonusMax = 120;       // 최대 추가 보너스
           this.spd = this.p.startSpd; this.t = 0; this.nextSpawn = 0; this.dayT = 0; this.isNight = false;
-          this.milestoneScoreNext = 100; this.boostT = 0;
+          this.milestoneScoreNext = 100; this.boostT = 2.0;
           this.score = 0; this.best = +(localStorage.getItem(LS_KEYS.best) || 0);
           this.running = false; this.paused = false; this.gameover = false;
 

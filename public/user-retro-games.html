@@ -3248,47 +3248,36 @@
       }
     })();
 
-    /* 배경 파티클 */
-    const c=document.getElementById('fx');
-    const g=c.getContext('2d');
-
-    function fit(){
-      const d=window.devicePixelRatio||1;
-      c.width=innerWidth*d;
-      c.height=innerHeight*d;
-      g.setTransform(d,0,0,d,0,0);
-    }
-    fit();
-    addEventListener('resize',fit);
-
-    let pts=[];
-    for(let i=0;i<80;i++){
-      pts.push({
-        x:Math.random()*innerWidth,
-        y:Math.random()*innerHeight*0.9,
-        r:Math.random()*2+0.5,
-        s:Math.random()*0.6+0.2
-      });
-    }
-
-    function loop(){
-      g.clearRect(0,0,c.width,c.height);
-      if(fxEnabled){
-        for(const p of pts){
-          g.beginPath();
-          g.arc(p.x,p.y,p.r,0,Math.PI*2);
-          g.fillStyle=`rgba(43,123,255,${0.3+Math.sin(Date.now()*0.002+p.x)*0.25})`;
-          g.fill();
-          p.y+=p.s;
-          if(p.y>innerHeight){
-            p.y=-10;
-            p.x=Math.random()*innerWidth;
-          }
-        }
+    /***** 🎵 Background Music (30% volume, loop) *****/
+    let bgmAudio = null;
+    function initBgm() {
+      try {
+        const el = document.getElementById('bgm');
+        if (!el) return;
+        bgmAudio = el;
+        bgmAudio.volume = 0.3;
+      } catch (e) {
+        console.warn('bgm init error', e);
       }
-      requestAnimationFrame(loop);
     }
-    loop();
+    function playBgm() {
+      if (!bgmAudio) initBgm();
+      if (!bgmAudio) return;
+      try {
+        const p = bgmAudio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => { /* autoplay block 무시 */ });
+        }
+      } catch (e) {
+        /* no-op */
+      }
+    }
+    function pauseBgm() {
+      try {
+        if (bgmAudio) bgmAudio.pause();
+      } catch (e) { }
+    }
+    initBgm();
   </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">

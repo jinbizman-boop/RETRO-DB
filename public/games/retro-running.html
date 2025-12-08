@@ -1,118 +1,3 @@
-  <!-- 중앙 아케이드 캐비닛(기존 게임 UI 그대로) -->
-  <section class="cabinet" aria-label="retro arcade cabinet">
-    <header class="marquee">
-      <div class="title">
-        <h1>RETRO DINO</h1>
-        <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
-      </div>
-    </header>
-
-    <!-- HUD -->
-    <div class="hud">
-      <div class="chip">점수 <b id="score">0</b></div>
-      <div class="chip">최고 <b id="best">0</b></div>
-      <div class="chip">이동 <b id="moves">0</b></div>
-
-      <div class="pill points" aria-label="사용자 포인트">
-        <div class="icon">🏅</div>
-        <div>
-          <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span>
-          </div>
-          <div class="bar"><span id="pointsBar"></span></div>
-        </div>
-      </div>
-
-      <div class="pill tickets" aria-label="티켓 진행">
-        <div class="icon">🎟️</div>
-        <div>
-          <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
-          <div class="bar"><span id="ticketsBar"></span></div>
-        </div>
-        <div class="playCount" id="ticketsCap">0 / 10</div>
-      </div>
-
-      <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
-    </div>
-
-    <main class="play">
-      <div class="screen">
-        <div class="bezel">
-          <div class="invHud" aria-label="인게임 아이템">
-            <div class="tag">🎒 ITEMS</div>
-            <div id="invHudList" class="list" aria-live="polite"></div>
-          </div>
-
-          <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-          <div class="canvasWrap" id="canvasWrap">
-            <canvas id="game"></canvas>
-            <div class="touchLayer" id="touchLayer" aria-hidden="true">
-              <div class="touchZone tzLeft" id="tzLeft"></div>
-              <div class="touchZone tzRight" id="tzRight"></div>
-              <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
-            </div>
-          </div>
-
-          <div id="gameOver" class="overlay" aria-live="polite" role="alert">
-            <div>
-              <div class="msg">GAME OVER</div>
-              <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <!-- Control deck -->
-    <div class="deck">
-      <button class="btn" id="homeBtn">HOME</button>
-
-      <!-- 홈버튼 사각형 디스플레이 광고 -->
-      <div class="homeDisplayAd" aria-label="home button display ad">
-        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
-          data-ad-slot="7668007538" data-ad-format="auto" data-full-width-responsive="true"></ins>
-        <script>
-          (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-      </div>
-
-      <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
-      <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
-      <label>모드
-        <select id="tier">
-          <option value="beginner">초급 (1–10)</option>
-          <option value="intermediate">중급 (11–20)</option>
-          <option value="advanced">고급 (21–30)</option>
-          <option value="hell">지옥 (40)</option>
-          <option value="doom">파멸 (50)</option>
-          <option value="insane">극악무도 (100)</option>
-        </select>
-      </label>
-      <label>레벨
-        <input id="lvlRange" type="range" min="1" max="100" value="1" step="1">
-      </label>
-      <label>보드
-        <select id="sizeSel" disabled>
-          <option value="12" selected>고정</option>
-        </select>
-      </label>
-      <button class="btn" id="endBtn">게임 종료</button>
-    </div>
-  </section>
-
-  <!-- 우측 세로 광고 배너 -->
-  <aside class="sideAd sideAd-right" aria-label="right vertical ad">
-    <div class="sideAdInner">
-      <!-- 좌우측 사이드 수직형 광고 -->
-      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
-        data-ad-slot="4514999077" data-ad-format="auto" data-full-width-responsive="true"></ins>
-      <script>
-        (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
-  </aside>
-</div>
-
 <!DOCTYPE html>
 
 <html lang="ko" data-env="production" data-analytics="on">
@@ -205,477 +90,347 @@
       box-sizing: border-box
     }
 
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      color: #fff;
-      font-family: 'Pretendard', ui-sans-serif, system-ui, "Segoe UI", Roboto, "Apple SD Gothic Neo";
-      overflow: hidden;
-      background-color: #0b001e;
-      background-image: radial-gradient(circle at 40% -10%, #320076, #0b001e 70%);
-      background-repeat: no-repeat;
-      background-size: cover;
+    html,body{
+      height:100%;
+      margin:0;
+      color:#fff;
+      font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+      overflow:hidden;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
     }
 
-    /* ✅ 혹시라도 유저 허브 .wrap 이 떠버리는 경우 방지 */
-    .wrap {
-      display: none !important;
+    /* 🔥 다른 CSS에서 body를 flex로 만들었어도 여기서 강제로 되돌림 */
+    body{
+      display:block !important;
     }
 
-    #fx {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      opacity: .75
+    /* 중앙 정렬 전담 컨테이너 */
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;        /* 가로·세로 둘 다 중앙 */
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
     }
 
-    .shell {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-      position: relative;
-      z-index: 1;
-      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0))
+    /* ✅ 유저 허브(.wrap)가 games/ 페이지 위에 통째로 뜨는 문제 방지용 */
+    .wrap{display:none !important;}
+
+    #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
     }
 
-    /* === 기존 페이지 레이아웃 잔여 클래스 유지 (호환 목적) === */
-    .pageLayout {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: stretch;
-      gap: 16px;
-      width: 100%;
-      max-width: 1500px;
-      margin: 0 auto;
+    /* ===== 게임 레이아웃 + 세로형 광고 배너 ===== */
+    .gameLayout{
+      display:grid;
+      grid-template-columns:160px minmax(0,1fr) 160px;
+      align-items:stretch;
+      gap:16px;
+      width:100%;
+      max-width:1500px;
+      margin:0 auto;
+      transform-origin:center center;
     }
-
-    .adColumn {
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    .sideAd{
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
-
-    .adSkyscraper {
-      width: 120px;
-      height: 600px;
-      max-width: 100%;
-      border-radius: 14px;
-      border: 1px dashed #3952c3;
-      background-image: linear-gradient(180deg, #151b3a, #080d24);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .65);
-      display: grid;
-      place-items: center;
-      font-size: 11px;
-      text-align: center;
-      opacity: .9;
-      padding: 8px;
+    .ad-vertical{
+      width:160px;
+      min-height:600px;
+      border-radius:16px;
+      border:1px solid #2b3f8f;
+      background:linear-gradient(180deg,#0b1f40,#050814);
+      box-shadow:0 10px 24px rgba(0,0,0,.65),inset 0 0 18px rgba(62,142,255,.35);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:10px;
+      text-align:center;
+      font-size:11px;
+      opacity:.95;
     }
-
-    .adSkyscraper strong {
-      display: block;
-      margin-bottom: 4px;
-      font-weight: 800;
-      color: #ffdf6e;
+    .ad-vertical .label{
+      font-weight:900;
+      margin-bottom:6px;
+      color:#ffdf6e;
+      letter-spacing:.12em;
     }
-
-    /* 현재 마크업(.cabinetLayout / .sideAd / .sideAdInner)을 위한 매핑 */
-    .cabinetLayout {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: stretch;
-      gap: 16px;
-      width: 100%;
-      max-width: 1500px;
-      margin: 0 auto;
+    .ad-vertical .hint{
+      opacity:.8;
+      line-height:1.4;
+      margin-bottom:8px;
     }
-
-    .sideAd {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .sideAdInner {
-      width: 120px;
-      height: 600px;
-      max-width: 100%;
-      border-radius: 14px;
-      border: 1px dashed #3952c3;
-      background-image: linear-gradient(180deg, #151b3a, #080d24);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .65);
-      display: grid;
-      place-items: center;
-      font-size: 11px;
-      text-align: center;
-      opacity: .9;
-      padding: 8px;
-    }
-
-    @media(max-width: 1200px) {
-      .adSkyscraper {
-        height: 480px;
-      }
-
-      .sideAdInner {
-        height: 480px;
-      }
-    }
-
-    @media(max-width: 980px) {
-      .pageLayout {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 8px;
-      }
-
-      .cabinetLayout {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 8px;
-      }
-
-      .adColumn.adLeft {
-        display: none;
-      }
-
-      /* 모바일에서는 좌측 광고 숨김 */
-      .sideAd.sideAd-left {
-        display: none;
-      }
-
-      .adColumn.adRight {
-        order: 2;
-        margin-top: 8px;
-      }
-
-      .sideAd.sideAd-right {
-        order: 2;
-        margin-top: 8px;
-      }
-
-      .adSkyscraper {
-        width: 100%;
-        height: 140px;
-        /* 모바일에서는 가로형에 가깝게 축소 */
-      }
-
-      .sideAdInner {
-        width: 100%;
-        height: 140px;
-      }
+    .ad-vertical .adsbygoogle{
+      display:block;
+      width:100%;
+      height:100%;
     }
 
     /* Cabinet */
-    .cabinet {
-      position: relative;
-      width: min(1200px, 96vw);
-      background-color: #0e1b34;
-      border-radius: 18px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, .65), inset 0 0 0 2px #0a1a33;
-      transform-origin: top center
+    .cabinet{
+      position:relative;
+      width:min(1200px,96vw);
+      background:#0e1b34;
+      border-radius:18px;
+      box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
+      transform-origin:top center;
     }
-
     .cabinet:before,
-    .cabinet:after {
-      content: "";
-      position: absolute;
-      top: 12px;
-      bottom: 12px;
-      width: 18px;
-      filter: drop-shadow(0 0 12px rgba(255, 190, 0, .55));
-      background-image: linear-gradient(180deg, #ffd34a, #f0b400 60%, #d99a00);
+    .cabinet:after{
+      content:"";
+      position:absolute;
+      top:12px;
+      bottom:12px;
+      width:18px;
+      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
+      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
     }
+    .cabinet:before{left:12px;border-radius:9px}
+    .cabinet:after{right:12px;border-radius:9px}
 
-    .cabinet:before {
-      left: 12px;
-      border-radius: 9px
+    .marquee{
+      padding:18px;
+      border-radius:18px 18px 0 0;
+      background:linear-gradient(180deg,#173763,#0b2548);
+      border-bottom:1px solid #0c2b59;
+      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
     }
-
-    .cabinet:after {
-      right: 12px;
-      border-radius: 9px
+    .title{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
     }
-
-    .marquee {
-      padding: 18px;
-      border-radius: 18px 18px 0 0;
-      border-bottom: 1px solid #0c2b59;
-      box-shadow: inset 0 -6px 26px rgba(0, 0, 0, .35);
-      background-image: linear-gradient(180deg, #173763, #0b2548)
+    .title h1{
+      margin:0;
+      font-weight:900;
+      letter-spacing:2px;
+      color:#eaf3ff;
+      text-shadow:0 0 12px rgba(62,142,255,.55);
+      font-size:clamp(18px,4.4vw,28px);
     }
-
-    .title {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap
-    }
-
-    .title h1 {
-      margin: 0;
-      font-weight: 900;
-      letter-spacing: 2px;
-      color: #eaf3ff;
-      text-shadow: 0 0 12px rgba(62, 142, 255, .55);
-      font-size: clamp(18px, 4.4vw, 28px)
-    }
-
-    .subtitle {
-      opacity: .75;
-      letter-spacing: .15em;
-      font-size: clamp(10px, 2.7vw, 12px);
-      text-align: center
+    .subtitle{
+      opacity:.75;
+      letter-spacing:.2em;
+      font-size:clamp(10px,2.7vw,12px);
+      text-align:center;
     }
 
     /* HUD */
-    .hud {
-      display: flex;
-      gap: 12px;
-      padding: 12px;
-      justify-content: center;
-      flex-wrap: wrap
+    .hud{
+      display:flex;
+      gap:12px;
+      padding:12px;
+      justify-content:center;
+      flex-wrap:wrap;
     }
-
     .chip,
     .pill,
-    .hud .btnMini {
-      position: relative;
-      min-width: 128px;
-      height: 46px;
-      padding: 0 16px;
-      border-radius: 14px;
-      border: 1px solid #1e63ff;
-      color: #fff;
-      font-weight: 900;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      letter-spacing: .3px;
-      box-shadow: 0 12px 18px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -8px 14px rgba(0, 0, 0, .28);
-      background-image: linear-gradient(180deg, #8fe0ff 0%, #49a8ff 26%, #2f84ff 58%, #1560f2 100%), radial-gradient(140% 120% at 20% -40%, rgba(255, 255, 255, .65), rgba(255, 255, 255, 0) 55%);
-      background-repeat: no-repeat;
-      touch-action: manipulation;
+    .hud .btnMini{
+      position:relative;
+      min-width:128px;
+      height:46px;
+      padding:0 16px;
+      border-radius:14px;
+      border:1px solid #1e63ff;
+      color:#fff;
+      font-weight:900;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      letter-spacing:.3px;
+      background:
+        linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),
+        radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+      box-shadow:0 12px 18px rgba(0,0,0,.35),
+                  inset 0 1px 0 rgba(255,255,255,.5),
+                  inset 0 -8px 14px rgba(0,0,0,.28);
+      touch-action:manipulation;
     }
-
-    .chip b {
-      color: #fff;
-      font-weight: 900;
-      padding-left: 6px;
-      text-shadow: 0 1px 0 rgba(0, 0, 0, .25)
+    .chip b{
+      color:#fff;
+      font-weight:900;
+      padding-left:6px;
+      text-shadow:0 1px 0 rgba(0,0,0,.25);
     }
-
-    .pill {
-      min-width: 260px;
-      gap: 12px
+    .pill{min-width:260px;gap:12px}
+    .pill .icon{
+      width:28px;
+      height:28px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);
+      color:#0b2a57;
+      box-shadow:inset 0 -4px 8px rgba(0,0,0,.25),
+                 0 0 10px rgba(255,255,255,.65);
     }
-
-    .pill .icon {
-      width: 28px;
-      height: 28px;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      color: #0b2a57;
-      box-shadow: inset 0 -4px 8px rgba(0, 0, 0, .25), 0 0 10px rgba(255, 255, 255, .65);
-      background-image: radial-gradient(circle at 30% 30%, #ffffff, #d8f1ff)
-    }
-
     .points .bar,
-    .tickets .bar {
-      height: 8px;
-      border-radius: 999px;
-      background: #1a2548;
-      overflow: hidden;
-      border: 1px solid #2b3f8f;
-      width: 120px
+    .tickets .bar{
+      height:8px;
+      border-radius:999px;
+      background:#1a2548;
+      overflow:hidden;
+      border:1px solid #2b3f8f;
+      width:120px;
     }
-
     .points .bar>span,
-    .tickets .bar>span {
-      display: block;
-      height: 100%;
-      width: 0%;
-      box-shadow: 0 0 10px #8ad7ff;
-      background-image: linear-gradient(90deg, #b86cff, #6af0ff)
+    .tickets .bar>span{
+      display:block;
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,#b86cff,#6af0ff);
+      box-shadow:0 0 10px #8ad7ff;
     }
-
     .points .nums,
-    .tickets .nums {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      font-weight: 900
+    .tickets .nums{
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+      font-weight:900;
     }
-
     .points .nums .big,
-    .tickets .nums .big {
-      font-size: 18px;
-      color: #ffe9a3;
-      text-shadow: 0 0 8px #ffd86a
+    .tickets .nums .big{
+      font-size:18px;
+      color:#ffe9a3;
+      text-shadow:0 0 8px #ffd86a;
     }
-
     .points .nums .cap,
-    .tickets .nums .cap {
-      opacity: .8;
-      font-size: 12px
+    .tickets .nums .cap{
+      opacity:.8;
+      font-size:12px;
     }
-
-    .playCount {
-      font-size: 12px;
-      opacity: .85;
-      margin-left: 6px
+    .playCount{
+      font-size:12px;
+      opacity:.85;
+      margin-left:6px;
     }
 
     /* Screen */
-    .play {
-      position: relative;
-      margin: 10px 18px;
-      border-radius: 16px;
-      box-shadow: inset 0 0 0 1px #0b2a57, inset 0 0 60px rgba(0, 0, 0, .65);
-      background-image: linear-gradient(180deg, #0a1530, #031125)
+    .play{
+      position:relative;
+      margin:10px 18px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#0a1530,#031125);
+      box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55);
+    }
+    .screen{
+      aspect-ratio:16/9;
+      display:grid;
+      place-items:center;
+      padding:18px;
+    }
+    .bezel{
+      width:100%;
+      height:100%;
+      border-radius:14px;
+      background:
+        radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),
+        linear-gradient(180deg,#0a1c39,#0a1326);
+      box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
+      display:grid;
+      place-items:center;
+      position:relative;
+      overflow:hidden;
     }
 
-    /* ✅ Dino 논리 캔버스(800×300 = 8:3)에 맞춰 화면 비율을 8:3으로 고정하여
-       위·아래 여백(잘린 얇은 줄) 없이 Brick Breaker와 동일한 느낌으로 꽉 차게 표시 */
-    .screen {
-      aspect-ratio: 8/3;
-      display: grid;
-      place-items: center;
-      padding: 18px
+    .canvasWrap{
+      width:min(92%,980px);
+      max-height:85%;
+      display:grid;
+      place-items:center;
     }
 
-    .bezel {
-      width: 100%;
-      height: 100%;
-      border-radius: 14px;
-      box-shadow: inset 0 0 0 1px #132a59, inset 0 0 60px rgba(0, 0, 0, .65);
-      display: grid;
-      place-items: center;
-      position: relative;
-      overflow: hidden;
-      background-image: radial-gradient(120% 200% at 50% -60%, rgba(255, 255, 255, .07), rgba(255, 255, 255, 0) 40%), linear-gradient(180deg, #0a1c39, #0a1326)
-    }
-
-    .canvasWrap {
-      width: min(92%, 980px);
-      max-height: 85%;
-      display: grid;
-      place-items: center
-    }
-
-    /* ✅ brick-breaker와 동일하게 비율 고정: height:auto 만 사용 */
-    canvas#game {
-      display: block;
-      width: 100%;
-      height: auto;
-      background: #000;
-      border-radius: 18px;
-      border: 1px solid #1b2b45;
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, .25)
+    canvas#game{
+      display:block;
+      width:100%;
+      height:auto;
+      background:#000;
+      border-radius:18px;
+      border:1px solid #1b2b45;
+      box-shadow:inset 0 0 40px rgba(0,0,0,.25);
     }
 
     /* Overlay */
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background-color: rgba(5, 0, 20, .55);
-      backdrop-filter: blur(2px);
-      z-index: 5
+    .overlay{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(5,0,20,.55);
+      backdrop-filter:blur(2px);
+      z-index:5;
     }
-
-    .overlay .msg {
-      font-weight: 900;
-      letter-spacing: .2em;
-      text-align: center;
-      filter: drop-shadow(0 6px 20px rgba(0, 0, 0, .6));
-      font-size: clamp(28px, 5vw, 68px);
-      color: #ffe166;
-      text-shadow: 0 0 16px rgba(255, 225, 102, .45), 0 0 40px rgba(14, 165, 255, .25)
+    .overlay .msg{
+      font-weight:900;
+      letter-spacing:.2em;
+      text-align:center;
+      filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));
+      font-size:clamp(28px,5vw,68px);
+      color:#ffe166;
+      text-shadow:0 0 16px rgba(255,225,102,.45),
+                   0 0 40px rgba(14,165,255,.25);
     }
-
-    .overlay .sub {
-      margin-top: 10px;
-      font-size: clamp(12px, 2.2vw, 16px);
-      opacity: .9;
-      color: #dfe9ff;
-      text-align: center
+    .overlay .sub{
+      margin-top:10px;
+      font-size:clamp(12px,2.2vw,16px);
+      opacity:.9;
+      color:#dfe9ff;
+      text-align:center;
     }
 
     /* Deck */
-    .deck {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 14px 18px 22px;
-      border-top: 1px solid #0a2b57;
-      background-image: linear-gradient(180deg, #0b1f40, #0a1730)
+    .deck{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:center;
+      padding:14px 18px 22px;
+      border-top:1px solid #0a2b57;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
     }
-
     .deck .btn,
     .deck select,
-    .deck input[type=range] {
-      font-weight: 900;
-      color: #dff1ff;
-      border: 1px solid #224aa8;
-      border-radius: 12px;
-      padding: 10px 14px;
-      box-shadow: 0 10px 18px rgba(0, 0, 0, .45), inset 0 0 18px rgba(255, 255, 255, .05);
-      cursor: pointer;
-      background-image: linear-gradient(180deg, #1b3a7a, #102a66);
-      touch-action: manipulation;
-
-      /* ✅ UI/UX 오류 수정: 글로벌 .btn 스타일 무시 (세로 글자 방지) */
-      flex: 0 0 auto;
-      min-height: var(--touchMin);
-      height: auto;
-      writing-mode: horizontal-tb;
-      text-orientation: mixed;
-      white-space: nowrap;
-      text-align: center;
+    .deck input[type=range]{
+      font-weight:900;
+      color:#dff1ff;
+      background:linear-gradient(180deg,#1b3a7a,#102a66);
+      border:1px solid #224aa8;
+      border-radius:12px;
+      padding:10px 14px;
+      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+      cursor:pointer;
+      touch-action:manipulation;
     }
-
-    /* ✅ 레이블도 불필요하게 늘어나지 않도록 고정 */
-    .deck label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 0 0 auto;
-      writing-mode: horizontal-tb;
-      text-orientation: mixed;
-      white-space: nowrap;
-    }
-
     .deck .btn:hover,
-    .deck select:hover {
-      filter: brightness(1.06)
+    .deck select:hover{
+      filter:brightness(1.06);
     }
-
-    .deck input[type=range] {
-      width: 140px;
-      height: 12px;
-      accent-color: #5fb0ff
+    .deck label{
+      display:flex;
+      align-items:center;
+      gap:8px;
     }
-
-    /* HOME 버튼 사각형 디스플레이 광고 컨테이너 */
-    .homeDisplayAd {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 220px;
-      max-width: 260px;
-      flex: 0 0 auto;
+    .deck input[type=range]{
+      width:140px;
+      height:12px;
+      accent-color:#5fb0ff;
     }
-
-    .homeDisplayAd ins.adsbygoogle {
-      width: 100%;
-    }
-
+    
     /* Records Modal */
     #recModal {
       display: none;
@@ -940,9 +695,81 @@
       border-radius: 10px;
     }
 
-    @media (hover:none) {
-      .touchLayer {
-        display: block;
+    /* ===== Mobile Responsive ===== */
+    @media (max-width: 1100px){
+      .gameLayout{
+        grid-template-columns:minmax(0,1fr);
+      }
+      .sideAd{
+        display:none;
+      }
+    }
+
+    @media (max-width: 980px){
+      .shell{
+        padding:12px;
+        padding-bottom:calc(12px + env(safe-area-inset-bottom,0));
+      }
+      .cabinet{
+        width:100vw;
+        border-radius:0;
+      }
+      .marquee{
+        padding:12px;
+        border-radius:0;
+      }
+      .play{
+        margin:8px 12px;
+      }
+      .screen{
+        padding:10px;
+      }
+      .hud{
+        gap:8px;
+        padding:10px;
+      }
+      .chip,
+      .pill,
+      .hud .btnMini{
+        min-width:112px;
+        height:42px;
+        padding:0 12px;
+      }
+      .pill{min-width:220px}
+      .deck{
+        gap:8px;
+        padding:10px 12px 16px;
+      }
+      .deck .btn,
+      .deck select,
+      .deck input[type=range]{
+        padding:10px 12px;
+      }
+    }
+    @media (max-width: 640px){
+      .hud{
+        padding:8px;
+      }
+      .chip,
+      .pill,
+      .hud .btnMini{
+        height:40px;
+      }
+      .points .nums .big,
+      .tickets .nums .big{
+        font-size:16px;
+      }
+      .points .bar,
+      .tickets .bar{
+        width:96px;
+      }
+      .deck{
+        justify-content:flex-start;
+        overflow:auto;
+        -webkit-overflow-scrolling:touch;
+      }
+      .deck > *{
+        flex:0 0 auto;
       }
     }
 
@@ -994,7 +821,7 @@
 <audio id="bgm" src="/assets/music/retro-running-background.mp3" preload="auto" loop></audio>
 
   <div class="shell">
-    <div class="cabinetLayout">
+    <div class="gameLayout">
       <!-- 좌측 세로 광고 배너 -->
       <aside class="sideAd sideAd-left" aria-label="left vertical ad">
         <div class="sideAdInner">
@@ -1007,7 +834,6 @@
         </div>
       </aside>
 
-```
   <!-- 중앙 아케이드 캐비닛(기존 게임 UI 그대로) -->
   <section class="cabinet" aria-label="retro arcade cabinet">
     <header class="marquee">
@@ -1941,19 +1767,26 @@
     })();
 
     /***** Cabinet fit *****/
-    function fitCabinet() {
-      const cab = document.querySelector('.cabinet'); if (!cab) return;
-      const margin = 16;
-      cab.style.transform = 'none';
-      const w = cab.offsetWidth, h = cab.offsetHeight;
-      const vw = window.innerWidth, vh = window.innerHeight;
-      const needScale = (w > vw - margin * 2) || (h > vh - margin * 2);
-      const scale = needScale ? Math.min(1, (vw - margin * 2) / w, (vh - margin * 2) / h) : 1;
-      cab.style.transform = 'scale(' + scale + ')';
+    function fitCabinet(){
+        const cab = document.querySelector('.cabinet');
+        if (!cab) return;
+        const margin = 16;
+        cab.style.transform = 'none';
+        const w = cab.offsetWidth;
+        const h = cab.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const needScale = (w > vw - margin*2) || (h > vh - margin*2);
+        const scale = needScale
+         ? Math.min(1, (vw - margin*2)/w, (vh - margin*2)/h)
+         : 1;
+        cab.style.transform = `scale(${scale})`;
     }
-    window.addEventListener('resize', () => requestAnimationFrame(fitCabinet), { passive: true });
-    window.addEventListener('orientationchange', () => requestAnimationFrame(fitCabinet), { passive: true });
-    setTimeout(fitCabinet, 0);
+
+  window.addEventListener('resize', ()=> requestAnimationFrame(fitCabinet), {passive:true});
+  window.addEventListener('load', () => requestAnimationFrame(fitCabinet));
+  window.addEventListener('orientationchange', ()=> requestAnimationFrame(fitCabinet), {passive:true});
+  setTimeout(fitCabinet, 0);
 
     /***** ✅ 세션 훅(안전 래퍼): 허브 분석용 앱 훅 호출 *****/
     function notifyStart() { try { if (typeof window.gameStart === 'function') window.gameStart('dino'); } catch (e) { } }

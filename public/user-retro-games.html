@@ -2527,7 +2527,7 @@
       if(!bgmAudio){
         bgmAudio = document.getElementById("hubBgm");
         if(bgmAudio){
-          bgmAudio.volume = 0.3;
+          bgmAudio.volume = 0.5;
         }
       }
       return bgmAudio;
@@ -3247,37 +3247,6 @@
         };
       }
     })();
-
-    /***** 🎵 Background Music (30% volume, loop) *****/
-    let bgmAudio = null;
-    function initBgm() {
-      try {
-        const el = document.getElementById('bgm');
-        if (!el) return;
-        bgmAudio = el;
-        bgmAudio.volume = 1.0;
-      } catch (e) {
-        console.warn('bgm init error', e);
-      }
-    }
-    function playBgm() {
-      if (!bgmAudio) initBgm();
-      if (!bgmAudio) return;
-      try {
-        const p = bgmAudio.play();
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => { /* autoplay block 무시 */ });
-        }
-      } catch (e) {
-        /* no-op */
-      }
-    }
-    function pauseBgm() {
-      try {
-        if (bgmAudio) bgmAudio.pause();
-      } catch (e) { }
-    }
-    initBgm();
   </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">

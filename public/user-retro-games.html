@@ -2523,6 +2523,8 @@
 
     /* 🎵 허브 BGM 제어용 헬퍼 */
     let bgmAudio = null;
+    let hubBgmUnlockBound = false;
+    let hubBgmShouldPlay = false;
     function getBgmAudio(){
       if(!bgmAudio){
         bgmAudio = document.getElementById("hubBgm");
@@ -2533,20 +2535,45 @@
       return bgmAudio;
     }
 
-    function syncBgmWithSettings(settings){
+    function syncBgmWithSettings(settings) {
       const audio = getBgmAudio();
-      if(!audio) return;
-      const enabled = settings.soundMaster !== false && settings.bgm !== false;
-      audio.muted = !enabled;
-      if(enabled){
-        audio.volume = 0.3;
-        try{
-          audio.play().catch(function(){});
-        }catch(e){}
-      }else{
-        try{
-          if(!audio.paused) audio.pause();
-        }catch(e){}
+      if (!audio) return;
+
+      const enabled = settings.soundMaster && settings.bgm;
+      // 현재 설정 상태를 기억해 두었다가, 나중에 클릭으로 풀 때 사용
+      hubBgmShouldPlay = enabled;
+
+      // 끄는 쪽이면 바로 정지
+      if (!enabled) {
+        try { audio.pause(); } catch (e) {}
+        return;
+      }
+
+      // 1차 시도: 페이지 로드 시 바로 재생
+      try {
+        const p = audio.play();
+        if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // ❌ 자동재생이 막힌 경우 → 첫 사용자 입력 때 다시 시도
+        if (hubBgmUnlockBound) return;
+
+        const unlock = () => {
+          if (!hubBgmShouldPlay) return;
+          try { audio.play(); } catch (e) {}
+          window.removeEventListener('click', unlock);
+          window.removeEventListener('keydown', unlock);
+          window.removeEventListener('touchstart', unlock);
+          hubBgmUnlockBound = false;
+        };
+
+        hubBgmUnlockBound = true;
+        window.addEventListener('click', unlock, { once: true });
+        window.addEventListener('keydown', unlock, { once: true });
+        window.addEventListener('touchstart', unlock, { once: true, passive: true });
+        });
+       }
+      } catch (e) {
+    // 에러는 조용히 무시
       }
     }
 

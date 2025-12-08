@@ -387,6 +387,7 @@
       justify-content:center;
       z-index:999;
     }
+    
     /* Ad Modal */
     #adModal{
       display:none;
@@ -945,48 +946,44 @@
   /* ================= 배경음악 컨트롤러 ================= */
   const BGM_SRC = '/assets/music/brick-breaker-background.mp3';
   let bgmController = null;
+  let bgmStarted = false;
 
-  function initBgm(){
-    const el = document.getElementById('bgm');
-    if(!el) return;
-
-    el.src = BGM_SRC;
-    el.loop = true;
-    el.volume = 0.3;
-
-    let unlocked = false;
-
-    function play(){
-      if(!el) return;
-      const p = el.play();
-      if(p && typeof p.then === 'function'){
-        p.catch(()=>{});
+    function ensureBgm(){
+      if(bgmAudio) return bgmAudio;
+      try{
+        const a = new Audio(BGM_SRC);
+        a.loop = true;
+        a.volume = 0.3; // 30% volume
+        bgmAudio = a;
+        return a;
+      }catch(e){
+        console.warn('bgm init failed', e);
+        return null;
       }
     }
-    function pause(){
-      try{ el.pause(); }catch(e){}
-    }
-    function unlockOnce(){
-      if(unlocked) return;
-      unlocked = true;
-      play();
+
+    function requestBgmStart(){
+      if(bgmStarted) return;
+      const a = ensureBgm();
+      if(!a) return;
+      bgmStarted = true;
+      a.play().catch(err=>{
+        console.warn('bgm play blocked', err);
+        bgmStarted = false;
+      });
     }
 
-    ['click','touchstart'].forEach(ev=>{
-      window.addEventListener(ev, unlockOnce, { once:true, passive:true });
-    });
-    window.addEventListener('keydown', unlockOnce, { once:true });
+    window.addEventListener('pointerdown', requestBgmStart, {once:true, passive:true});
+    window.addEventListener('keydown', requestBgmStart, {once:true});
 
-    document.addEventListener('visibilitychange',()=>{
+    document.addEventListener('visibilitychange', ()=>{
+      if(!bgmAudio) return;
       if(document.hidden){
-        pause();
-      }else if(unlocked){
-        play();
+        try{ bgmAudio.pause(); }catch(e){}
+      }else if(bgmStarted){
+        bgmAudio.play().catch(()=>{});
       }
     });
-
-    bgmController = { play, pause };
-  }
 
   /* ================= 게임 본체 ================= */
   class BrickBreaker{

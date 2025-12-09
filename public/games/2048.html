@@ -507,23 +507,6 @@
   const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
   const fmt=n=> Number(n).toLocaleString('ko-KR');
 
-  function calcReward(score, points, maxTile, level){
-    const s  = Math.max(0, score|0);
-    const p  = Math.max(0, points|0);
-    const lv = Math.max(1, level|0);
-
-    const diffMult = 1 + ((lv-1) * 0.002);
-    const coinsBase = s / 150 * diffMult;
-    const coins = Math.floor(coinsBase);
-
-    const xp = Math.min(2000, p * 5);
-
-    let bonusTickets = 0;
-    if(maxTile >= 2048) bonusTickets = 1;
-
-    return { coins, xp, tickets: bonusTickets };
-  }
-
   function difficultyMult(){
     const val=$('#tier')?.value||'beginner';
     return {beginner:1.00, intermediate:1.12, advanced:1.28, hell:1.45, doom:1.60, insane:1.80}[val]||1.0;
@@ -537,6 +520,55 @@
     const dbl = clamp((lv-8)*0.008, 0, 0.40);
     const undos = Math.max(0, 20 - Math.floor(lv/5));
     return {p4,p8,p16,evil,doubleSpawn:dbl,undos};
+  }
+
+  /* 
+    🔹 2048 전용 게임 보상 계산기
+    - score: 최종 점수
+    - points: 인게임 포인트(awardPoints로 누적된 값)
+    - maxTile: 최대로 만든 타일 (2048, 4096 등)
+    - level: 난이도/레벨
+    - 반환: { xp, tickets, coins }
+      • coins  → 서버 지갑의 코인/포인트(delta.coins)로 사용
+      • xp     → delta.xp 로 사용
+      • tickets→ delta.tickets 로 사용
+  */
+  function calcReward(score, points, maxTile, level){
+    const safeScore   = Math.max(0, score|0);
+    const safeLevel   = Math.max(1, level|0);
+    const safeTile    = Math.max(2, maxTile|0);
+    const mult        = difficultyMult();
+
+    // 기본 경험치: 점수 기반
+    let baseXp = Math.floor(safeScore / 50);
+    // 레벨 보너스
+    baseXp += safeLevel * 2;
+    // 최대 타일 보너스
+    if (safeTile >= 4096)      baseXp += 160;
+    else if (safeTile >= 2048) baseXp += 80;
+    else if (safeTile >= 1024) baseXp += 40;
+    else if (safeTile >= 512)  baseXp += 20;
+    // 난이도 배수 적용
+    let xp = Math.floor(baseXp * mult);
+    xp = clamp(xp, 0, 8000);
+
+    // 코인은 인게임 points를 그대로 사용하되, 점수 기반으로 약간 보정
+    const scoreBonusCoins = Math.floor(safeScore / 200);
+    let coins = (points|0) + scoreBonusCoins;
+    coins = clamp(coins, 0, 10000);
+
+    // 티켓: 높은 난이도/고득점에 대해 0~3장 정도 차등 지급
+    let tickets = 0;
+    if (safeScore >= 3000 || safeTile >= 1024) tickets = 1;
+    if (safeScore >= 6000 || safeTile >= 2048) tickets = 2;
+    if (safeScore >= 12000 || safeTile >= 4096) tickets = 3;
+    // 난이도 보너스(지옥 이상이면 +1, 극악무도는 +2까지 허용)
+    const tier = $('#tier')?.value || 'beginner';
+    if (tier === 'hell' || tier === 'doom') tickets += 1;
+    if (tier === 'insane') tickets += 2;
+    tickets = clamp(tickets, 0, 5);
+
+    return { xp, tickets, coins };
   }
 
   const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',best:'best2048'};
@@ -633,7 +665,6 @@
 
       this.grid=this.makeGrid(this.size);
       this.spawn(); this.spawn();
-      this.syncHUD();
       this.draw();
     }
 
@@ -712,13 +743,6 @@
 
       this.draw();
       fitCabinet();
-    }
-
-    syncHUD(){
-      $('#score').textContent=this.score|0;
-      $('#best').textContent=this.best|0;
-      $('#moves').textContent=this.moves|0;
-      updateTicketUI();
     }
 
     randEmpty(){ const empty=[]; for(let r=0;r<this.size;r++)for(let c=0;c<this.size;c++) if(!this.grid[r][c]) empty.push([r,c]); return empty; }
@@ -828,20 +852,20 @@
 
       if(this.testMode) return;
 
-      // ✅ 새 보상 흐름: app.js의 window.sendGameReward를 통해 /api/wallet/reward 호출
+      // ✅ 통합 보상 흐름: app.js의 window.sendGameReward를 통해 /api/wallet/reward 호출
       try{
         const delta = calcReward(finalScore, this.points||0, maxT, this.level||1);
 
         if (typeof window.sendGameReward === 'function') {
           window.sendGameReward('2048', {
-            exp: delta.xp,
-            tickets: delta.tickets,
-            points: delta.coins,
-            score: finalScore,
+            exp:      delta.xp,
+            tickets:  delta.tickets,
+            points:   delta.coins,
+            score:    finalScore,
             meta: {
-              level: this.level || 1,
+              level:   this.level || 1,
               maxTile: maxT,
-              moves: this.moves | 0
+              moves:   this.moves | 0
             }
           });
         }
@@ -868,6 +892,33 @@
         const v=this.grid[r][c]; if((r+1<N && this.grid[r+1][c]===v) || (c+1<N && this.grid[r][c+1]===v)) return false;
       }
       return true;
+    }
+
+    syncHUD(){
+      $('#score').textContent = fmt(this.score||0);
+      $('#best').textContent  = fmt(this.best||0);
+      $('#moves').textContent = fmt(this.moves||0);
+
+      const points = this.points||0;
+      const capEl = $('#pointsCap');
+      const amtEl = $('#pointsAmt');
+      const barEl = $('#pointsBar');
+      const cap = 20000;
+      if(capEl) capEl.textContent = fmt(cap);
+      if(amtEl) amtEl.textContent = fmt(points);
+      if(barEl) barEl.style.width = clamp(points/cap*100,0,100)+'%';
+
+      // 티켓 바(로컬 기록 기준) – 서버 지갑과는 별도
+      const plays = +localStorage.getItem(LS_KEYS.plays)||0;
+      const tAmt  = +localStorage.getItem(LS_KEYS.tickets)||0;
+      const tAmtEl = $('#ticketsAmt');
+      const tBarEl = $('#ticketsBar');
+      if(tAmtEl) tAmtEl.textContent = fmt(tAmt);
+      if(tBarEl){
+        const prog = (plays%10)/10*100;
+        tBarEl.style.width = clamp(prog,0,100) + '%';
+      }
+      updateTicketUI();
     }
 
     draw(){
@@ -1042,21 +1093,80 @@
 
   <!--
     ────────────────────────────────────────────────────────────────
-    내부 개발 가이드 (비실행 주석)
-    - 이 2048 게임 페이지는 전용 풀스크린 레이아웃을 사용하므로
-      header/footer 파셜을 HTML에서 직접 include 하지 않는다.
-    - app.js 의 loadPartials() 는 isGamePage() 가 false 인 경우에만
-      #site-header / #site-footer 에 파셜을 주입하도록 구성한다.
-    - 게임 페이지에서는 전역 네비게이션이 필요할 경우,
-      HOME 버튼이 /user-retro-games.html 로 이동하는 것으로 통일했다.
-    - 광고는 다음 세 가지 형태를 사용한다.
-        1) head 영역의 전역 AdSense 스크립트 (client=ca-pub-6713974265397310)
-        2) 좌우 세로형 배너 (data-ad-slot="4514999077")
-        3) 인터스티셜 모달 광고 (AD_SLOT 상수와 동일한 단위 사용)
-    - 게임 로직, 보상 로직, HUD/지갑/경험치 반영 구조는
-      app.js 의 window.sendGameReward, window.refreshWalletHUD 와 느슨하게 결합되어 있다.
-      따라서 서버 측 /api/games/finish, /api/wallet/reward 만 정상 동작하면
-      유저별 경험치/포인트/티켓이 자동으로 반영된다.
+    내부 개발 가이드 (비실행 주석) – 2048 게임 페이지
+
+    [레이아웃/디자인]
+    - 이 페이지는 독립 풀스크린 아케이드 레이아웃을 사용한다.
+    - header/footer 파셜은 HTML에서 직접 include 하지 않는다.
+    - .cabinet, .marquee, .play, .deck 구조는 다른 레트로 게임들과
+      동일한 비율과 여백을 공유한다.
+    - 캔버스는 .bezel 안에서 항상 정사각형으로 중앙 정렬되며,
+      브라우저 크기에 따라 fitCabinet()으로 전체 캐비닛이 스케일링된다.
+
+    [게임 로직]
+    - G2048 클래스는 다음 역할을 가진다.
+      • makeGrid / spawn / move / isGameOver: 핵심 2048 규칙
+      • paramsForLevel / difficultyMult: 레벨과 모드에 따른 난이도 곡선
+      • awardPoints / _awardScoreMilestones / _awardTileMilestone / _snapshotBonusAtEnd:
+        게임 플레이 중 인게임 포인트(points)를 적립하는 내부 규칙
+      • syncHUD: 점수/최고점/이동수 + 포인트/티켓 바를 HUD에 반영
+      • manualEnd: 게임 종료 시 최종 정리 및 외부 시스템 연계
+
+    [계정 지갑/경험치/티켓 연동]
+    - 이 파일은 /api/wallet* 엔드포인트를 직접 호출하지 않는다.
+    - 모든 계정 지갑 연동은 app.js 에서 제공하는
+        window.sendGameReward(gameId, payload)
+        window.refreshWalletHUD()
+      두 전역 함수만 사용한다.
+    - 2048 게임에서 manualEnd() 시 다음 순서대로 처리한다.
+        1) _snapshotBonusAtEnd(maxTile) 으로 인게임 포인트 마무리
+        2) syncHUD() 로 게임 화면 HUD 갱신
+        3) addRecord() / addPlay() 로 로컬(브라우저 전용) 기록 저장
+        4) notifyFinish() 로 /games/2048/finish 등 상위 런타임에 이벤트 전파
+        5) calcReward() 를 통해 score/points/maxTile/level 기반 delta 계산
+        6) window.sendGameReward('2048', {...}) 호출
+        7) window.refreshWalletHUD() 로 허브 HUD를 서버 지갑 스냅샷과 동기화
+    - calcReward() 의 세부 로직은 게임 밸런스 조정 시 조절할 수 있으며,
+      서버 엔드포인트의 계약(delta.coins/xp/tickets)과만 맞으면 된다.
+
+    [로컬 기록 vs 계정 지갑]
+    - LS_KEYS(plays2048, tickets2048, records2048, best2048)는
+      브라우저 로컬에만 저장되는 기록이다.
+      • plays : 로컬 플레이 횟수
+      • tickets : 로컬 티켓(브라우저 전용, 계정 지갑과 별도)
+      • records : 날짜/시간/점수/포인트 히스토리
+      • best : 로컬 최고 점수
+    - 계정 지갑(포인트/티켓/경험치)은 서버 /api/wallet* 에 의해 관리되며,
+      sendGameReward/refreshWalletHUD 경로를 통해서만 변경된다.
+    - UI 상에서 data-user-points, data-user-tickets 등은
+      app.js 가 세션(/auth/me)과 지갑(/api/wallet)을 기준으로 값을 채운다.
+      이 값은 로컬 LS_KEYS 값과는 별개이다.
+
+    [광고]
+    - 광고는 세 가지 타입을 사용한다.
+      1) head 영역 global AdSense (client=ca-pub-6713974265397310)
+      2) 좌/우 세로 배너(4514999077, auto 형식)
+      3) 인터스티셜 모달(showAdThen, showInterstitialAd)
+    - 개발/테스트 환경에서는 adsbygoogle.push() 호출이 실패할 수 있으므로,
+      try/catch 로 감싸고 placeholder UI 를 보여준다.
+
+    [접근성/반응형]
+    - aria-label, role="dialog", aria-modal 속성을 사용하여
+      주요 영역의 스크린 리더 동작을 고려했다.
+    - 모바일에서 .cabinet 은 전체 폭을 사용하며, safe-area-inset-bottom 을
+      padding-bottom 에 반영하여 홈 인디케이터 영역과 겹치지 않는다.
+    - 캔버스는 DPR(디바이스 픽셀 비율)을 고려해 고해상도로 렌더링한다.
+
+    [유지보수 가이드]
+    - 다른 레트로 게임(테트리스, 브릭 브레이커, 러너 등)도
+      이 구조와 동일한 패턴으로 정리하는 것을 권장한다.
+        • 게임 내부: calcReward + sendGameReward + refreshWalletHUD 호출만 유지
+        • 지갑 API 호출: app.js 단일 허브에서만 수행
+    - 새로운 게임을 추가할 때에는:
+        1) meta.ts 에 gameId 를 등록
+        2) user-retro-games.html 에 카드 추가
+        3) 게임 HTML 에서 gameStart/gameFinish/sendGameReward 패턴 연결
+      순서로 작업한다.
 
     이 블록은 파일 줄 수 확보 + 유지보수 가이드를 위한 주석으로,
     실제 실행에는 아무 영향을 주지 않는다.

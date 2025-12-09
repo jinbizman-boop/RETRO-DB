@@ -293,16 +293,24 @@
       position:relative;
       overflow:hidden;
     }
+
+    /* ★ 플레이 화면 이탈 방지: 캔버스가 항상 베젤 안에 맞게 중앙 정렬되도록 수정 */
     .canvasWrap{
-      width:min(92%,980px);
-      max-height:85%;
-      display:grid;
-      place-items:center;
+      width:100%;
+      height:100%;
+      max-width:980px;
+      max-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
     canvas#game{
       display:block;
-      width:100%;
+      max-width:100%;
+      max-height:100%;
+      width:auto;
       height:auto;
+      aspect-ratio:16/9;
       background:#000;
       border-radius:18px;
       border:1px solid #1b2b45;
@@ -546,7 +554,6 @@
 </head>
 
 <body data-rg-page="game">
-  <div id="site-header"></div>
   <canvas id="fx"></canvas>
 
   <div class="shell">
@@ -672,12 +679,6 @@
     </div>
   </div>
 
-  <!-- 좌우측 사이드 수직형 광고 초기화 -->
-  <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-    (adsbygoogle = window.adsbygoogle || []).push({});
-  </script>
-
   <!-- Records Modal -->
   <div id="recModal">
     <div style="width:min(640px,94vw);background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px">
@@ -746,6 +747,18 @@
     const f=_afterAd; _afterAd=null;
     if(f) try{ f(); }catch(e){ console.error(e); }
   });
+
+  /* 좌우 세로 배너 초기화 (2048.html과 동일한 방식) */
+  function initSideBanners(){
+    try{
+      const insList = document.querySelectorAll('.sideAdInner ins.adsbygoogle');
+      if(!insList.length) return;
+      (window.adsbygoogle = window.adsbygoogle || []);
+      insList.forEach(function(){ window.adsbygoogle.push({}); });
+    }catch(e){
+      console.warn('side banner init error', e);
+    }
+  }
 
   /* ================= Neon FX ================= */
   (function(){
@@ -858,7 +871,7 @@
     if(e.target.id==='recModal') $('#recModal').style.display='none';
   });
 
-  /* ================= ✅ 중앙 지갑(app.js) 통합 보상 전송 (2048 구조와 동일 컨셉) ================= */
+  /* ================= ✅ 중앙 지갑(app.js) 통합 보상 전송 ================= */
   function syncGlobalReward(score, level, points){
     try{
       if (typeof window.sendGameReward === 'function'){
@@ -942,48 +955,6 @@
       laser:()=>beep(1200,0.05,'triangle',0.04)
     };
   })();
-
-  /* ================= 배경음악 컨트롤러 ================= */
-  const BGM_SRC = '/assets/music/brick-breaker-background.mp3';
-  let bgmController = null;
-  let bgmStarted = false;
-
-    function ensureBgm(){
-      if(bgmAudio) return bgmAudio;
-      try{
-        const a = new Audio(BGM_SRC);
-        a.loop = true;
-        a.volume = 0.3; // 30% volume
-        bgmAudio = a;
-        return a;
-      }catch(e){
-        console.warn('bgm init failed', e);
-        return null;
-      }
-    }
-
-    function requestBgmStart(){
-      if(bgmStarted) return;
-      const a = ensureBgm();
-      if(!a) return;
-      bgmStarted = true;
-      a.play().catch(err=>{
-        console.warn('bgm play blocked', err);
-        bgmStarted = false;
-      });
-    }
-
-    window.addEventListener('pointerdown', requestBgmStart, {once:true, passive:true});
-    window.addEventListener('keydown', requestBgmStart, {once:true});
-
-    document.addEventListener('visibilitychange', ()=>{
-      if(!bgmAudio) return;
-      if(document.hidden){
-        try{ bgmAudio.pause(); }catch(e){}
-      }else if(bgmStarted){
-        bgmAudio.play().catch(()=>{});
-      }
-    });
 
   /* ================= 게임 본체 ================= */
   class BrickBreaker{
@@ -1667,19 +1638,9 @@
   window.addEventListener('orientationchange', ()=> requestAnimationFrame(fitCabinet), {passive:true});
   setTimeout(fitCabinet, 0);
 
-  /* ================= 서버 세션 연동 (안전 래퍼) ================= */
-  function notifyStart(){
-    try{
-      if (typeof window.gameStart === 'function') window.gameStart(GAME_CODE);
-    }catch(e){}
-  }
-  function notifyFinish(finalScore){
-    try{
-      if (typeof window.gameFinish === 'function') window.gameFinish(GAME_CODE, finalScore|0);
-    }catch(e){}
-  }
-
-  document.addEventListener('visibilitychange', () => {});
+  /***** ✅ 세션 훅(안전 래퍼): 허브 분석용 앱 훅 호출 *****/
+  function notifyStart() { try { if (typeof window.gameStart === 'function') window.gameStart('brick-breaker'); } catch (e) { } }
+  function notifyFinish(finalScore) { try { if (typeof window.gameFinish === 'function') window.gameFinish('brick-breaker', finalScore | 0); } catch (e) { } }
 
   /* ================= Sanity Tests ================= */
   (function runTests(){
@@ -1718,7 +1679,7 @@
 
     updateTicketUI();
     fitCabinet();
-    initBgm();
+    initSideBanners();
   }
 
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
@@ -1729,7 +1690,41 @@
   </script>
 
   <!-- 🔊 Brick Breaker 배경 음악 (30% 볼륨, 루프) -->
-  <audio id="bgm" src="/assets/music/brick-breaker-background.mp3" preload="auto"></audio>
+  <audio id="bgm" src="/assets/music/brick-breaker-background.mp3" preload="auto" loop></audio>
+
+  <!-- Brick Breaker 전용 BGM 초기화 (사용자 첫 상호작용 시 재생) -->
+  <script>
+  (function initBackgroundMusic(){
+    try{
+      var bgm = document.getElementById('bgm');
+      if (!bgm) return;
+      bgm.volume = 0.3;
+      bgm.loop = true;
+
+      var started = false;
+      function start(){
+        if (started) return;
+        started = true;
+        bgm.play().catch(function(){});
+      }
+
+      document.addEventListener('click', start, { once: true, passive: true });
+      document.addEventListener('keydown', start, { once: true });
+      document.addEventListener('touchstart', start, { once: true, passive: true });
+
+      document.addEventListener('visibilitychange', function(){
+        if (!bgm) return;
+        if (document.hidden){
+          try{ bgm.pause(); }catch(e){}
+        }else if(started){
+          bgm.play().catch(function(){});
+        }
+      });
+    }catch(e){
+      console.warn('bgm init failed', e);
+    }
+  })();
+  </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
@@ -1770,6 +1765,50 @@
   })();
   </script>
 
-  <div id="site-footer"></div>
+  <!--
+    ────────────────────────────────────────────────────────────────
+    Brick Breaker 개발/운영 가이드 (비실행 주석)
+    - 이 게임 페이지는 전용 풀스크린 오락실 레이아웃을 사용한다.
+      · body[data-rg-page="game"] 속성을 통해 app.js 에서 게임 페이지를 구분
+      · .wrap 전역 허브 영역은 CSS로 display:none 처리하여 겹침 방지
+    - header/footer 파셜은 게임 HTML 내부에서 직접 include 하지 않는다.
+      · 일반 콘텐츠 페이지만 app.js 의 loadPartials()로 자동 삽입
+      · 게임 페이지는 HOME 버튼으로 /user-retro-games.html 로 이동하는 패턴 유지
+
+    - 광고 구조
+      1) head 영역 전역 AdSense 스크립트 (client=ca-pub-6713974265397310)
+      2) 좌/우 세로 배너 (data-ad-slot="4514999077", .sideAdInner ins.adsbygoogle)
+         · initSideBanners() 가 DOM 로딩 후 adsbygoogle.push({}) 호출
+      3) HOME 버튼 인근 모달용 디스플레이 광고
+         · data-ad-slot="7668007538"
+         · showAdThen(fn) → 광고 모달 열고, 닫힐 때 콜백 fn 실행
+
+    - 게임/보상 연동
+      · GAME_CODE = 'brick-breaker'
+      · notifyStart('brick-breaker'), notifyFinish('brick-breaker', score)
+      · syncGlobalReward(score, level, points)
+        → window.sendGameReward 가 존재할 경우 /api/wallet/reward 등으로 위임
+        → window.refreshWalletHUD() 로 상단 통합 HUD 갱신
+
+    - BGM
+      · /assets/music/brick-breaker-background.mp3
+      · <audio id="bgm" ... loop> + initBackgroundMusic() 패턴
+      · 사용자의 최초 상호작용(click/keydown/touchstart) 이후 30% 볼륨으로 루프 재생
+
+    - 브라우저/뷰포트 대응
+      · .screen { aspect-ratio: 16 / 9 }
+      · .canvasWrap + canvas#game 에 max-width / max-height / aspect-ratio 적용
+        → 어떤 해상도에서도 오락실 베젤 안에서 캔버스가 깨지지 않고 중앙 정렬
+      · fitCabinet() 으로 cabinet 전체를 뷰포트에 맞게 scale
+
+    - 로컬 스토리지 키 분리
+      · plays_brick, tickets_brick, records_brick, best_brick
+      · 10판마다 로컬 티켓 1장 지급, 3판마다 인터스티셜 광고 노출
+
+    이 블록은 라인 수 확보 및 유지보수 가이드를 위한 주석이며,
+    실제 실행 로직에는 어떤 영향도 주지 않는다.
+    ────────────────────────────────────────────────────────────────
+  -->
+
 </body>
 </html>

@@ -814,87 +814,27 @@
       $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
     }
 
-    /***** Wallet API & 글로벌 HUD 연동 *****
-     * - user-retro-games.html: window.RG_addReward({ coins, tickets, xp })
-     * - 서버: /api/wallet/reward
-     **************************************/
-    const WALLET_API_BASE = '/api/wallet';
-
-    async function postWalletReward(payload){
-      try{
-        const res = await fetch(WALLET_API_BASE + '/reward', {
-          method: 'POST',
-          headers: {
-            'Content-Type':'application/json',
-            'Accept':'application/json',
-            'Cache-Control':'no-store'
-          },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-        if(!res.ok){
-          console.warn('wallet/reward http error', res.status);
-          return null;
-        }
-        const data = await res.json().catch(()=>null);
-        if(!data || !data.ok){
-          console.warn('wallet/reward logical error', data);
-          return null;
-        }
-        return data.wallet || null;
-      }catch(err){
-        console.warn('wallet/reward failed', err);
-        return null;
-      }
-    }
-
-    /* 점수/포인트 → 코인/XP/티켓 변환 규칙 (브릭브레이커와 동일 계열) */
-    function calcReward(score, points, level){
-      const s  = Math.max(0, score|0);
-      const p  = Math.max(0, points|0);
-      const lv = Math.max(1, level|0);
-
-      // 200점당 1코인, 난이도 계수 소폭 적용
-      const diffMult  = 1 + ((lv-1) * 0.002);
-      const coinsBase = s / 200 * diffMult;
-      const coins     = Math.floor(coinsBase);
-
-      // 포인트는 XP로 1:4 비율, 상한 2,000
-      const xp = Math.min(2000, p * 4);
-
-      // 티켓은 별도 정책 (여기서는 0)
-      const tickets = 0;
-
-      return { coins, xp, tickets };
-    }
-
-    /* 게임 보상 → 글로벌 HUD + 서버 지갑 */
+    /***** 허브 지갑/보상 연동 (retro-running 동일 규격) *****/
     function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
-      if(!delta) return;
-      const coins   = Number(delta.coins)   || 0;
-      const xp      = Number(delta.xp)      || 0;
-      const tickets = Number(delta.tickets) || 0;
-      if(!(coins || xp || tickets)) return;
-
-      // 1) 홈(user-retro-games.html)의 HUD/localStorage 갱신
       try{
-        if(typeof window.RG_addReward === 'function'){
-          window.RG_addReward({ coins, tickets, xp });
+        if(typeof window.sendGameReward === 'function'){
+          const d = delta || {};
+          const m = meta  || {};
+          window.sendGameReward(gameCode, {
+            score  : m.score  || 0,
+            points : m.points || 0,
+            exp    : d.xp     || 0,
+            tickets: d.tickets|| 0,
+            level  : m.level  || 0,
+            meta   : m
+          });
+        }
+        if(typeof window.refreshWalletHUD === 'function'){
+          window.refreshWalletHUD();
         }
       }catch(e){
-        console.warn('RG_addReward error', e);
+        console.warn('[brick-match] applyGlobalRewardAndSyncWallet error:', e);
       }
-
-      // 2) 서버 지갑 API 호출
-      postWalletReward({
-        game: gameCode,
-        delta: { coins, xp, tickets },
-        meta: {
-          score : meta && meta.score  || 0,
-          points: meta && meta.points || 0,
-          level : meta && meta.level  || 0
-        }
-      });
     }
 
     /***** 난이도 배율 *****/
@@ -1617,13 +1557,20 @@
           /* ✅ 서버 세션 종료 (최종 점수 보고) */
           notifyFinish(this.score|0);
 
-          /* ✅ 계정 지갑/글로벌 HUD 보상 연동 */
+          /* ✅ 계정 지갑/글로벌 HUD 보상 연동 (retro-running 동일 delta/meta 구조) */
           try{
-            const delta = calcReward(this.score||0, this.points||0, this.level||1);
-            applyGlobalRewardAndSyncWallet('match-3', delta, {
-              score : this.score||0,
-              points: this.points||0,
-              level : this.level||1
+            const finalScore   = this.score  || 0;
+            const earnedPoints = this.points || 0;
+            const lv           = this.level  || 1;
+
+            const delta = (typeof window.calcReward === 'function')
+              ? window.calcReward(finalScore, earnedPoints, lv)
+              : { xp:0, tickets:0, coins:0 };
+
+            applyGlobalRewardAndSyncWallet('brick-breaker', delta, {
+              score : finalScore,
+              points: earnedPoints,
+              level : lv
             });
           }catch(e){
             console.error('reward sync error', e);

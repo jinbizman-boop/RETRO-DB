@@ -964,6 +964,32 @@
     }
   };
 
+  /* ✅ retro-running 과 동일 규격: delta/meta 를 받아 전역 처리 */
+  function applyGlobalRewardAndSyncWallet(gameId, delta, meta){
+    try{
+      if (typeof window.sendGameReward === 'function') {
+        window.sendGameReward(gameId, delta || {}, meta || {});
+      }
+    }catch(e){
+      console.warn('[RG][analytics] sendGameReward error:', e);
+    }
+    try{
+      if (typeof window.RG_addReward === 'function') {
+        const payload = {
+          score: (delta && typeof delta.score === 'number') ? delta.score : 0,
+          points: (delta && typeof delta.points === 'number') ? delta.points : 0,
+          level: meta && typeof meta.level === 'number' ? meta.level : 1,
+          timeLeft: meta && typeof meta.timeLeft === 'number' ? meta.timeLeft : 0,
+          manualEnd: !!(meta && meta.manualEnd),
+          mode: (meta && meta.mode) ? meta.mode : ($('#tier')?.value || 'beginner')
+        };
+        window.RG_addReward(payload);
+      }
+    }catch(e){
+      console.warn('[RG][wallet] applyGlobalRewardAndSyncWallet error:', e);
+    }
+  }
+
   /***** 배경 음악 (반복 재생, 볼륨 30%) *****/
   let _bgm, _bgmInitialized=false;
   function initBgm(){
@@ -1417,19 +1443,25 @@
         const finalScore = this.score|0;
         const earnedPoints = this.points|0;
 
+        const delta = {
+          score: finalScore,
+          points: earnedPoints
+        };
+
+        const meta = {
+          gameId: RG_GAME_ID,
+          level: this.level|0,
+          mode: $('#tier')?.value || 'beginner',
+          manualEnd: !!manual,
+          timeLeft: 0,
+          clientTs: new Date().toISOString(),
+          page: 'tetris.html'
+        };
+
         try{
-          if(typeof window.RG_addReward === 'function'){
-            window.RG_addReward({
-              score: finalScore,
-              points: earnedPoints,
-              level: this.level|0,
-              timeLeft: 0,
-              manualEnd: !!manual,
-              mode: $('#tier')?.value || 'beginner'
-            });
-          }
+          applyGlobalRewardAndSyncWallet(RG_GAME_ID, delta, meta);
         }catch(e){
-          console.warn('[RG][wallet] RG_addReward call error:', e);
+          console.warn('[RG][wallet] applyGlobalRewardAndSyncWallet call error:', e);
         }
 
         const ov=document.getElementById('gameOver');

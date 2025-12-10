@@ -571,6 +571,35 @@
     return { xp, tickets, coins };
   }
 
+  /* ✅ 전역 허브 규격 통일 헬퍼 (retro-running 과 동일 패턴)
+     - gameCode: '2048', 'retro-running', 'brick-breaker' 등 게임 ID
+     - delta   : { xp, tickets, coins } (보상량)
+     - meta    : { score, points, level, ... } (게임별 메타 정보)
+   */
+  function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+    try{
+      const d = delta || {};
+      const m = meta  || {};
+
+      if (typeof window.sendGameReward === 'function'){
+        window.sendGameReward(gameCode, {
+          score:   m.score  || 0,
+          points:  m.points || 0,
+          exp:     d.xp     || 0,
+          tickets: d.tickets|| 0,
+          level:   m.level  || 0,
+          meta:    m
+        });
+      }
+
+      if (typeof window.refreshWalletHUD === 'function'){
+        window.refreshWalletHUD();
+      }
+    }catch(e){
+      console.warn('[2048] applyGlobalRewardAndSyncWallet error:', e);
+    }
+  }
+
   const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',best:'best2048'};
   function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
   function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
@@ -852,28 +881,18 @@
 
       if(this.testMode) return;
 
-      // ✅ 통합 보상 흐름: app.js의 window.sendGameReward를 통해 /api/wallet/reward 호출
+      // ✅ 통합 보상 흐름: retro-running 과 동일 구조의 applyGlobalRewardAndSyncWallet 사용
       try{
         const delta = calcReward(finalScore, this.points||0, maxT, this.level||1);
+        const walletPoints = delta.coins | 0; // 기존 sendGameReward 에서 사용하던 coins → points 매핑 유지
 
-        if (typeof window.sendGameReward === 'function') {
-          window.sendGameReward('2048', {
-            exp:      delta.xp,
-            tickets:  delta.tickets,
-            points:   delta.coins,
-            score:    finalScore,
-            meta: {
-              level:   this.level || 1,
-              maxTile: maxT,
-              moves:   this.moves | 0
-            }
-          });
-        }
-
-        // HUD 최신화 (app.js 쪽 통합 HUD까지 반영)
-        if (typeof window.refreshWalletHUD === 'function') {
-          window.refreshWalletHUD();
-        }
+        applyGlobalRewardAndSyncWallet('2048', delta, {
+          score:   finalScore,
+          points:  walletPoints,
+          level:   this.level || 1,
+          maxTile: maxT,
+          moves:   this.moves | 0
+        });
       }catch(e){
         console.error('reward sync error', e);
       }
@@ -1124,10 +1143,14 @@
         3) addRecord() / addPlay() 로 로컬(브라우저 전용) 기록 저장
         4) notifyFinish() 로 /games/2048/finish 등 상위 런타임에 이벤트 전파
         5) calcReward() 를 통해 score/points/maxTile/level 기반 delta 계산
-        6) window.sendGameReward('2048', {...}) 호출
-        7) window.refreshWalletHUD() 로 허브 HUD를 서버 지갑 스냅샷과 동기화
+        6) applyGlobalRewardAndSyncWallet('2048', delta, meta)를 호출
+           - delta: { xp, tickets, coins }  (retro-running 과 동일 구조)
+           - meta : { score, points, level, maxTile, moves, ... }
+             • meta.points 에 delta.coins 를 매핑하여 서버 지갑 포인트로 사용
+        7) applyGlobalRewardAndSyncWallet 내부에서
+           window.sendGameReward / window.refreshWalletHUD 를 호출한다.
     - calcReward() 의 세부 로직은 게임 밸런스 조정 시 조절할 수 있으며,
-      서버 엔드포인트의 계약(delta.coins/xp/tickets)과만 맞으면 된다.
+      서버 엔드포인트의 계약(delta/points/xp/tickets)과만 맞으면 된다.
 
     [로컬 기록 vs 계정 지갑]
     - LS_KEYS(plays2048, tickets2048, records2048, best2048)는
@@ -1137,7 +1160,7 @@
       • records : 날짜/시간/점수/포인트 히스토리
       • best : 로컬 최고 점수
     - 계정 지갑(포인트/티켓/경험치)은 서버 /api/wallet* 에 의해 관리되며,
-      sendGameReward/refreshWalletHUD 경로를 통해서만 변경된다.
+      applyGlobalRewardAndSyncWallet → sendGameReward 경로를 통해서만 변경된다.
     - UI 상에서 data-user-points, data-user-tickets 등은
       app.js 가 세션(/auth/me)과 지갑(/api/wallet)을 기준으로 값을 채운다.
       이 값은 로컬 LS_KEYS 값과는 별개이다.
@@ -1160,12 +1183,12 @@
     [유지보수 가이드]
     - 다른 레트로 게임(테트리스, 브릭 브레이커, 러너 등)도
       이 구조와 동일한 패턴으로 정리하는 것을 권장한다.
-        • 게임 내부: calcReward + sendGameReward + refreshWalletHUD 호출만 유지
+        • 게임 내부: calcReward + applyGlobalRewardAndSyncWallet 호출만 유지
         • 지갑 API 호출: app.js 단일 허브에서만 수행
     - 새로운 게임을 추가할 때에는:
         1) meta.ts 에 gameId 를 등록
         2) user-retro-games.html 에 카드 추가
-        3) 게임 HTML 에서 gameStart/gameFinish/sendGameReward 패턴 연결
+        3) 게임 HTML 에서 gameStart/gameFinish/applyGlobalRewardAndSyncWallet 패턴 연결
       순서로 작업한다.
 
     이 블록은 파일 줄 수 확보 + 유지보수 가이드를 위한 주석으로,

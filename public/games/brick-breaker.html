@@ -871,21 +871,26 @@
     if(e.target.id==='recModal') $('#recModal').style.display='none';
   });
 
-  /* ================= ✅ 중앙 지갑(app.js) 통합 보상 전송 ================= */
-  function syncGlobalReward(score, level, points){
+  /* ================= 🔗 전역 허브 보상 연동 (retro-running 규격 통일) ================= */
+  function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
     try{
       if (typeof window.sendGameReward === 'function'){
-        window.sendGameReward(GAME_CODE, {
-          score:  score|0,
-          level:  level|0,
-          points: points|0
+        const d = delta || {};
+        const m = meta || {};
+        window.sendGameReward(gameCode, {
+          score:   m.score  || 0,
+          points:  m.points || 0,
+          exp:     d.xp     || 0,
+          tickets: d.tickets|| 0,
+          level:   m.level  || 0,
+          meta:    m
         });
       }
       if (typeof window.refreshWalletHUD === 'function'){
         window.refreshWalletHUD();
       }
     }catch(e){
-      console.warn('sendGameReward failed', e);
+      console.warn('[brick-breaker] applyGlobalRewardAndSyncWallet error:', e);
     }
   }
 
@@ -1139,10 +1144,25 @@
       const ov=document.getElementById('gameOver');
       if(ov) ov.style.display='flex';
 
-      notifyFinish(this.score|0);
+      const finalScore = this.score|0;
+      const earnedPoints = this.points|0;
 
-      /* ✅ 중앙 지갑 연동 – 2048과 동일한 sendGameReward/refreshWalletHUD 경로 사용 */
-      syncGlobalReward(this.score||0, this.level||1, this.points||0);
+      notifyFinish(finalScore);
+
+      /* ✅ 중앙 지갑 연동 – retro-running과 동일한 applyGlobalRewardAndSyncWallet 규격 */
+      try{
+        const delta = (typeof window.calcReward === 'function')
+          ? window.calcReward(finalScore, earnedPoints, this.level||1)
+          : { xp:0, tickets:0, coins:0 };
+
+        applyGlobalRewardAndSyncWallet(GAME_CODE, delta, {
+          score: finalScore,
+          points: earnedPoints,
+          level: this.level||1
+        });
+      }catch(e){
+        console.error('reward sync error', e);
+      }
     }
 
     updateHUD(){
@@ -1525,10 +1545,25 @@
       const ov=document.getElementById('gameOver');
       if(ov) ov.style.display='flex';
 
-      notifyFinish(this.score|0);
+      const finalScore = this.score|0;
+      const earnedPoints = this.points|0;
 
-      /* ✅ 중앙 지갑 연동 */
-      syncGlobalReward(this.score||0, this.level||1, this.points||0);
+      notifyFinish(finalScore);
+
+      /* ✅ 중앙 지갑 연동 – retro-running과 동일한 applyGlobalRewardAndSyncWallet 규격 */
+      try{
+        const delta = (typeof window.calcReward === 'function')
+          ? window.calcReward(finalScore, earnedPoints, this.level||1)
+          : { xp:0, tickets:0, coins:0 };
+
+        applyGlobalRewardAndSyncWallet(GAME_CODE, delta, {
+          score: finalScore,
+          points: earnedPoints,
+          level: this.level||1
+        });
+      }catch(e){
+        console.error('reward sync error', e);
+      }
     }
 
     draw(){
@@ -1786,8 +1821,9 @@
     - 게임/보상 연동
       · GAME_CODE = 'brick-breaker'
       · notifyStart('brick-breaker'), notifyFinish('brick-breaker', score)
-      · syncGlobalReward(score, level, points)
-        → window.sendGameReward 가 존재할 경우 /api/wallet/reward 등으로 위임
+      · applyGlobalRewardAndSyncWallet(GAME_CODE, delta, meta)
+        → window.calcReward(score, points, level)로 delta 산출 (xp, tickets, coins 등)
+        → window.sendGameReward(gameCode, { score, points, exp, tickets, level, meta })
         → window.refreshWalletHUD() 로 상단 통합 HUD 갱신
 
     - BGM

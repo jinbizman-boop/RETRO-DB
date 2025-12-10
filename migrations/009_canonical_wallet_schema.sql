@@ -1,4 +1,4 @@
--- 009_canonical_wallet_schema.sql
+-- 009_canonical_wallet_schema.sql (v2 - level 컬럼 의존 제거)
 -- ------------------------------------------------------------------
 -- Purpose
 --   1) RETRO GAMES의 “지갑/게임 자원 정본(canonical)”을 명시적으로 선언.
@@ -8,38 +8,35 @@
 --   3) 프론트/백엔드에서 공통으로 사용할 수 있는 조회용 VIEW(v_user_wallet)를
 --      제공하여, “어디를 기준으로 잔액을 가져와야 하는지”를 통일.
 --
--- Design
---   • PostgreSQL 13+ / Neon 호환
---   • 완전 idempotent: 여러 번 실행해도 안전
---   • 001_init.sql, 005_user_profile_and_progress.sql,
---     005_user_stats_wallet_extension.sql, 006_wallet_inventory_bridge.sql 와 호환
+-- Note
+--   - 실제 운영 DB에서는 user_stats.level 컬럼이 없을 수 있으므로
+--     level 컬럼에 대한 COMMENT / SELECT 참조를 모두 제거했다.
+--   - 정본 자원은 coins / tickets / exp / games_played 기준으로 본다.
 -- ------------------------------------------------------------------
 
 BEGIN;
 
 -- ───────────────────────────────────────────────────────────────
 -- 1) Canonical 자원/지갑 스키마 선언 (user_stats, transactions)
---    - COMMENT 를 통해 “정본(canonical)”을 명시
 -- ───────────────────────────────────────────────────────────────
 DO $$
 BEGIN
   -- 1-1) user_stats: coins + tickets + exp + games_played 의 정본
   IF to_regclass('public.user_stats') IS NOT NULL THEN
     COMMENT ON TABLE user_stats IS
-      'Canonical user resource snapshot (wallet C-arch): coins, tickets, exp, games_played, level. 모든 잔액/레벨 계산의 기준이 되는 정본 스냅샷.';
+      'Canonical user resource snapshot (wallet C-arch): coins, tickets, exp, games_played. 모든 잔액 계산의 기준이 되는 정본 스냅샷.';
 
     COMMENT ON COLUMN user_stats.user_id IS
       'FK → users.id. 이 계정의 지갑/경험치 정본을 나타내는 PK.';
     COMMENT ON COLUMN user_stats.coins IS
       '현재 코인(포인트) 잔액. 모든 지불/적립은 transactions 를 통해 반영되며, 이 컬럼은 항상 0 이상이어야 한다.';
     COMMENT ON COLUMN user_stats.exp IS
-      '게임/이벤트로 획득한 누적 경험치(exp). level/게임 진행 상태 산정에 사용.';
+      '게임/이벤트로 획득한 누적 경험치(exp). HUD / 통계에 사용.';
     COMMENT ON COLUMN user_stats.tickets IS
       '티켓/뽑기/이벤트 등에서 사용하는 잔여 티켓 수. 항상 0 이상.';
     COMMENT ON COLUMN user_stats.games_played IS
       '해당 계정이 플레이한 게임 횟수 누계.';
-    COMMENT ON COLUMN user_stats.level IS
-      'XP 기반으로 생성된 레벨. (xp/exp 로부터 계산되는 파생 값).';
+    -- level 컬럼은 실제 DB에 없을 수 있으므로 건드리지 않는다.
   END IF;
 
   -- 1-2) transactions: 모든 자원 변동의 단일 원장(ledger)
@@ -68,8 +65,6 @@ END $$;
 
 -- ───────────────────────────────────────────────────────────────
 -- 2) Legacy / Bridge 테이블에 명시적인 주석 부여
---    - user_progress, wallet_balances, wallet_items
---    - “정본은 user_stats + transactions 이며, 이 테이블은 호환/브리지 용도”
 -- ───────────────────────────────────────────────────────────────
 DO $$
 BEGIN
@@ -113,12 +108,9 @@ END $$;
 
 -- ───────────────────────────────────────────────────────────────
 -- 3) 조회용 VIEW 추가: v_user_wallet
---    - 프론트/백엔드에서 “지갑/HUD” 정보를 가져올 때
---      항상 이 VIEW 를 기준으로 참조하도록 가이드.
---    - users ←→ user_stats 를 조인하여, 계정 단위 자원 스냅샷을 단일 엔드포인트로 제공.
+--    - level 컬럼이 없을 수 있으므로, coins / tickets / exp / games_played 만 노출
 -- ───────────────────────────────────────────────────────────────
 
--- 기존에 동일 이름의 뷰가 있더라도, 정의를 최신으로 교체
 CREATE OR REPLACE VIEW v_user_wallet AS
 SELECT
   u.id            AS user_id,
@@ -127,8 +119,6 @@ SELECT
   us.tickets      AS tickets,
   us.exp          AS exp,
   us.games_played AS games_played,
-  us.level        AS level,
-  us.last_login_at,
   us.created_at   AS stats_created_at,
   us.updated_at   AS stats_updated_at
 FROM users u
@@ -136,6 +126,6 @@ LEFT JOIN user_stats us
        ON us.user_id = u.id;
 
 COMMENT ON VIEW v_user_wallet IS
-  'Canonical per-user wallet snapshot for HUD/API. users.id 와 user_stats 를 조인하여 coins/tickets/exp/games_played/level 을 단일 뷰로 제공한다. 정본(user_stats + transactions)에 기반한 조회 전용 뷰.';
+  'Canonical per-user wallet snapshot for HUD/API. users.id 와 user_stats 를 조인하여 coins/tickets/exp/games_played 를 단일 뷰로 제공한다. 정본(user_stats + transactions)에 기반한 조회 전용 뷰.';
 
 COMMIT;

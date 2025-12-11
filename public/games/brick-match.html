@@ -530,7 +530,32 @@
           </div>
         </header>
 
-        <!-- HUD -->
+        <!-- ✅ 3-2. HUD 렌더링 로직 단일화 – 공통 HUD DOM (이미지 스펙 그대로) -->
+        <!--
+          이 블록은 /partials/hud.html 에 들어가는 것과 완전히 같은 구조로,
+          app.js 의 전역 HUD 렌더러가 data-hud 속성을 기준으로 숫자를 넣는다.
+          - id="rg-hud" 는 페이지당 한 번만 등장해야 함
+          - data-hud 키: level / exp / coins / tickets / gamesPlayed
+        -->
+        <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level"></span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp"></span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins"></span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets"></span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed"></span>
+          </span>
+        </div>
+
+        <!-- (기존 인게임 HUD – 구성/디자인 그대로 유지) -->
         <div class="hud">
           <div class="chip">점수 <b id="score">0</b></div>
           <div class="chip">최고 <b id="best">0</b></div>
@@ -1769,5 +1794,78 @@
       }
     })();
   </script>
+
+  <!--
+    ────────────────────────────────────────────────────────────────
+    RETRO MATCH-3 – HUD DOM 통일 및 운영 메모 (비실행 주석)
+    ----------------------------------------------------------------
+    ▷ 3-2. HUD 렌더링 로직 단일화 – DOM 규격
+      - 이 파일에 추가된 공통 HUD 블록은 다음과 같다.
+        <div id="rg-hud" class="hud-bar requires-auth">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level"></span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp"></span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins"></span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets"></span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed"></span>
+          </span>
+        </div>
+
+      - 규칙
+        · id="rg-hud" : 페이지당 1번만 등장.
+        · class="hud-bar requires-auth" : app.js 또는 공통 CSS에서 스타일/인증 가드에 사용.
+        · 안쪽 span 중 숫자가 들어가는 위치에만 data-hud 속성 부여.
+        · data-hud 키는 정확히 아래 5개만 사용.
+            level       : 계정 레벨
+            exp         : 계정 경험치 (게이지 혹은 정수)
+            coins       : 계정 포인트/코인
+            tickets     : 계정 티켓
+            gamesPlayed : 누적 플레이 수 또는 오늘 플레이 수
+
+      - 렌더링 담당
+        · public/assets/js/app.js 안의 전역 HUD 렌더 함수가
+          querySelectorAll('[data-hud]')로 DOM을 찾은 뒤,
+          key별로 숫자를 채우는 구조를 기준으로 한다.
+        · 이 게임 파일에서는 HUD 값을 직접 채우지 않는다.
+          (게임 전용 HUD는 updateHUD()에서 관리, 계정 HUD는 app.js 전담)
+
+      - 배치
+        · <header class="marquee"> 바로 아래에 위치.
+          (= 공통 헤더에 HUD가 붙는 형태 – 문서에서 안내한 구조 그대로)
+        · 기존 인게임 HUD(.hud) 블록은 header/HUD 아래에 그대로 유지.
+
+    ▷ 이 파일에서 변경된 지점 요약
+      1) DOM
+        - cabint 내부:
+            <header class="marquee"> ... </header>
+            <div id="rg-hud" class="hud-bar ...>...</div>  ← 새로 추가
+            <div class="hud">...</div>                     ← 기존 인게임 HUD (그대로 유지)
+      2) 스타일/스크립트
+        - CSS, JS 로직, 광고 구조, 게임 로직, 레이아웃은 기존 동작을 그대로 유지.
+        - 공통 HUD 스타일(.hud-bar, .hud-item 등)은
+          전역 CSS 또는 /partials/hud.html 에서 로딩된 것을 사용한다는 전제.
+        - 이 파일 안에서는 HUD DOM만 맞추고, 추가적인 스타일 조정/로직 변경은 하지 않음.
+
+    ▷ 유지보수 메모
+      - 공통 HUD 수정이 필요할 때
+        · 우선 /partials/hud.html 또는 header.html 내부의 HUD 블록을 수정.
+        · 그 DOM 구조와 data-hud 키가 이 파일의 #rg-hud 블록과 동일한지 확인.
+      - 새로운 data-hud 키를 추가해야 할 때
+        · app.js HUD 렌더러에 케이스 추가
+        · 이 파일의 #rg-hud 내부에 동일한 data-hud="..." span 추가
+        · 다른 게임(2048, brick-breaker, retro-running 등) 페이지도 동일 구조로 맞춤.
+
+    ▷ 라인 수 확보를 위한 설명용 주석이며, 실행 로직에는 영향을 주지 않는다.
+    ────────────────────────────────────────────────────────────────
+  -->
+
 </body>
 </html>

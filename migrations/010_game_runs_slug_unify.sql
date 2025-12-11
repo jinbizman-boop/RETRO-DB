@@ -1,11 +1,10 @@
--- 010_game_runs_slug_unify.sql (v2 - games 테이블이 없을 수도 있는 환경 방어)
+-- 010_game_runs_slug_unify.sql (v3 - started_at 의존 제거)
 -- ------------------------------------------------------------------
 -- Purpose
---   • 001_init.sql 의 game_id 기반 game_runs 를
---     slug 기반 스키마와 정합되도록 통일.
---   • game_runs.slug 컬럼을 추가하고,
---     가능하다면 games.slug 로 백필.
+--   • game_id 기반 game_runs 를 slug 기반 구조와 정합되도록 통일.
+--   • game_runs.slug 컬럼을 추가하고, 가능하면 games.slug 로 백필.
 --   • v_leaderboard_top 뷰를 slug 기준으로 재정의.
+--   • started_at 컬럼이 없는 운영 DB에서도 안전하게 동작하도록 설계.
 -- ------------------------------------------------------------------
 
 BEGIN;
@@ -26,11 +25,10 @@ BEGIN
 END
 $$;
 
--- 2) slug 백필 (games 테이블이 있을 때만 안전하게 실행)
+-- 2) slug 백필 (games 테이블이 있을 때만)
 DO $$
 BEGIN
   IF to_regclass('public.games') IS NOT NULL THEN
-    -- games 테이블이 존재하는 경우에만 백필 수행
     EXECUTE $upd$
       UPDATE game_runs r
       SET    slug = g.slug
@@ -40,7 +38,6 @@ BEGIN
         AND  r.game_id = g.id;
     $upd$;
   END IF;
-  -- games 테이블이 없으면 아무 것도 하지 않음 (기존 기록의 slug 는 NULL 유지)
 END
 $$;
 
@@ -60,24 +57,24 @@ BEGIN
 END
 $$;
 
--- 4) slug 기반 인덱스 추가
-CREATE INDEX IF NOT EXISTS ix_game_runs_user_slug_started
-  ON game_runs(user_id, slug, started_at);
+-- 4) slug 기반 인덱스 추가 (started_at 미사용)
+CREATE INDEX IF NOT EXISTS ix_game_runs_user_slug
+  ON game_runs(user_id, slug);
 
-CREATE INDEX IF NOT EXISTS ix_game_runs_slug_score_desc_started
-  ON game_runs(slug, score DESC, started_at ASC);
+CREATE INDEX IF NOT EXISTS ix_game_runs_slug_score_desc
+  ON game_runs(slug, score DESC);
 
 -- 5) v_leaderboard_top 뷰를 slug 기준으로 재정의
+--    - started_at 이 없는 환경에서도 동작하도록 score 기준만 정렬
 CREATE OR REPLACE VIEW v_leaderboard_top AS
 WITH runs AS (
   SELECT
     r.slug        AS game_slug,
     r.user_id,
     r.score,
-    r.started_at,
     row_number() OVER (
       PARTITION BY r.slug, r.user_id
-      ORDER BY r.score DESC, r.started_at ASC
+      ORDER BY r.score DESC
     ) AS rn
   FROM game_runs r
   WHERE r.score IS NOT NULL

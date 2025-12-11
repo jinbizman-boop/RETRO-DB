@@ -149,7 +149,34 @@
     }
     .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
 
-    /* HUD */
+    /* === Global HUD (통합 DOM, app.js 전역 HUD와 일치) === */
+    #rg-hud.hud-bar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:center;
+      padding:10px 18px 4px;
+      font-size:12px;
+    }
+    .hud-bar .hud-item{
+      min-width:90px;
+      padding:4px 12px;
+      border-radius:999px;
+      background:rgba(6,18,50,.9);
+      border:1px solid rgba(71,120,255,.75);
+      box-shadow:0 6px 14px rgba(0,0,0,.45);
+      text-align:center;
+      letter-spacing:.05em;
+      white-space:nowrap;
+    }
+    .hud-bar .hud-item span[data-hud]{
+      margin-left:4px;
+      font-weight:800;
+      color:#ffdf6e;
+      text-shadow:0 0 6px rgba(255,223,110,.7);
+    }
+
+    /* HUD (2048 전용 인게임 HUD) */
     .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
     .chip,.pill,.hud .btnMini{
       position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
@@ -285,6 +312,7 @@
       .pill{min-width:220px}
       .deck{gap:8px;padding:10px 12px 16px}
       .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
+      #rg-hud.hud-bar{padding:8px 10px 2px}
     }
     @media (max-width: 640px){
       .hud{padding:8px}
@@ -293,6 +321,7 @@
       .points .bar,.tickets .bar{width:96px}
       .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
       .deck > *{flex:0 0 auto}
+      .hud-bar .hud-item{min-width:78px;padding:3px 10px}
     }
 
     .cookie-banner{
@@ -345,7 +374,26 @@
           </div>
         </header>
 
-        <!-- HUD -->
+        <!-- ✅ Global Player HUD (통합 DOM – app.js에서 단일 로직으로 갱신) -->
+        <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level">-</span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp">-</span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins">-</span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets">-</span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed">-</span>
+          </span>
+        </div>
+
+        <!-- 2048 In-game HUD (기존 UI/UX 유지) -->
         <div class="hud">
           <div class="chip">점수 <b id="score">0</b></div>
           <div class="chip">최고 <b id="best">0</b></div>

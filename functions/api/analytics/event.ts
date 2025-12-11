@@ -1,5 +1,3 @@
-// C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\analytics\event.ts
-//
 // Retro Games – Analytics Event API (game_start / game_end / 기타 추적용)
 // ────────────────────────────────────────────────────────────────
 // ✅ 외부 계약
@@ -7,7 +5,7 @@
 //   • 요청 JSON 예시:
 //       {
 //         "game": "2048",
-//         "type": "game_start",
+//         "type": "game_start",       // 또는 "event_type": "game_start"
 //         "meta": {
 //           "difficulty": "normal",
 //           "seed": 1234
@@ -255,10 +253,25 @@ export const onRequest: PagesFunction<Env> = async ({
       );
     }
 
-    const type = cleanEventType(body.type);
+    // ✅ 4-1. event_type 빈 문자열 금지
+    // - body.type, body.event_type 둘 다 허용
+    // - 공백/빈 문자열이면 바로 에러(event_type_required)
+    const rawType = String(
+      body?.type ?? body?.event_type ?? ""
+    ).trim();
+
+    if (!rawType.length) {
+      return withCORS(
+        json({ error: "event_type_required" }, { status: 400 }),
+        env.CORS_ORIGIN
+      );
+    }
+
+    // 이후 cleanEventType 으로 형식/길이 등을 정규화
+    const type = cleanEventType(rawType);
     if (!type) {
       return withCORS(
-        json({ error: "Missing or invalid event type" }, { status: 400 }),
+        json({ error: "invalid_event_type" }, { status: 400 }),
         env.CORS_ORIGIN
       );
     }
@@ -357,13 +370,18 @@ export const onRequest: PagesFunction<Env> = async ({
  *
  * 2. type / game 필드 정책
  *    - type:
- *      • 소문자, 영문/숫자/언더스코어만 허용, 최대 64자.
- *      • 권장 값 예시:
- *          - game_start
- *          - game_end
- *          - reward
- *          - wallet_tx
- *          - level_up
+ *      • body.type 또는 body.event_type 로 받아서 rawType 으로 취합.
+ *      • 공백/빈 문자열이면 함수 레벨에서 바로 400("event_type_required").
+ *      • 이후 cleanEventType 으로
+ *          - 소문자
+ *          - 공백 → 언더스코어
+ *          - 영문/숫자/언더스코어만 허용
+ *          - 최대 64자
+ *        규칙을 적용하고, 결과가 비어버리면 "invalid_event_type" 에러.
+ *      • 이렇게 하면 DB 의 event_type text NOT NULL 제약과
+ *        함수 레벨 검증(event_type_required / invalid_event_type)이
+ *        서로 짝을 맞춰 데이터 유입 0%에 가깝게 방지한다.
+ *
  *    - game:
  *      • 공백 제거, 영문/숫자/언더스코어, 최대 64자.
  *      • 예시:

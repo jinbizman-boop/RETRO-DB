@@ -1,5 +1,3 @@
-// C:\Users\Telos_PC_17\Downloads\retro-games-cloudflare\functions\api\wallet\balance.ts
-//
 // ✅ Fix / Upgrade summary
 // - ts(2304) Cannot find name 'PagesFunction'  → tiny ambient 타입으로 해결(에디터 전용)
 // - ts(7031) request/env implicitly any        → 핸들러 파라미터 타입 명시
@@ -10,7 +8,7 @@
 //     • 응답: { ok: true, balance }
 //
 // - 🔥 내부 동작 강화/정합화 (지금까지 설계한 전체 흐름과 일치):
-//     • 캐논 소스 1순위: user_stats.coins
+//     • 캐논 소스 1순위: user_stats.coins  (※ 현재 구현: v_user_wallet 뷰를 통해 조회)
 //         - (기획상) 게임 보상: /api/games/score → transactions → apply_wallet_transaction 트리거
 //         - 상점 결제: /api/wallet/transaction, 향후 /api/shop/* → transactions 경로
 //     • 캐논 소스 2순위: wallet_balances.balance (reward.ts, 구 스키마 및 마이그레이션 호환용)
@@ -35,7 +33,7 @@
 //     • X-Wallet-Exp              : user_stats 또는 user_progress 기준 EXP
 //     • X-Wallet-Tickets          : user_stats 또는 user_progress 기준 Tickets
 //     • X-Wallet-Games            : user_stats.games_played (없으면 0)
-//     • X-Wallet-Last-Login-At    : user_stats.last_login_at
+//     • X-Wallet-Last-Login-At    : user_stats.last_login_at (※ v_user_wallet 기준, 현재는 null 가능)
 //     • X-Wallet-Stats-Updated-At : user_stats.updated_at
 //     • X-Wallet-Drift            : 'stats_gt_wallet' | 'wallet_gt_stats' (둘 다 존재하고 값 다를 때)
 //     • X-Wallet-Stats-Json       : { balance, exp, tickets, games } JSON 문자열
@@ -48,8 +46,15 @@
 //     - coins(=balance) 는 user_stats.coins / wallet_balances.balance 두 소스를 모두 존중
 //     - exp / tickets 는 user_stats.exp/tickets 가 0 이고 user_progress 에 값이 있으면 progress 값을 보조로 사용
 //     - 상위 콘텐츠(user-retro-games.html)는 항상 최신값을 헤더/요약 JSON 으로 받을 수 있음.
+//
+//  ※ 2025-12-11: fetchFromUserStats 가 user_stats 테이블 대신 v_user_wallet 뷰를 사용하도록 변경.
+//     - DB 레벨에서 users + user_stats 를 한 번 더 캡슐화한 canonical 뷰(v_user_wallet)를 기준으로 조회.
+//     - API 코드는 canonical 뷰 하나만 바라보도록 단순화하여, 스키마 변경 내성을 강화.
 
-/* ───── Minimal Cloudflare Pages ambient types (type-checker only) ───── */
+
+// ───────────────────────────────────────────────────────────────
+// Minimal Cloudflare Pages ambient types (type-checker only)
+// ───────────────────────────────────────────────────────────────
 type CfEventLike<E> = {
   request: Request;
   env: E;
@@ -61,7 +66,7 @@ type CfEventLike<E> = {
 type PagesFunction<E = unknown> = (
   ctx: CfEventLike<E>
 ) => Promise<Response> | Response;
-/* ────────────────────────────────────────────────────────────────────── */
+// ───────────────────────────────────────────────────────────────
 
 import { json } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";
@@ -164,14 +169,17 @@ function isMissingTable(err: any): boolean {
 
 type StatsSource = "user_stats" | "wallet_balances" | "none";
 
-type UserStatsRow = {
+/**
+ * v_user_wallet 뷰에서 읽어오는 canonical 지갑 스냅샷 행 구조
+ * - 009_canonical_wallet_schema.sql 에서 정의한 뷰 스키마와 일치
+ */
+type CanonicalWalletRow = {
   coins?: number | string | bigint | null;
   exp?: number | string | bigint | null;
-  xp?: number | string | bigint | null;
   tickets?: number | string | bigint | null;
   games_played?: number | string | bigint | null;
-  last_login_at?: string | Date | null;
-  updated_at?: string | Date | null;
+  stats_created_at?: string | Date | null;
+  stats_updated_at?: string | Date | null;
 };
 
 type WalletBalanceRow = {
@@ -186,16 +194,14 @@ type UserProgressRow = {
   updated_at?: string | Date | null;
 };
 
-/* ───────── user_stats 조회 (canonical 1순위) ─────────
- * 001_init.sql + 003_shop_effects.sql + wallet 설계에서 정의한
- * user_stats 를 단일 소스 오브 트루스로 사용:
- *   coins, exp/xp, tickets, games_played, last_login_at, updated_at
+/* ───────── user_stats / v_user_wallet 조회 (canonical 1순위) ─────────
+ * 001_init.sql + 009_canonical_wallet_schema.sql 에서 정의한
+ * v_user_wallet 뷰를 단일 소스 오브 트루스로 사용:
+ *   coins, exp, tickets, games_played, stats_created_at, stats_updated_at
  *
- *  다만, reward.ts 가 user_stats 를 직접 갱신하지 않는 구조(C안)에서도
- *  user_stats 테이블이 이미 도입된 경우를 지원하기 위해,
- *  - row 유무
- *  - 기본 스탯
- *  만 일관되게 리턴한다.
+ *  - v_user_wallet 은 내부적으로 users + user_stats 를 조인한 뷰이다.
+ *  - API 레벨에서는 user_stats 테이블 구조에 직접 의존하지 않고,
+ *    canonical 뷰를 통해서만 잔액/스탯을 조회한다.
  */
 async function fetchFromUserStats(
   sql: ReturnType<typeof getSql>,
@@ -214,15 +220,14 @@ async function fetchFromUserStats(
       select
         coins,
         exp,
-        xp,
         tickets,
         games_played,
-        last_login_at,
-        updated_at
-      from user_stats
+        stats_created_at,
+        stats_updated_at
+      from v_user_wallet
       where user_id = ${userId}::uuid
       limit 1
-    `) as UserStatsRow[];
+    `) as CanonicalWalletRow[];
 
     if (!rows || rows.length === 0) {
       // row 자체가 없으면 "0" 잔액을 canonical 로 취급 (게으른 초기화)
@@ -242,15 +247,15 @@ async function fetchFromUserStats(
     // coins: 실제 지갑 잔액
     const coins = toNonNegativeNumber(r.coins ?? 0);
 
-    // exp: exp 컬럼 우선, 없으면 xp 컬럼 fallback
-    const expCandidate = r.exp ?? r.xp ?? 0;
-    const exp = toNonNegativeNumber(expCandidate);
+    // exp: canonical exp 컬럼
+    const exp = toNonNegativeNumber(r.exp ?? 0);
 
     const tickets = toNonNegativeNumber(r.tickets ?? 0);
     const gamesPlayed = toNonNegativeNumber(r.games_played ?? 0);
 
-    const lastLoginAt = toIsoOrNull(r.last_login_at ?? null);
-    const updatedAt = toIsoOrNull(r.updated_at ?? null);
+    // v_user_wallet 에서는 last_login_at 을 직접 제공하지 않으므로 null 처리
+    const lastLoginAt = null;
+    const updatedAt = toIsoOrNull(r.stats_updated_at ?? null);
 
     return {
       found: true,
@@ -263,7 +268,7 @@ async function fetchFromUserStats(
     };
   } catch (e) {
     if (isMissingTable(e)) {
-      // user_stats 테이블이 아예 없는 경우 → 0 잔액 + not found
+      // 뷰 또는 기반 테이블이 아예 없는 경우 → 0 잔액 + not found
       return {
         found: false,
         coins: 0,
@@ -408,7 +413,7 @@ async function fetchFromUserProgress(
  * 1) CORS preflight 처리
  * 2) GET 메서드만 허용
  * 3) userId 결정(X-User-Id 헤더 → query.userId)
- * 4) user_stats 기반 잔액/스탯 조회
+ * 4) user_stats (v_user_wallet) 기반 잔액/스탯 조회
  * 5) wallet_balances fallback 및 drift 체크
  * 6) user_progress 기반 exp/tickets 보조 조회
  * 7) { ok: true, balance } + 헤더로 상세 상태 제공
@@ -477,7 +482,7 @@ export const onRequest: PagesFunction<Env> = async ({
     let progressUpdatedAt: string | null = null;
 
     // ─────────────────────────────────────────────
-    // 1) canonical: user_stats 기반 지갑 잔액/스탯 조회
+    // 1) canonical: v_user_wallet 기반 지갑 잔액/스탯 조회
     // ─────────────────────────────────────────────
     const stats = await fetchFromUserStats(sql, userId);
 
@@ -619,3 +624,7 @@ export const onRequest: PagesFunction<Env> = async ({
     );
   }
 };
+
+// ───────────────────────────────────────────────────────────────
+// EOF - wallet/balance.ts (v_user_wallet 기반 canonical 조회 버전)
+// ───────────────────────────────────────────────────────────────

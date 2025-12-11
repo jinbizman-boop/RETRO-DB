@@ -39,8 +39,8 @@
 //            "tookMs": number
 //          }
 //        }
-////
-//// CORS / Rate-limit / DB 에러 포맷은 signup.ts / login.ts 와 동일 스타일 유지
+//
+// CORS / Rate-limit / DB 에러 포맷은 signup.ts / login.ts 와 동일 스타일 유지
 // ───────────────────────────────────────────────────────────────
 
 import { json, readJSON } from "../_utils/json";
@@ -124,12 +124,14 @@ function parseGameFinishBody(body: unknown): GameFinishPayload {
   const mode = toStringOrNull(b?.mode);
   const result = toStringOrNull(b?.result);
 
-  // runId / run_id / sessionId 모두 허용
+  // ✅ 3-1. runId 정제
+  // runId / run_id / sessionId 모두 허용, 공백이면 null 로 처리
   const rawRunId =
     (b?.runId as string | null | undefined) ??
     (b?.run_id as string | null | undefined) ??
     (b?.sessionId as string | null | undefined) ??
     null;
+
   const runId =
     rawRunId && String(rawRunId).trim().length
       ? String(rawRunId).trim()
@@ -697,7 +699,7 @@ export const onRequest: PagesFunction<Env> = async ({
     const gainedTickets = clampNonNegativeInt(rewards.gainedTickets);
 
     // ─────────────────────────────────────────────
-    // runId → idempotencyKey 구성
+    // 3-2. runId → idempotencyKey 구성 규칙
     // - 같은 runId 로 finish 를 여러 번 호출해도
     //   항상 동일한 idempotencyKey 를 사용하도록 규칙 고정
     // ─────────────────────────────────────────────
@@ -709,25 +711,60 @@ export const onRequest: PagesFunction<Env> = async ({
       : `game_finish:${gameId}:${userId}:${score}:${durationSec ?? 0}`;
 
     // ─────────────────────────────────────────────
-    // Wallet canonical 경로:
+    // 3-3. Wallet canonical 경로:
     //   transactions + apply_wallet_transaction 트리거 사용
     //   - coins / exp / tickets / games_played 는 여기서 한 번만 변경된다.
     //   - (user_wallet 은 아래에서 별도로 points/tickets 를 누적)
+    //   - UNIQUE(user_id, run_id) 충돌 시 "이미 처리된 게임" 으로 응답
     // ─────────────────────────────────────────────
-    await applyGameFinishWalletTransaction({
-      sql,
-      userId,
-      gameId,
-      gainedPoints,
-      gainedExp,
-      gainedTickets,
-      runId: normalizedRunId,
-      idempotencyKey,
-      score,
-      durationSec,
-      mode,
-      result,
-    });
+    try {
+      await applyGameFinishWalletTransaction({
+        sql,
+        userId,
+        gameId,
+        gainedPoints,
+        gainedExp,
+        gainedTickets,
+        runId: normalizedRunId,
+        idempotencyKey,
+        score,
+        durationSec,
+        mode,
+        result,
+      });
+    } catch (e2: any) {
+      const msg = String(e2?.message ?? "");
+      // 3-4. UNIQUE 충돌 → 이미 처리된 판으로 간주
+      if (msg.includes("idx_transactions_user_run")) {
+        const tookMsDup = Math.round(performance.now() - started);
+        return withCORS(
+          json(
+            {
+              ok: true,
+              duplicated: true,
+              gainedExp: 0,
+              gainedPoints: 0,
+              gainedTickets: 0,
+              snapshot: null,
+              meta: {
+                tookMs: tookMsDup,
+                message: "This runId was already processed",
+              },
+            },
+            {
+              headers: {
+                "Cache-Control": "no-store",
+                "X-Game-Finish-Took-ms": String(tookMsDup),
+                "X-Game-Finish-Duplicated": "1",
+              },
+            }
+          ),
+          env.CORS_ORIGIN
+        );
+      }
+      // 다른 에러는 그대로 상위에서 처리
+      throw e2;
+    }
 
     // user_wallet 업데이트 (points/tickets)
     // - 상점 결제용 별도 지갑. 기존 스키마/로직 유지.
@@ -883,22 +920,31 @@ export const onRequest: PagesFunction<Env> = async ({
            runId 가 있으면  game_finish:${gameId}:${userId}:${runId}
            runId 가 없으면  game_finish:${gameId}:${userId}:${score}:${durationSec ?? 0}
 
-  8) user_wallet 업데이트
+  8) UNIQUE(user_id, run_id) 충돌 처리
+     - DB 레벨에서 idx_transactions_user_run UNIQUE 인덱스가 걸려 있다.
+     - 같은 (user_id, run_id) 조합으로 INSERT 가 들어오면
+       "duplicate key value violates unique constraint \"idx_transactions_user_run\"" 에러가 발생.
+     - 이 에러는 게임 자원이 이미 적립된 판이므로,
+       finish.ts 에서 잡아서 duplicated=true / gained*=0 으로 응답한다.
+       → 게임 자원 중복 적립 가능성 0%에 가깝게 감소.
+
+  9) user_wallet 업데이트
      - 기존 구현 그대로 points/tickets 를 누적한다.
      - 상점 결제 로직이 user_wallet 을 참조하더라도 기존 동작을 유지한다.
 
-  9) analytics_events 기록
+ 10) analytics_events 기록
      - event_name = 'game_finish' 로 한 줄 삽입한다.
      - metadata 에 ip/ua/country/score/durationSec/mode/result/runId 및
        계산된 보상 + idempotencyKey 를 넣는다.
 
- 10) 스냅샷 조회
+ 11) 스냅샷 조회
      - user_stats, user_wallet 를 다시 select 하여 현재 상태를 snapshot 으로 만든다.
      - 프론트는 이 snapshot 을 참고하거나, /auth/me / X-User-* 헤더와 병합하여 HUD 를 갱신한다.
 
- 11) 응답
+ 12) 응답
      - ok/gainedExp/gainedPoints/gainedTickets/snapshot/meta 를 담아 200 으로 반환한다.
      - 헤더에는 "Cache-Control: no-store", "X-Game-Finish-Took-ms" 를 포함한다.
+     - duplicated=true 인 경우, snapshot 은 null 이고 메타에 메시지를 추가한다.
 
 
 [2] runId + idempotencyKey 설계 메모
@@ -907,6 +953,7 @@ export const onRequest: PagesFunction<Env> = async ({
   - 한 판의 게임 세션을 식별하는 문자열.
   - 클라이언트에서 UUID/랜덤 문자열을 생성해 runId 로 보내는 패턴을 권장.
   - body.runId / body.run_id / body.sessionId 중 하나로 넘어오면 모두 허용.
+  - 서버에서는 최대 128자까지만 저장해 과도한 길이를 방지한다.
 
 - idempotencyKey:
   - 같은 게임 판을 다시 finish 호출하더라도
@@ -916,14 +963,15 @@ export const onRequest: PagesFunction<Env> = async ({
         runId
           ? `game_finish:${gameId}:${userId}:${runId}`
           : `game_finish:${gameId}:${userId}:${score}:${durationSec ?? 0}`;
+  - runId 가 없는 예전 클라이언트에서도,
+    score + durationSec 조합을 사용해 어느 정도 중복 방지 효과를 얻을 수 있다.
 
 - transactions 테이블:
   - idempotency_key UNIQUE
-  - run_id 컬럼 + (user_id, run_id) UNIQUE PARTIAL INDEX 가 있다고 가정.
+  - run_id 컬럼 + (user_id, run_id) UNIQUE PARTIAL INDEX (idx_transactions_user_run) 가 있다고 가정.
   - 이 파일에서는 idempotency_key 기준으로 on conflict do nothing 을 사용한다.
-  - 같은 runId 로 finish 가 여러 번 호출되어도
-    idempotencyKey 가 동일하므로 두 번째부터는 INSERT 가 무시된다
-    → apply_wallet_transaction 트리거도 한 번만 실행된다.
+  - (user_id, run_id) 가 중복되면 idx_transactions_user_run 에 의해 에러가 발생하고,
+    이 에러를 "이미 처리됨" 응답으로 매핑한다.
 
 
 [3] 유지보수/확장 참고
@@ -939,6 +987,15 @@ export const onRequest: PagesFunction<Env> = async ({
   - 특정 유저가 "보상이 두 번 들어왔다"고 주장하면,
     transactions 테이블에서 user_id + run_id / idempotency_key 로 조회해
     실제로 몇 번 기록되었는지 확인할 수 있다.
+  - duplicated=true 응답이 실제로 프론트에 찍혔는지도
+    로그/분석 이벤트로 남길 수 있다.
+
+- 안전 장치:
+  - user_stats / user_wallet 의 non-negative CHECK 제약조건,
+    transactions 의 UNIQUE 인덱스 + idempotencyKey 규칙,
+    finish.ts 의 에러 매핑이 함께 동작하면서
+    네트워크 재시도 / 중복 클릭 / 클라이언트 버그가 있어도
+    "게임 자원 중복 적립" 을 원천적으로 막는 구조를 만든다.
 
 
 이 주석 블록은 최소 줄 수 조건을 만족시키면서,

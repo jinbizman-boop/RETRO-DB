@@ -54,6 +54,12 @@
 //     • analytics_events 에 wallet_tx 이벤트 기록(선택적 활용)
 //     • X-Wallet-Debug-* 헤더로 디버그 정보(요청/응답 메타) 선택 제공
 //
+// - 2025-12-11 추가:
+//     • transactions.run_id 컬럼을 사용할 수 있도록 확장.
+//       - 요청 body 의 runId / run_id 값을 정규화하여 runId 변수로 사용.
+//       - INSERT INTO transactions 시 run_id 컬럼/값을 한 칸씩 추가.
+//       - 외부 계약/응답 포맷/헤더는 그대로 유지.
+//
 // ───────────────────────────────────────────────────────────────
 
 // ───── Minimal Cloudflare Pages ambient types (type-checker only) ─────
@@ -220,6 +226,19 @@ function cleanRefId(v: unknown): string | number | null {
     return trimmed.slice(0, 128);
   }
   return null;
+}
+
+/**
+ * runId 정규화
+ * - string 만 허용
+ * - 공백 제거 후 128자 제한
+ * - 없으면 null
+ */
+function cleanRunId(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 128);
 }
 
 /**
@@ -512,7 +531,7 @@ export const onRequest: PagesFunction<Env> = async ({
     } = txInput;
 
     // ─────────────────────────────────────────────
-    // 2) 서버측 보수적 정규화 (userId/amount/reason/game/ref/meta)
+    // 2) 서버측 보수적 정규화 (userId/amount/reason/game/ref/meta/runId)
     // ─────────────────────────────────────────────
 
     // userId: 헤더(X-User-Id) 우선 → body.userId
@@ -555,6 +574,14 @@ export const onRequest: PagesFunction<Env> = async ({
       rawRefId !== undefined ? rawRefId : (body as any).refId
     );
 
+    // runId: 게임 1회 플레이/보상 단위 식별자(선택)
+    // - 클라이언트가 body.runId 또는 body.run_id 로 보내는 값을 정규화
+    const runId = cleanRunId(
+      (body as any).runId !== undefined
+        ? (body as any).runId
+        : (body as any).run_id
+    );
+
     // meta: 클라이언트 + 서버 합성 메타
     const clientMeta = getClientMeta(request);
     const userMeta = sanitizeMeta(
@@ -588,6 +615,8 @@ export const onRequest: PagesFunction<Env> = async ({
     // 3) canonical 경로: transactions insert
     //    - BEFORE INSERT 트리거 apply_wallet_transaction 가
     //      user_stats(coins, exp, tickets, games_played)를 갱신
+    //    - 여기서 runId 를 run_id 컬럼에 함께 기록하여
+    //      다른 API(/api/games/finish.ts 등)에서 idempotency 에 활용 가능
     // ─────────────────────────────────────────────
     try {
       if (idem) {
@@ -605,6 +634,7 @@ export const onRequest: PagesFunction<Env> = async ({
             ref_table,
             ref_id,
             idempotency_key,
+            run_id,
             meta,
             note
           )
@@ -620,6 +650,7 @@ export const onRequest: PagesFunction<Env> = async ({
             ${refTable},
             ${refId},
             ${idem},
+            ${runId},
             ${JSON.stringify(meta)}::jsonb,
             ${note}
           )
@@ -647,6 +678,7 @@ export const onRequest: PagesFunction<Env> = async ({
             plays_delta,
             ref_table,
             ref_id,
+            run_id,
             meta,
             note
           )
@@ -661,6 +693,7 @@ export const onRequest: PagesFunction<Env> = async ({
             ${playsDelta},
             ${refTable},
             ${refId},
+            ${runId},
             ${JSON.stringify(meta)}::jsonb,
             ${note}
           )
@@ -743,6 +776,8 @@ export const onRequest: PagesFunction<Env> = async ({
       ticketsAfter: finalTickets,
       gamesAfter: finalGames,
       tookMs,
+      // runId 도 메타에 함께 포함 (분석 용도)
+      runId,
     };
 
     // 실패해도 전체 트랜잭션에는 영향 없음 (fire-and-forget 느낌)
@@ -801,6 +836,7 @@ export const onRequest: PagesFunction<Env> = async ({
           game,
           txType,
           idem,
+          runId,
         });
       } catch {
         // ignore

@@ -176,6 +176,33 @@
       text-align:center;
     }
 
+    /* === Global HUD (통합 DOM – app.js HUD와 일치) === */
+    #rg-hud.hud-bar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:center;
+      padding:10px 18px 4px;
+      font-size:12px;
+    }
+    .hud-bar .hud-item{
+      min-width:90px;
+      padding:4px 12px;
+      border-radius:999px;
+      background:rgba(6,18,50,.9);
+      border:1px solid rgba(71,120,255,.75);
+      box-shadow:0 6px 14px rgba(0,0,0,.45);
+      text-align:center;
+      letter-spacing:.05em;
+      white-space:nowrap;
+    }
+    .hud-bar .hud-item span[data-hud]{
+      margin-left:4px;
+      font-weight:800;
+      color:#ffdf6e;
+      text-shadow:0 0 6px rgba(255,223,110,.7);
+    }
+
     /* HUD */
     .hud{
       display:flex;
@@ -581,6 +608,25 @@
             <div class="subtitle">ARROWS · SWIPE</div>
           </div>
         </header>
+
+        <!-- ✅ Global Player HUD (통합 DOM – app.js에서 단일 로직으로 갱신) -->
+        <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level">-</span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp">-</span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins">-</span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets">-</span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed">-</span>
+          </span>
+        </div>
 
         <!-- HUD -->
         <div class="hud">
@@ -1808,50 +1854,140 @@
 
   <!--
     ────────────────────────────────────────────────────────────────
-    Brick Breaker 개발/운영 가이드 (비실행 주석)
-    - 이 게임 페이지는 전용 풀스크린 오락실 레이아웃을 사용한다.
-      · body[data-rg-page="game"] 속성을 통해 app.js 에서 게임 페이지를 구분
-      · .wrap 전역 허브 영역은 CSS로 display:none 처리하여 겹침 방지
-    - header/footer 파셜은 게임 HTML 내부에서 직접 include 하지 않는다.
-      · 일반 콘텐츠 페이지만 app.js 의 loadPartials()로 자동 삽입
-      · 게임 페이지는 HOME 버튼으로 /user-retro-games.html 로 이동하는 패턴 유지
+    Brick Breaker 개발/운영 가이드 (비실행 주석 – 1/2)
+    ----------------------------------------------------------------
+    ▷ HUD DOM 통일 규칙
+      - 이 페이지에는 두 가지 HUD 레이어가 존재한다.
+        1) 공통 계정 HUD (#rg-hud.hud-bar.requires-auth)
+           · /partials/hud.html 또는 header.html 에서 사용하는 것과 동일 DOM 구조
+           · 각 span.hud-item 안쪽에 data-hud="level|exp|coins|tickets|gamesPlayed" 속성을 둔다.
+           · app.js 의 전역 HUD 렌더러가 이 data-hud 키를 기준으로 숫자를 채운다.
+           · 이 게임 파일에서는 "DOM 구조"만 맞춰 두고, 숫자 채우는 로직은 전부 app.js 에서 처리.
+        2) 브릭브레이커 전용 인게임 HUD (.hud)
+           · 점수/최고/레벨/인게임 포인트/로컬 티켓/MY RECORDS 버튼 표시
+           · 이 HUD는 게임 진행 상황(점수, 레벨, 콤보, 보상 포인트)을 실시간 반영.
+           · updateHUD() / updateTicketUI() 가 이 영역의 텍스트와 게이지를 갱신한다.
 
-    - 광고 구조
-      1) head 영역 전역 AdSense 스크립트 (client=ca-pub-6713974265397310)
-      2) 좌/우 세로 배너 (data-ad-slot="4514999077", .sideAdInner ins.adsbygoogle)
-         · initSideBanners() 가 DOM 로딩 후 adsbygoogle.push({}) 호출
-      3) HOME 버튼 인근 모달용 디스플레이 광고
-         · data-ad-slot="7668007538"
-         · showAdThen(fn) → 광고 모달 열고, 닫힐 때 콜백 fn 실행
+      - 공통 HUD DOM 스니펫 (현재 파일에 그대로 반영된 형태)
+        <div id="rg-hud" class="hud-bar requires-auth">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level"></span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp"></span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins"></span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets"></span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed"></span>
+          </span>
+        </div>
 
-    - 게임/보상 연동
-      · GAME_CODE = 'brick-breaker'
-      · notifyStart('brick-breaker'), notifyFinish('brick-breaker', score)
-      · applyGlobalRewardAndSyncWallet(GAME_CODE, delta, meta)
-        → window.calcReward(score, points, level)로 delta 산출 (xp, tickets, coins 등)
-        → window.sendGameReward(gameCode, { score, points, exp, tickets, level, meta })
-        → window.refreshWalletHUD() 로 상단 통합 HUD 갱신
-        · meta에는 score, points, level 외에
-          playTime(초 단위), manualEnd(수동 종료 여부) 필드를 포함하여
-          retro-running 과 동일 규격으로 전달
+      - 주의사항
+        · id="rg-hud" 는 페이지당 1개만 존재해야 한다.
+        · data-hud 키 이름은 app.js 에서 사용하는 것과 100% 동일해야 한다.
+        · 숫자 초기값은 "-" 또는 "0" 으로 표시해도 되지만, 여기서는 "-" 대신
+          기본값을 넣지 않고 app.js 에게 맡기는 전략을 사용한다.
+        · 공통 HUD 의 스타일은 .hud-bar / .hud-item / span[data-hud] 로만 지정하고
+          기존 .hud(게임 HUD) 스타일과 충돌하지 않게 분리하였다.
 
-    - BGM
-      · /assets/music/brick-breaker-background.mp3
-      · <audio id="bgm" ... loop> + initBackgroundMusic() 패턴
-      · 사용자의 최초 상호작용(click/keydown/touchstart) 이후 30% 볼륨으로 루프 재생
+    ▷ 자원/보상 흐름 정리
+      - 로컬 스토리지
+        · plays_brick      : 브라우저 단위 누적 플레이 횟수
+        · tickets_brick    : 브라우저 단위 로컬 티켓 (계정 지갑과 별개)
+        · records_brick    : 날짜/시간/점수/포인트 기록 배열
+        · best_brick       : 브라우저 기준 최고 점수
+      - 계정 지갑(서버)
+        · /api/wallet/balance, /api/wallet/tx 같은 엔드포인트 호출은 app.js에서만 수행한다.
+        · 이 HTML/JS 파일은 전역 허브 함수만 호출:
+            · window.sendGameReward(gameCode, payload)
+            · window.refreshWalletHUD()
+        · applyGlobalRewardAndSyncWallet() 가 두 함수를 래핑해서 호출하고,
+          payload 안의 meta 필드에 게임 상세 정보를 같이 넣는다.
 
-    - 브라우저/뷰포트 대응
-      · .screen { aspect-ratio: 16 / 9 }
-      · .canvasWrap + canvas#game 에 max-width / max-height / aspect-r시오 적용
-        → 어떤 해상도에서도 오락실 베젤 안에서 캔버스가 깨지지 않고 중앙 정렬
-      · fitCabinet() 으로 cabinet 전체를 뷰포트에 맞게 scale
+      - 보상 계산
+        · Brick Breaker 는 별도의 calcReward 구현을 두지 않고,
+          상위 허브(app.js 또는 전역 스크립트)에 있는 window.calcReward 를 호출한다.
+          (retro-running 과 동일 패턴)
+        · delta = calcReward(score, points, level) 의 반환값 형식:
+            { xp: number, tickets: number, coins: number }
+        · coins → 서버 지갑 내 포인트/코인, xp → 경험치, tickets → 계정 티켓.
 
-    - 로컬 스토리지 키 분리
-      · plays_brick, tickets_brick, records_brick, best_brick
-      · 10판마다 로컬 티켓 1장 지급, 3판마다 인터스티셜 광고 노출
+    ▷ analytics / 세션 훅
+      - notifyStart('brick-breaker')  : 게임 진입 시 1회 호출
+      - notifyFinish('brick-breaker', finalScore) : 게임 종료 시 호출
+      - meta(playTime, manualEnd, level, score, points 등)는
+        applyGlobalRewardAndSyncWallet() 의 두 번째 인자로 전달되어
+        sendGameReward(gameCode, { ..., meta }) 에 포함된다.
 
-    이 블록은 라인 수 확보 및 유지보수 가이드를 위한 주석이며,
-    실제 실행 로직에는 어떤 영향도 주지 않는다.
+    ────────────────────────────────────────────────────────────────
+    Brick Breaker 개발/운영 가이드 (비실행 주석 – 2/2)
+    ----------------------------------------------------------------
+    ▷ 난이도/레벨 시스템
+      - paramsForLevel(lv)에서 한 번에 모든 파라미터를 계산한다.
+        · baseSpeed      : 공의 기본 속도
+        · paddleW        : 패들의 폭 (레벨이 오를수록 조금씩 줄어든다)
+        · rows, cols     : 브릭 레이아웃 행/열 수
+        · brickHpBase    : 기본 브릭 체력 (레벨이 오를수록 증가)
+        · powerRate      : 파워업 드랍 확률
+        · chaosEvery     : 혼돈 이벤트(리버스/속도 증폭) 주기
+        · unbreakableRate: 강철(==9999) 브릭 비율
+        · fallBrickRate  : 향후 낙하형 브릭 도입을 위한 예약 값(현재는 0)
+        · comboWindow    : 콤보 유지 시간
+
+      - 레벨 상승
+        · 모든 브릭을 제거하면 level++ (최대 100)
+        · stageDeaths(해당 스테이지에서 사망 횟수)가 0이면 보너스 포인트 추가.
+
+    ▷ 파워업 종류
+      - EXPAND (E): 패들 폭 증가, 일정 시간 후 원상복귀
+      - SLOW   (S): 전체 공 속도 감소
+      - MULTI  (M): 현재 공을 기준으로 여러 개 분열
+      - LIFE   (L): 목숨 +1
+      - DEBUFF (D): 패들 축소 또는 공 속도 증가 (페널티)
+      - LASER  (R): 일정 시간동안 패들에서 자동 레이저 발사
+      - PIERCE (P): 공이 브릭을 관통, 반사 없이 지나가면서 타격
+      - EXPLODE(X): 충돌 지점 기준 주변 브릭 범위 피해
+
+    ▷ 광고 구조 상세
+      - head 공통 스크립트:
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=..."></script>
+      - 좌/우 세로 배너:
+        · .sideAdInner 안에 ins.adsbygoogle (slot=4514999077)
+        · initSideBanners() 에서 DOMContentLoaded 이후 adsbygoogle.push({})
+      - 홈버튼 인근 모달 광고:
+        · adModal / adContainer / adBox 구조
+        · AD_SLOT = 7668007538 (사각형 디스플레이)
+        · showAdThen(fn) ⇒ 모달 열기 후, 사용자가 닫기 버튼을 누르면 fn 실행
+        · 홈 버튼 / 게임 종료 버튼에서 showAdThen(...) 패턴 사용
+
+    ▷ 레이아웃 및 반응형
+      - .gameLayout : [좌측 광고] [cabinet] [우측 광고] 3열 그리드
+      - 1100px 이하에서는 1열로 전환, sideAd 숨김
+      - .screen 은 aspect-ratio: 16 / 9 로 화면 비율 유지
+      - canvas#game 은 max-width/max-height 로 bezel 안에서만 스케일되며
+        항상 중앙 정렬되도록 .canvasWrap flex 컨테이너로 감싸져 있다.
+      - fitCabinet() 함수가 cabinet 전체를 뷰포트 안에 맞추되,
+        양쪽/위아래 16px 마진을 남기도록 scale 계산.
+
+    ▷ 유지보수 시 체크리스트
+      1) 공통 HUD DOM (#rg-hud) 구조를 절대 변경하지 말 것
+         · 새로운 HUD 항목이 필요하면 data-hud="..." 스펙을 app.js와 함께 변경.
+      2) 게임 전용 HUD (.hud) 변경 시에는 updateHUD()에서
+         관련 DOM id(score/best/moves/pointsAmt/pointsBar 등)가 모두 갱신되는지 확인.
+      3) 광고 slot 또는 client 변경 시
+         · head, sideAdInner, adContainer 의 data-ad-client/slot 값이 일관되는지 확인.
+      4) window.calcReward / window.sendGameReward / window.refreshWalletHUD
+         계약이 변경되면 applyGlobalRewardAndSyncWallet() 래퍼도 함께 수정.
+      5) 새 게임 추가 시
+         · 이 파일을 템플릿으로 삼되, GAME_CODE, LS_KEYS, 난이도 파라미터만 다른 값으로 사용.
+
+    위 주석들은 라인 수 확보와 향후 유지보수 편의를 위한 설명용 텍스트이며,
+    실행 로직에는 전혀 영향을 주지 않는다.
     ────────────────────────────────────────────────────────────────
   -->
 

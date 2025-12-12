@@ -1482,31 +1482,64 @@
 
   <div class="wrap">
     <header>
-      <!-- 좌측: HUD -->
-      <div class="hudTop" aria-label="보상 현황">
-        <div class="pill coins" title="보유 코인(포인트)">
+      <!-- 좌측: HUD (공통 HUD DOM 규격: id="rg-hud" + data-hud="*") -->
+      <div id="rg-hud" class="hudTop hud-bar requires-auth" aria-label="보상 현황">
+        <span class="sr-only">계정 보상 HUD</span>
+
+        <!-- Lv. HUD (신규) -->
+        <div class="pill level hud-item hud-level" title="계정 레벨">
+          <div class="icon">⭐</div>
+          <div class="label">Lv.</div>
+          <div class="amount" id="levelVal" data-hud="level">-</div>
+        </div>
+
+        <!-- Coins -->
+        <div class="pill coins hud-item hud-coins" title="보유 코인(포인트)">
           <div class="icon">🪙</div>
-          <div id="coinVal" class="amount" data-user-points>0</div>
+          <div class="label">Coins</div>
+          <div id="coinVal"
+               class="amount"
+               data-user-points
+               data-hud="coins">0</div>
           <div class="unit">COINS</div>
         </div>
-        <div class="pill xp" title="경험치">
+
+        <!-- EXP -->
+        <div class="pill xp hud-item hud-exp" title="경험치">
           <div class="icon">🏆</div>
-          <div id="xpVal" class="amount" data-user-exp>0</div>
+          <div class="label">EXP</div>
+          <div id="xpVal"
+               class="amount"
+               data-user-exp
+               data-hud="exp">0</div>
           <div class="unit">XP</div>
           <span id="xpCap" class="sr-only">/ 20K</span>
           <span class="sr-only" aria-hidden="true"><span id="xpBar"></span></span>
         </div>
-        <div class="pill tickets" title="보유 티켓">
+
+        <!-- Tickets -->
+        <div class="pill tickets hud-item hud-tickets" title="보유 티켓">
           <div class="icon">🎟️</div>
-          <div id="ticketVal" class="amount" data-user-tickets>0</div>
+          <div class="label">Tickets</div>
+          <div id="ticketVal"
+               class="amount"
+               data-user-tickets
+               data-hud="tickets">0</div>
           <div class="unit">TICKETS</div>
         </div>
-        <div class="pill plays" title="총 플레이 수">
+
+        <!-- Plays -->
+        <div class="pill plays hud-item hud-games" title="총 플레이 수">
           <div class="icon">🎮</div>
-          <div id="playVal" class="amount" data-user-plays>0</div>
+          <div class="label">Plays</div>
+          <div id="playVal"
+               class="amount"
+               data-user-plays
+               data-hud="gamesPlayed">0</div>
           <div class="unit">PLAYS</div>
         </div>
-        <!-- SHOP 버튼: 페이지 이동 대신 팝업 모달 열기 -->
+
+        <!-- SHOP 버튼: 페이지 이동 대신 팝업 모달 열기 (기존 그대로) -->
         <button class="pill shop" onclick="openShopModal()" title="상점">
           <div class="icon">🛍️</div>
           <div class="label">SHOP</div>
@@ -1931,6 +1964,7 @@
       xpCap:   null,
       plays:   null,
       userId:  null,
+      level:   null,   // ✅ HUD 공통 DOM용 계정 레벨
     };
 
     // ✅ 유저별/게스트별 로컬스토리지 prefix
@@ -1986,11 +2020,13 @@
 
     function renderHUD(){
       const t = readTotals();
+
       const coinEl   = document.getElementById('coinVal');
       const xpEl     = document.getElementById('xpVal');
       const ticketEl = document.getElementById('ticketVal');
       const playEl   = document.getElementById('playVal');
 
+      // 기존 ID 기반 HUD 갱신 (디자인/동작 유지)
       if (coinEl)   coinEl.textContent   = fmt(t.coins);
       if (xpEl)     xpEl.textContent     = fmt(t.xp);
       if (ticketEl) ticketEl.textContent = fmt(t.tickets);
@@ -2005,6 +2041,25 @@
       if (xpBar) xpBar.style.width = pct + "%";
       const xpCap = document.getElementById('xpCap');
       if (xpCap) xpCap.textContent = "/ " + (t.xpCap >= 1000 ? fmt(t.xpCap/1000)+"K" : fmt(t.xpCap));
+
+      // ✅ 공통 HUD DOM(data-hud="*")에도 동일 값 주입
+      document.querySelectorAll('[data-hud="coins"]').forEach(function(el){
+        el.textContent = fmt(t.coins);
+      });
+      document.querySelectorAll('[data-hud="exp"]').forEach(function(el){
+        el.textContent = fmt(t.xp);
+      });
+      document.querySelectorAll('[data-hud="tickets"]').forEach(function(el){
+        el.textContent = fmt(t.tickets);
+      });
+      document.querySelectorAll('[data-hud="gamesPlayed"]').forEach(function(el){
+        el.textContent = fmt(plays);
+      });
+
+      const lvl = ACCOUNT_TOTALS.level;
+      document.querySelectorAll('[data-hud="level"]').forEach(function(el){
+        el.textContent = (lvl != null) ? fmt(lvl) : "-";
+      });
     }
 
     // ✅ 로그인 실패/로그아웃 시 HUD + 로컬스토리지 초기화
@@ -2014,6 +2069,7 @@
       ACCOUNT_TOTALS.xp      = 0;
       ACCOUNT_TOTALS.plays   = 0;
       ACCOUNT_TOTALS.xpCap   = 20000;
+      ACCOUNT_TOTALS.level   = null;   // ✅ 레벨도 초기화
 
       try{
         const prefix = getStoragePrefix();
@@ -2094,13 +2150,19 @@
         stats.plays ?? stats.play_count ?? stats.totalPlays ?? 0
       );
       const xpCap   = stats.xpCap != null ? NUM(stats.xpCap) : null;
+      const level   = (stats.level != null)
+        ? NUM(stats.level)
+        : (stats.lv != null ? NUM(stats.lv) : null);  // ✅ 백엔드에서 level/lv 둘 중 하나 넘어오는 경우 대응
 
-      ACCOUNT_TOTALS.userId  = (user.id != null) ? String(user.id) : (user.user_id != null ? String(user.user_id) : ACCOUNT_TOTALS.userId);
+      ACCOUNT_TOTALS.userId  = (user.id != null)
+        ? String(user.id)
+        : (user.user_id != null ? String(user.user_id) : ACCOUNT_TOTALS.userId);
       ACCOUNT_TOTALS.coins   = coins;
       ACCOUNT_TOTALS.xp      = xp;
       ACCOUNT_TOTALS.tickets = tickets;
       ACCOUNT_TOTALS.plays   = plays;
-      if (xpCap != null) ACCOUNT_TOTALS.xpCap = xpCap;
+      if (xpCap != null)  ACCOUNT_TOTALS.xpCap  = xpCap;
+      if (level != null)  ACCOUNT_TOTALS.level  = level;   // ✅ 레벨 저장
 
       const localBase = readTotalsFromLocal();
       writeTotalsToLocal({
@@ -2154,6 +2216,11 @@
         if(w.xpCap != null){
           ACCOUNT_TOTALS.xpCap = NUM(w.xpCap);
         }
+
+        if(w.level != null){
+          ACCOUNT_TOTALS.level = NUM(w.level);   // ✅ wallet 응답에 level 있는 경우 HUD 반영
+        }
+
 
         const localBase = readTotalsFromLocal();
         writeTotalsToLocal({

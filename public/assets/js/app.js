@@ -159,6 +159,51 @@
 
   const clearAuthToken = () => setAuthToken("");
 
+// ────────────────────────────── 전역 HUD 상태 (DOM 통합용) ──────────────────────────────
+  // 공통 HUD 상태 (선택: 필요하면 다른 곳에서 읽어서 쓸 수 있게)
+  const RG_HUD_STATE = {
+    level: null,
+    exp: null,
+    coins: null,
+    tickets: null,
+    gamesPlayed: null,
+  };
+
+  /**
+   * 공통 HUD 업데이트 함수
+   * - state: { level, exp, coins, tickets, gamesPlayed } 중 일부/전체
+   * - DOM 구조: #rg-hud 안쪽 span[data-hud="..."]에 값만 채워 넣는 역할
+   */
+  function updateHudFromState(state) {
+    if (!state) return;
+
+    // 내부 상태 머지
+    Object.assign(RG_HUD_STATE, state);
+
+    const root = document.getElementById("rg-hud");
+    if (!root) return;
+
+    const set = (key, value) => {
+      const el = root.querySelector(`[data-hud="${key}"]`);
+      if (!el) return;
+      const v = value ?? RG_HUD_STATE[key];
+      el.textContent =
+        v === null || v === undefined || v === "" || Number.isNaN(v)
+          ? "-"
+          : String(v);
+    };
+
+    set("level", state.level);
+    set("exp", state.exp);
+    set("coins", state.coins);
+    set("tickets", state.tickets);
+    set("gamesPlayed", state.gamesPlayed);
+  }
+
+  // 필요하면 다른 스크립트에서 window로 접근할 수 있게 노출
+  window.updateHudFromState = updateHudFromState;
+  window.RG_HUD_STATE = RG_HUD_STATE;
+
   /* ───────────────── 계정별 진행도(경험치/포인트/티켓) 캐시 ───────────────── */
   let _me = null; // 세션 캐시(정규화된 user 객체)
   let _stats = { points: 0, exp: 0, level: 1, tickets: 0 };
@@ -624,6 +669,18 @@
       }
 
       updateHUDFromStats(stats);
+      // 공통 HUD DOM 이 있다면 같이 맞춰준다.
+      try {
+        updateHudFromState({
+          level: stats.level,
+          exp: stats.exp,
+          coins: stats.coins,
+          tickets: stats.tickets,
+          gamesPlayed: stats.gamesPlayed,
+        });
+      } catch (e) {
+        debugLog("updateHudFromState sync failed", e);
+      }
     } catch (e) {
       debugLog("refreshWalletFromBalance failed", e);
     }

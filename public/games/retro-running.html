@@ -826,6 +826,25 @@
           </div>
         </header>
 
+        <!-- ✅ 공통 계정 HUD DOM (HUD 렌더링 로직 단일화용, 숫자는 app.js에서 data-hud로 주입) -->
+        <div id="rg-hud" class="hud-bar requires-auth">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level"></span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp"></span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins"></span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets"></span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed"></span>
+          </span>
+        </div>
+
         <!-- HUD -->
         <div class="hud">
           <div class="chip">점수 <b id="score">0</b></div>
@@ -2207,5 +2226,80 @@
       } catch (e) { /* no-op */ }
     })();
   </script>
+
+  <!--
+    ────────────────────────────────────────────────────────────────
+    3-2. HUD 렌더링 로직 단일화 – RETRO RUNNING 적용 메모 (비실행 주석)
+    ----------------------------------------------------------------
+    ■ 1단계. HUD DOM 통일하기
+
+      ※ 공통 헤더(또는 HUD 위쪽)에 아래 구조를 그대로 한 번만 만들어 두고,
+         다른 페이지는 전부 이 파셜을 include 하는 식으로 맞추는 규칙.
+
+      예) /partials/hud.html 또는 header.html 안쪽에 포함되는 DOM
+
+        <div id="rg-hud" class="hud-bar requires-auth">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level"></span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp"></span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins"></span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets"></span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed"></span>
+          </span>
+        </div>
+
+      · 이미 각 페이지에 HUD가 있을 거니까,
+          - id="rg-hud" 를 붙이고,
+          - 숫자가 들어가는 span에 data-hud="…" 속성만 맞춰주면 끝.
+
+      · 중요한 건 "어떤 페이지든 HUD 숫자는 data-hud 키만 같게" 만든다는 것.
+        이렇게 해두면 JS는 DOM 세부 구조는 신경 안 쓰고,
+        "data-hud='level'" 같은 키만 보고 값만 채우면 됨.
+
+      · 이 파일( public/games/retro-running.html )에서는
+          - <header class="marquee"> 바로 아래에
+              #rg-hud 블록을 추가
+          - 기존 게임 전용 HUD(.hud) 블록은 그대로 유지
+          - 스타일, 게임 로직, 광고 구조, 버튼 구성 등은 100% 기존 동작 유지
+
+      · 공통 HUD에 사용되는 data-hud 키 목록
+          level       : 계정 레벨
+          exp         : 누적 경험치 또는 경험치 게이지
+          coins       : 포인트/코인
+          tickets     : 티켓 수량
+          gamesPlayed : 누적 플레이(또는 일일/주간 플레이 수)
+
+      · 숫자 채우기(렌더링)는 /assets/js/app.js 쪽 전역 HUD 렌더러가 담당.
+        game HTML에서는 오로지 DOM 구조(id / class / data-hud)만 맞춘다.
+
+    ■ 2단계. 유지보수 시 체크 포인트
+
+      1) HUD 항목이 늘어날 때
+         - app.js 의 HUD 렌더 함수에 새 키(data-hud="…") 처리 로직 추가
+         - /partials/hud.html 과 각 게임 페이지의 #rg-hud 안에 동일한 span 추가
+
+      2) 스타일 변경
+         - 가능하면 전역 CSS 또는 헤더 파셜에서 스타일을 수정
+         - 게임 파일 내부에서는 HUD 레이아웃/색상은 건드리지 않고,
+           최소한의 DOM 추가만 수행하는 것을 원칙으로 함.
+
+      3) 게임별 전용 HUD(.hud)와의 관계
+         - #rg-hud : 계정/월렛/통계용 글로벌 HUD (공통 규격)
+         - .hud    : 각 게임 내 점수/스테이지/아이템 등 게임 전용 HUD
+         - 두 블록 모두 동시에 존재할 수 있고, 서로 다른 데이터를 보여줌.
+
+      이 주석 블록은 설계/운영 메모 용도로만 존재하며,
+      실제 실행 로직과 스타일에는 어떠한 영향도 주지 않는다.
+    ────────────────────────────────────────────────────────────────
+  -->
+
 </body>
 </html>

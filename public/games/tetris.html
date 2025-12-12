@@ -588,7 +588,26 @@
           </div>
         </header>
 
-        <!-- HUD -->
+        <!-- ✅ 공통 HUD DOM (HUD DOM 통일용, 숫자 주입은 app.js) -->
+        <div id="rg-hud" class="hud-bar requires-auth">
+          <span class="hud-item hud-level">
+            LV. <span data-hud="level"></span>
+          </span>
+          <span class="hud-item hud-exp">
+            EXP <span data-hud="exp"></span>
+          </span>
+          <span class="hud-item hud-coins">
+            Coins <span data-hud="coins"></span>
+          </span>
+          <span class="hud-item hud-tickets">
+            Tickets <span data-hud="tickets"></span>
+          </span>
+          <span class="hud-item hud-games">
+            Plays <span data-hud="gamesPlayed"></span>
+          </span>
+        </div>
+
+        <!-- HUD (게임 전용) -->
         <div class="hud">
           <div class="chip">점수 <b id="score">0</b></div>
           <div class="chip">최고 <b id="best">0</b></div>

@@ -2006,6 +2006,102 @@
       };
     }
 
+    function applyAccountApiResponse(payload){
+      if(!payload) return;
+
+      const current = readTotals();
+      const stats  = payload.stats  || {};
+      const wallet = payload.wallet || {};
+
+      // 현재 값 기반 초기값
+      let coins   = current.coins;
+      let tickets = current.tickets;
+      let xp      = current.xp;
+      let xpCap   = current.xpCap;
+      let plays   = ACCOUNT_TOTALS.plays != null
+        ? ACCOUNT_TOTALS.plays
+        : NUM(localStorage.getItem(getStoragePrefix() + '_plays') || 0);
+      let level   = ACCOUNT_TOTALS.level;
+
+      // 공통 소스에서 숫자 추출
+      const coinsSrc =
+        stats.points ?? stats.coins ?? stats.balance ??
+        wallet.points ?? wallet.coins ??
+        payload.points ?? payload.coins;
+
+      const xpSrc =
+        stats.exp ?? stats.xp ??
+        wallet.exp ?? wallet.xp ??
+        payload.exp ?? payload.xp;
+
+      const ticketsSrc =
+        stats.tickets ?? stats.ticket ??
+        wallet.tickets ?? wallet.ticket ??
+        payload.tickets;
+
+      const playsSrc =
+        stats.plays ?? stats.play_count ?? stats.totalPlays ??
+        wallet.plays ?? wallet.play_count ?? wallet.totalPlays ??
+        payload.plays ?? payload.play_count ?? payload.totalPlays;
+
+      const xpCapSrc =
+        stats.xpCap ?? wallet.xpCap ?? payload.xpCap;
+
+      const levelSrc =
+        stats.level ?? stats.lv ??
+        wallet.level ??
+        payload.level ?? payload.lv;
+
+      if (coinsSrc   != null) coins   = NUM(coinsSrc);
+      if (ticketsSrc != null) tickets = NUM(ticketsSrc);
+      if (xpSrc      != null) xp      = NUM(xpSrc);
+      if (playsSrc   != null) plays   = NUM(playsSrc);
+      if (xpCapSrc   != null) xpCap   = NUM(xpCapSrc);
+      if (levelSrc   != null) level   = NUM(levelSrc);
+
+      // userId 갱신(있을 때만)
+      if (payload.userId != null || payload.user_id != null){
+        ACCOUNT_TOTALS.userId = String(payload.userId ?? payload.user_id);
+      }
+
+      // 전역 합계 갱신
+      ACCOUNT_TOTALS.coins   = coins;
+      ACCOUNT_TOTALS.tickets = tickets;
+      ACCOUNT_TOTALS.xp      = xp;
+      ACCOUNT_TOTALS.xpCap   = xpCap;
+      ACCOUNT_TOTALS.plays   = plays;
+      ACCOUNT_TOTALS.level   = level;
+
+      // 로컬스토리지 동기화
+      writeTotalsToLocal({
+        coins:   coins,
+        tickets: tickets,
+        xp:      xp,
+        xpCap:   xpCap,
+      });
+
+      // HUD + Shop 카운터 동기화
+      renderHUD();
+      renderShopCounters();
+
+      // 허브에서 공통으로 계정 요약을 가져갈 수 있도록 유지
+      try{
+        window.RG_HUB = window.RG_HUB || {};
+        window.RG_HUB.getAccountTotals = function(){
+          return {
+            userId:  ACCOUNT_TOTALS.userId,
+            coins:   ACCOUNT_TOTALS.coins,
+            xp:      ACCOUNT_TOTALS.xp,
+            tickets: ACCOUNT_TOTALS.tickets,
+            xpCap:   ACCOUNT_TOTALS.xpCap,
+            plays:   ACCOUNT_TOTALS.plays,
+            level:   ACCOUNT_TOTALS.level
+          };
+        };
+      }catch(e){}
+    }
+
+
     function addReward({coins=0,tickets=0,xp=0}={}){
       const base = readTotalsFromLocal();
       base.coins   += NUM(coins);
@@ -2137,57 +2233,12 @@
     function applyAccountStatsFromUser(user){
       if(!user) return;
       const stats = user.stats || {};
-      const coins   = NUM(
-        stats.points ?? stats.coins ?? stats.balance ?? 0
-      );
-      const xp      = NUM(
-        stats.exp ?? stats.xp ?? 0
-      );
-      const tickets = NUM(
-        stats.tickets ?? stats.ticket ?? 0
-      );
-      const plays   = NUM(
-        stats.plays ?? stats.play_count ?? stats.totalPlays ?? 0
-      );
-      const xpCap   = stats.xpCap != null ? NUM(stats.xpCap) : null;
-      const level   = (stats.level != null)
-        ? NUM(stats.level)
-        : (stats.lv != null ? NUM(stats.lv) : null);  // ✅ 백엔드에서 level/lv 둘 중 하나 넘어오는 경우 대응
-
-      ACCOUNT_TOTALS.userId  = (user.id != null)
-        ? String(user.id)
-        : (user.user_id != null ? String(user.user_id) : ACCOUNT_TOTALS.userId);
-      ACCOUNT_TOTALS.coins   = coins;
-      ACCOUNT_TOTALS.xp      = xp;
-      ACCOUNT_TOTALS.tickets = tickets;
-      ACCOUNT_TOTALS.plays   = plays;
-      if (xpCap != null)  ACCOUNT_TOTALS.xpCap  = xpCap;
-      if (level != null)  ACCOUNT_TOTALS.level  = level;   // ✅ 레벨 저장
-
-      const localBase = readTotalsFromLocal();
-      writeTotalsToLocal({
-        coins:   coins,
-        tickets: tickets,
-        xp:      xp,
-        xpCap:   xpCap != null ? xpCap : localBase.xpCap,
+      applyAccountApiResponse({
+        userId: (user.id != null)
+          ? user.id
+          : (user.user_id != null ? user.user_id : undefined),
+        stats
       });
-
-      renderHUD();
-      renderShopCounters();
-
-      try{
-        window.RG_HUB = window.RG_HUB || {};
-        window.RG_HUB.getAccountTotals = function(){
-          return {
-            userId:  ACCOUNT_TOTALS.userId,
-            coins:   ACCOUNT_TOTALS.coins,
-            xp:      ACCOUNT_TOTALS.xp,
-            tickets: ACCOUNT_TOTALS.tickets,
-            xpCap:   ACCOUNT_TOTALS.xpCap,
-            plays:   ACCOUNT_TOTALS.plays,
-          };
-        };
-      }catch(e){}
     }
 
     async function syncWalletFromServer(){
@@ -2204,34 +2255,8 @@
         const data = await res.json().catch(()=>null);
         if(!data || !data.wallet) return;
 
-        const w = data.wallet;
-        if(w.points != null)  ACCOUNT_TOTALS.coins   = NUM(w.points);
-        if(w.tickets != null) ACCOUNT_TOTALS.tickets = NUM(w.tickets);
-        if(w.exp != null || w.xp != null){
-          ACCOUNT_TOTALS.xp = NUM(w.exp ?? w.xp);
-        }
-        if(w.plays != null || w.play_count != null || w.totalPlays != null){
-          ACCOUNT_TOTALS.plays = NUM(w.plays ?? w.play_count ?? w.totalPlays);
-        }
-        if(w.xpCap != null){
-          ACCOUNT_TOTALS.xpCap = NUM(w.xpCap);
-        }
-
-        if(w.level != null){
-          ACCOUNT_TOTALS.level = NUM(w.level);   // ✅ wallet 응답에 level 있는 경우 HUD 반영
-        }
-
-
-        const localBase = readTotalsFromLocal();
-        writeTotalsToLocal({
-          coins:   ACCOUNT_TOTALS.coins   != null ? ACCOUNT_TOTALS.coins   : localBase.coins,
-          tickets: ACCOUNT_TOTALS.tickets != null ? ACCOUNT_TOTALS.tickets : localBase.tickets,
-          xp:      ACCOUNT_TOTALS.xp      != null ? ACCOUNT_TOTALS.xp      : localBase.xp,
-          xpCap:   ACCOUNT_TOTALS.xpCap   != null ? ACCOUNT_TOTALS.xpCap   : localBase.xpCap,
-        });
-
-        renderHUD();
-        renderShopCounters();
+        // ✅ 지갑 응답은 전부 공통 함수로 처리
+        applyAccountApiResponse({ wallet: data.wallet });
       }catch(err){
         console.warn("[RG][wallet] sync from /api/wallet failed:", err);
       }
@@ -3193,8 +3218,24 @@
         }
 
         showShopToast("구매가 완료되었습니다!");
-        await syncWalletFromServer().catch(()=>{});
-        renderShopCounters();
+
+        // ✅ 1순위: 응답 안에 지갑/스탯/포인트 정보가 같이 온 경우 → 공통 함수로 바로 반영
+        if(
+          data.wallet ||
+          data.stats ||
+          typeof data.points   !== "undefined" ||
+          typeof data.coins    !== "undefined" ||
+          typeof data.tickets  !== "undefined" ||
+          typeof data.xp       !== "undefined" ||
+          typeof data.plays    !== "undefined" ||
+          typeof data.level    !== "undefined" ||
+          typeof data.xpCap    !== "undefined"
+        ){
+          applyAccountApiResponse(data);
+        }else{
+          // ✅ 2순위: 별도 필드가 없으면 /api/wallet 요약을 다시 불러와서 반영
+          await syncWalletFromServer().catch(()=>{});
+        }
       }catch(e){
         console.error("[RG][shop] buy error:", e);
         showShopToast("네트워크 오류로 구매에 실패했습니다.");

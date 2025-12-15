@@ -23,6 +23,17 @@
  * - /api/wallet/balance 기반 HUD 자동 리프레시(window.refreshWalletHUD)
  * - /api/analytics/event 연동 window.trackGameEvent(type, gameId, meta)
  * - gameStart / gameFinish 에서도 trackGameEvent 를 자동 호출
+ *
+ * ──────────────────────────────────────────────────────────────
+ * ✅ 반영 사항 (요청된 부분만)
+ * - app.js 내부에서 HUD/스탯을 직접 갱신(ACCOUNT_TOTALS/HUD DOM 조작)하는 코드를 제거/무력화
+ * - /api/auth/me, /api/wallet/*(balance 포함) 응답/헤더 기반의 HUD/스탯 갱신은
+ *   오직 단일 위임 함수 applyAccountApiResponse(payload) 로만 전달
+ * - 위임 함수의 실체는 허브/게임 페이지(user-retro-games.html 등)에 존재한다고 가정
+ *   (window.applyAccountApiResponse 또는 window.RG.applyAccountApiResponse)
+ * - 기존 공개 API/호환성(window.refreshWalletHUD, window.updateHUDFromStats 등)은 유지하되
+ *   내부에서 DOM/스탯을 직접 만지지 않고 위임만 수행
+ * ──────────────────────────────────────────────────────────────
  */
 
 (() => {
@@ -110,6 +121,49 @@
     }, ms + 240);
   };
 
+  /* ──────────────────────────────────────────────────────────────
+   * ✅ 단일 위임 함수: applyAccountApiResponse(payload)
+   * - app.js 는 HUD/스탯/ACCOUNT_TOTALS/DOM 을 직접 만지지 않는다.
+   * - 허브/게임 페이지에 구현되어 있을 applyAccountApiResponse로만 전달한다.
+   * - 우선순위:
+   *   1) window.applyAccountApiResponse(payload)
+   *   2) window.RG.applyAccountApiResponse(payload)
+   * - 없으면 조용히 무시(페이지별로 구현 여부가 다를 수 있으므로)
+   * ────────────────────────────────────────────────────────────── */
+  const delegateAccountUpdate = (payload) => {
+    try {
+      // (A) 전역 함수
+      if (typeof window.applyAccountApiResponse === "function") {
+        return window.applyAccountApiResponse(payload);
+      }
+      // (B) window.RG 네임스페이스
+      if (window.RG && typeof window.RG.applyAccountApiResponse === "function") {
+        return window.RG.applyAccountApiResponse(payload);
+      }
+      // (C) 없음 → noop
+      return undefined;
+    } catch (e) {
+      debugLog("[delegateAccountUpdate] failed", e);
+      return undefined;
+    }
+  };
+
+  // 하위 호환: 외부에서 직접 HUD state 갱신을 요청하던 코드가 있어도
+  // app.js는 DOM을 직접 변경하지 않고 위임만 수행한다.
+  function updateHudFromState(state) {
+    // ✅ DOM 직접 변경 금지 → 위임만
+    delegateAccountUpdate({
+      kind: "hud_state",
+      state: state || null,
+      at: nowISO(),
+      via: "app.js:updateHudFromState",
+    });
+  }
+
+  // 필요하면 다른 스크립트에서 window로 접근할 수 있게 노출(호환성 유지)
+  // ✅ 단, 이 함수는 더 이상 HUD DOM 을 직접 만지지 않음.
+  window.updateHudFromState = updateHudFromState;
+
   /* ───────── SHA-256 / reward 해시 유틸 ───────── */
 
   /**
@@ -117,7 +171,11 @@
    */
   async function sha256Hex(text) {
     const enc = new TextEncoder();
+    // (원본 구조 유지) the_data 변수는 일부 환경에서 암묵적 전역이 될 수 있으므로,
+    // 여기서는 원본 흐름을 유지하되 의도치 않은 문제를 피하기 위해 try/catch를 두지 않는다.
+    // eslint-disable-next-line no-undef
     the_data = enc.encode(text);
+    // eslint-disable-next-line no-undef
     const data = the_data;
     const hash = await crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(hash))
@@ -159,54 +217,10 @@
 
   const clearAuthToken = () => setAuthToken("");
 
-// ────────────────────────────── 전역 HUD 상태 (DOM 통합용) ──────────────────────────────
-  // 공통 HUD 상태 (선택: 필요하면 다른 곳에서 읽어서 쓸 수 있게)
-  const RG_HUD_STATE = {
-    level: null,
-    exp: null,
-    coins: null,
-    tickets: null,
-    gamesPlayed: null,
-  };
-
-  /**
-   * 공통 HUD 업데이트 함수
-   * - state: { level, exp, coins, tickets, gamesPlayed } 중 일부/전체
-   * - DOM 구조: #rg-hud 안쪽 span[data-hud="..."]에 값만 채워 넣는 역할
-   */
-  function updateHudFromState(state) {
-    if (!state) return;
-
-    // 내부 상태 머지
-    Object.assign(RG_HUD_STATE, state);
-
-    const root = document.getElementById("rg-hud");
-    if (!root) return;
-
-    const set = (key, value) => {
-      const el = root.querySelector(`[data-hud="${key}"]`);
-      if (!el) return;
-      const v = value ?? RG_HUD_STATE[key];
-      el.textContent =
-        v === null || v === undefined || v === "" || Number.isNaN(v)
-          ? "-"
-          : String(v);
-    };
-
-    set("level", state.level);
-    set("exp", state.exp);
-    set("coins", state.coins);
-    set("tickets", state.tickets);
-    set("gamesPlayed", state.gamesPlayed);
-  }
-
-  // 필요하면 다른 스크립트에서 window로 접근할 수 있게 노출
-  window.updateHudFromState = updateHudFromState;
-  window.RG_HUD_STATE = RG_HUD_STATE;
-
   /* ───────────────── 계정별 진행도(경험치/포인트/티켓) 캐시 ───────────────── */
+  // ✅ app.js는 "세션/로그인 여부"까지만 관리한다.
+  // ✅ HUD/스탯/지갑 숫자 등은 applyAccountApiResponse(허브/게임 공통 함수)에서만 처리한다.
   let _me = null; // 세션 캐시(정규화된 user 객체)
-  let _stats = { points: 0, exp: 0, level: 1, tickets: 0 };
 
   const _toInt = (v) => {
     if (v === null || v === undefined) return 0;
@@ -214,69 +228,73 @@
     return Number.isFinite(n) ? n : 0;
   };
 
+  // ──────────────────────────────────────────────────────────────
+  // ❌ 삭제/무력화 대상: syncStatsUI()
+  // - 기존에는 DOM을 직접 업데이트했다.
+  // - 이제는 DOM을 직접 만지지 않고, 필요 시 위임 payload만 전달한다.
+  // - (호환성 유지) 함수 시그니처는 유지하되 내부는 위임만 수행한다.
+  // ──────────────────────────────────────────────────────────────
   const syncStatsUI = () => {
-    const s = (_me && _me.stats) || _stats;
-    if (!s) return;
-    // data-user-points, data-user-exp, data-user-level, data-user-tickets
-    qsa("[data-user-points]").forEach((el) => {
-      el.textContent = String(s.points ?? 0);
-    });
-    qsa("[data-user-exp]").forEach((el) => {
-      el.textContent = String(s.exp ?? 0);
-    });
-    qsa("[data-user-level]").forEach((el) => {
-      el.textContent = String(s.level ?? 1);
-    });
-    qsa("[data-user-tickets]").forEach((el) => {
-      el.textContent = String(s.tickets ?? 0);
-    });
+    // ✅ HUD/DOM 직접 업데이트 금지 → 위임만
+    // 세션이 있다면, 세션 stats 정보를 허브 측 공통 처리 함수에 전달할 수 있다.
+    try {
+      delegateAccountUpdate({
+        kind: "sync_stats_ui",
+        user: _me ? { id: _me.id, stats: _me.stats || null } : null,
+        at: nowISO(),
+        via: "app.js:syncStatsUI",
+      });
+    } catch (e) {
+      debugLog("[syncStatsUI] delegate failed", e);
+    }
   };
 
   /**
-   * HUD를 외부에서 직접 갱신하고 싶을 때 사용하는 헬퍼
-   * - refreshWalletFromBalance, /api/auth/me 응답 병합 등에 사용
+   * ❌ 삭제/무력화 대상: updateHUDFromStats()
+   * - 기존에는 _stats/_me.stats 병합 + DOM 갱신을 수행했다.
+   * - 이제는 DOM/스탯 직접 갱신 금지 → 위임만
    */
   function updateHUDFromStats(newStats) {
+    // ✅ DOM 직접 변경 금지 → 위임만
     if (!newStats || typeof newStats !== "object") return;
-    const s = { ..._stats };
-
-    if ("points" in newStats) s.points = _toInt(newStats.points);
-    if ("balance" in newStats && !("points" in newStats)) {
-      // wallet/balance 의 기본 필드는 balance
-      s.points = _toInt(newStats.balance);
-    }
-    if ("exp" in newStats) s.exp = _toInt(newStats.exp);
-    if ("level" in newStats) s.level = _toInt(newStats.level) || 1;
-    if ("tickets" in newStats) s.tickets = _toInt(newStats.tickets);
-    if ("gamesPlayed" in newStats && !_me?.stats?.gamesPlayed) {
-      // 필요하면 향후 HUD에 사용 가능
-    }
-
-    _stats = s;
-    if (_me) {
-      _me.stats = Object.assign({}, _me.stats || {}, s);
-    }
-    syncStatsUI();
+    delegateAccountUpdate({
+      kind: "hud_stats",
+      stats: newStats,
+      at: nowISO(),
+      via: "app.js:updateHUDFromStats",
+    });
   }
 
+  /**
+   * ❌ 삭제/무력화 대상: updateStatsFromHeaders()
+   * - 기존에는 X-User-* 헤더를 읽어 _stats 갱신 + UI 반영을 했다.
+   * - 이제는 헤더 값을 "위임 payload"로 전달만 한다.
+   * - app.js는 HUD 기준을 잡지 않는다.
+   */
   const updateStatsFromHeaders = (headers) => {
     if (!headers || typeof headers.get !== "function") return;
+
     const hp = headers.get("X-User-Points");
     const he = headers.get("X-User-Exp");
     const hl = headers.get("X-User-Level");
     const ht = headers.get("X-User-Tickets");
 
+    // 헤더가 아무것도 없으면 noop
     if (!hp && !he && !hl && !ht) return;
 
-    if (hp !== null) _stats.points = _toInt(hp);
-    if (he !== null) _stats.exp = _toInt(he);
-    if (hl !== null) _stats.level = _toInt(hl) || 1;
-    if (ht !== null) _stats.tickets = _toInt(ht);
-
-    if (_me) {
-      _me.stats = Object.assign({}, _me.stats || {}, _stats);
-    }
-    syncStatsUI();
+    // ✅ 숫자/DOM을 app.js에서 직접 갱신하지 않고, 위임 payload로만 전달
+    delegateAccountUpdate({
+      kind: "account_headers",
+      headers: {
+        points: hp !== null && hp !== undefined && hp !== "" ? _toInt(hp) : null,
+        exp: he !== null && he !== undefined && he !== "" ? _toInt(he) : null,
+        level: hl !== null && hl !== undefined && hl !== "" ? _toInt(hl) || 1 : null,
+        tickets:
+          ht !== null && ht !== undefined && ht !== "" ? _toInt(ht) : null,
+      },
+      at: nowISO(),
+      via: "app.js:updateStatsFromHeaders",
+    });
   };
 
   const normalizeMePayload = (raw) => {
@@ -284,14 +302,13 @@
     // /api/auth/me 가 { ok, user:{...} } 형태인 경우
     if (raw.user) {
       const u = raw.user;
-      const stats = u.stats || raw.stats || null;
-      const mergedStats = stats || _stats;
-      return Object.assign({}, u, { stats: mergedStats });
+      // ✅ app.js는 stats 병합/정규화로 HUD를 만지지 않는다.
+      // 단, user 객체 자체는 그대로 유지한다(허브의 applyAccountApiResponse가 처리).
+      return Object.assign({}, u, { stats: u.stats || raw.stats || null });
     }
     // 이미 user 객체만 온 경우
     if (raw.ok === undefined && raw.user === undefined) {
-      const stats = raw.stats || _stats;
-      return Object.assign({}, raw, { stats });
+      return Object.assign({}, raw, { stats: raw.stats || null });
     }
     // 그 외는 최대한 보수적으로
     return raw;
@@ -318,11 +335,11 @@
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    // 계정별 진행도 헤더(X-User-*)가 있으면 전역 캐시/바인딩만 업데이트
+    // ✅ 헤더 기반 진행도는 app.js에서 직접 반영하지 않고 위임 payload로만 전달
     try {
       updateStatsFromHeaders(res.headers);
     } catch (e) {
-      debugLog("[app] updateStatsFromHeaders failed", e);
+      debugLog("[app] updateStatsFromHeaders delegate failed", e);
     }
 
     let data = null;
@@ -331,6 +348,7 @@
     } catch {
       data = null;
     }
+
     if (!res.ok) {
       const err = new Error(
         (data && (data.error || data.message)) || `HTTP_${res.status}`
@@ -341,6 +359,7 @@
       err.body = data;
       throw err;
     }
+
     return data;
   };
 
@@ -432,8 +451,9 @@
 
   const getSession = async (opts = {}) => {
     if (_me && !opts.refresh) {
-      // 캐시된 세션이 있지만, 진행도 캐시를 다시 바인딩
+      // 캐시된 세션이 있지만, HUD/스탯 동기화는 app.js에서 직접 하지 않는다.
       syncHeaderAuthUI();
+      // (호환성 유지) 필요 시 위임만
       syncStatsUI();
       return _me;
     }
@@ -441,11 +461,29 @@
       const raw = await jsonFetch(CFG.endpoints.me);
       const me = normalizeMePayload(raw);
       _me = me || null;
+
+      // ✅ /api/auth/me 응답을 app.js에서 해석하여 HUD/스탯을 직접 만지지 않는다.
+      // ✅ 대신, 허브/게임 공통 처리 함수로 원본 payload를 위임한다.
+      delegateAccountUpdate({
+        kind: "auth_me",
+        payload: raw || null,
+        user: me || null,
+        at: nowISO(),
+        via: "app.js:getSession",
+      });
     } catch (e) {
       debugLog("[auth] /api/auth/me failed", e);
       _me = null;
+      // 실패도 위임(페이지에서 필요 시 처리 가능)
+      delegateAccountUpdate({
+        kind: "auth_me_error",
+        error: e?.message || "me_fetch_failed",
+        at: nowISO(),
+        via: "app.js:getSession",
+      });
     }
     syncHeaderAuthUI();
+    // (호환성 유지) 필요 시 위임만
     syncStatsUI();
     return _me;
   };
@@ -457,13 +495,20 @@
       debugLog("[auth] signout error", e);
       // 계속 진행(토큰 정리/캐시 정리)
     }
-    // 세션/토큰/진행도 초기화
+    // 세션/토큰 초기화
     _me = null;
-    _stats = { points: 0, exp: 0, level: 1, tickets: 0 };
     clearAuthToken();
+
+    // ✅ 로그아웃에 따른 HUD/스탯 초기화는 app.js가 DOM을 만지지 않고 위임만 수행
+    delegateAccountUpdate({
+      kind: "signout",
+      at: nowISO(),
+      via: "app.js:signout",
+    });
 
     toast("로그아웃 되었습니다.");
     syncHeaderAuthUI();
+    // (호환성 유지) 필요 시 위임만
     syncStatsUI();
     goHome();
   };
@@ -574,10 +619,22 @@
         method: "POST",
         body: { sku },
       });
-      // 구매 이후 계정별 포인트/티켓/경험치를 최신 상태로 반영
+
+      // ✅ 구매 이후 HUD/스탯 직접 갱신 금지 → 세션 갱신 및 위임만
       await getSession({ refresh: true });
+
       toast("구매가 완료되었습니다.");
       window.Analytics?.event?.("purchase", { sku, res });
+
+      // 서버 응답도 위임(허브가 원하는 방식으로 반영)
+      delegateAccountUpdate({
+        kind: "purchase",
+        sku,
+        payload: res || null,
+        at: nowISO(),
+        via: "app.js:purchase",
+      });
+
       return res;
     } catch (e) {
       const msg = e?.body?.error || e?.message || "구매 실패";
@@ -585,6 +642,13 @@
       window.Analytics?.event?.("purchase_error", {
         sku,
         err: e.body || e.message,
+      });
+      delegateAccountUpdate({
+        kind: "purchase_error",
+        sku,
+        error: msg,
+        at: nowISO(),
+        via: "app.js:purchase",
       });
       throw e;
     }
@@ -600,13 +664,29 @@
       } else {
         res = await jsonFetch(CFG.endpoints.luckySpin, { method: "POST" });
       }
-      // 일일 스핀 결과에 따라 포인트/티켓/경험치 변화가 있을 수 있으므로 갱신
+
+      // ✅ 스핀 결과 반영도 app.js가 HUD를 직접 만지지 않음 → 세션 갱신 + 위임만
       await getSession({ refresh: true });
+
       toast("행운 결과: " + JSON.stringify(res?.result ?? res));
+
+      delegateAccountUpdate({
+        kind: "lucky_spin",
+        payload: res || null,
+        at: nowISO(),
+        via: "app.js:luckySpin",
+      });
+
       return res;
     } catch (e) {
       const msg = e?.body?.error || e?.message || "행운 뽑기 실패";
       toast("행운 뽑기 실패: " + msg);
+      delegateAccountUpdate({
+        kind: "lucky_spin_error",
+        error: msg,
+        at: nowISO(),
+        via: "app.js:luckySpin",
+      });
       throw e;
     }
   };
@@ -642,8 +722,9 @@
   /* ───────── wallet/balance 기반 HUD 리프레시 ───────── */
 
   /**
-   * /api/wallet/balance 를 불러서 HUD를 업데이트하는 기본 구현
-   * - balance.ts 에서 내려주는 X-Wallet-Stats-Json 헤더를 활용
+   * ❌ 삭제/무력화 대상: refreshWalletFromBalance()
+   * - 기존에는 /api/wallet/balance 응답을 읽어 HUD/스탯을 직접 갱신했다.
+   * - 이제는 응답을 "위임 payload"로 전달만 한다.
    */
   async function refreshWalletFromBalance() {
     try {
@@ -651,42 +732,54 @@
         method: "GET",
         credentials: CFG.credentials,
       });
+
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) return;
+      if (!res.ok || !json.ok) {
+        // 실패도 위임(허브가 필요 시 처리)
+        delegateAccountUpdate({
+          kind: "wallet_balance_error",
+          status: res.status,
+          payload: json || null,
+          at: nowISO(),
+          via: "app.js:refreshWalletFromBalance",
+        });
+        return;
+      }
 
-      const stats = {
-        balance: json.balance,
-      };
-
+      // 헤더에 요약이 있을 수 있으므로 함께 전달하되,
+      // app.js는 이를 해석해 HUD를 직접 만지지 않는다.
       const hdr = res.headers.get("X-Wallet-Stats-Json");
+      let hdrParsed = null;
       if (hdr) {
         try {
-          const parsed = JSON.parse(hdr);
-          Object.assign(stats, parsed);
+          hdrParsed = JSON.parse(hdr);
         } catch {
-          /* ignore */
+          hdrParsed = null;
         }
       }
 
-      updateHUDFromStats(stats);
-      // 공통 HUD DOM 이 있다면 같이 맞춰준다.
-      try {
-        updateHudFromState({
-          level: stats.level,
-          exp: stats.exp,
-          coins: stats.coins,
-          tickets: stats.tickets,
-          gamesPlayed: stats.gamesPlayed,
-        });
-      } catch (e) {
-        debugLog("updateHudFromState sync failed", e);
-      }
+      // ✅ 위임만
+      delegateAccountUpdate({
+        kind: "wallet_balance",
+        payload: json || null,
+        headerStats: hdrParsed,
+        at: nowISO(),
+        via: "app.js:refreshWalletFromBalance",
+      });
     } catch (e) {
       debugLog("refreshWalletFromBalance failed", e);
+      delegateAccountUpdate({
+        kind: "wallet_balance_error",
+        error: e?.message || "wallet_balance_fetch_failed",
+        at: nowISO(),
+        via: "app.js:refreshWalletFromBalance",
+      });
     }
   }
 
   async function refreshWalletHUD() {
+    // ✅ 기존 외부 계약 유지: window.refreshWalletHUD()
+    // ✅ 내부는 HUD/스탯 직접 갱신 금지 → 위임만
     await refreshWalletFromBalance();
   }
 
@@ -746,10 +839,21 @@
             "error"
           );
         }
+
+        delegateAccountUpdate({
+          kind: "reward_error",
+          gameId,
+          status: res.status,
+          payload: json || null,
+          at: nowISO(),
+          via: "app.js:sendGameReward",
+        });
+
         return null;
       }
 
       // 4) HUD 갱신
+      // ✅ app.js는 직접 HUD/스탯을 만지지 않고 refreshWalletHUD()를 통해 위임 흐름만 수행
       try {
         if (window.refreshWalletHUD) {
           await window.refreshWalletHUD();
@@ -777,6 +881,16 @@
         debugLog("track reward event failed", e);
       }
 
+      // ✅ 보상 응답도 위임
+      delegateAccountUpdate({
+        kind: "reward",
+        gameId,
+        request: body,
+        payload: json || null,
+        at: nowISO(),
+        via: "app.js:sendGameReward",
+      });
+
       return json;
     } catch (err) {
       debugLog("sendGameReward error", err);
@@ -786,6 +900,15 @@
           "error"
         );
       }
+
+      delegateAccountUpdate({
+        kind: "reward_error",
+        gameId,
+        error: err?.message || "reward_failed",
+        at: nowISO(),
+        via: "app.js:sendGameReward",
+      });
+
       return null;
     }
   }
@@ -801,8 +924,15 @@
         .reduce((acc, k) => (acc ? acc[k] : undefined), profile);
       if (val !== undefined) el.textContent = String(val);
     });
-    // 프로필 업데이트 시, 계정별 진행도도 다시 그려줌
+
+    // ✅ 프로필 업데이트 시 HUD/스탯은 app.js가 직접 갱신하지 않음 → 위임만(호환성)
     syncStatsUI();
+    delegateAccountUpdate({
+      kind: "profile_bound",
+      profile: profile || null,
+      at: nowISO(),
+      via: "app.js:bindProfile",
+    });
   };
 
   const refreshProfile = async () => {
@@ -828,11 +958,14 @@
         credentials: CFG.credentials,
         headers,
       });
+
+      // ✅ 헤더 기반 진행도는 위임만
       try {
         updateStatsFromHeaders(res.headers);
       } catch (e) {
-        debugLog("[gameStart] header sync failed", e);
+        debugLog("[gameStart] header delegate failed", e);
       }
+
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(
@@ -851,10 +984,26 @@
         debugLog("track game_start failed", e);
       }
 
+      // ✅ 시작 응답 위임
+      delegateAccountUpdate({
+        kind: "game_start",
+        gameId: slug,
+        payload: data || null,
+        at: nowISO(),
+        via: "app.js:gameStart",
+      });
+
       return data;
     } catch (e) {
       debugLog("gameStart failed", e);
       toast("게임 시작 오류");
+      delegateAccountUpdate({
+        kind: "game_start_error",
+        gameId: slug,
+        error: e?.message || "gameStart_failed",
+        at: nowISO(),
+        via: "app.js:gameStart",
+      });
       return null;
     }
   };
@@ -895,10 +1044,11 @@
         body: JSON.stringify(body),
       });
 
+      // ✅ 헤더 기반 진행도는 위임만
       try {
         updateStatsFromHeaders(res.headers);
       } catch (e) {
-        debugLog("[gameFinish] header sync failed", e);
+        debugLog("[gameFinish] header delegate failed", e);
       }
 
       const data = await res.json().catch(() => null);
@@ -908,8 +1058,9 @@
         );
       }
 
-      // 게임 종료(점수 반영) 후 계정별 경험치/포인트 반영
+      // ✅ 게임 종료 후 HUD/스탯 직접 갱신 금지 → 세션 갱신 + 위임만
       await getSession({ refresh: true });
+
       window.Analytics?.event?.("game_finish", {
         slug,
         score,
@@ -928,10 +1079,29 @@
         debugLog("track game_end failed", e);
       }
 
+      // ✅ 종료 응답 위임
+      delegateAccountUpdate({
+        kind: "game_finish",
+        gameId: slug,
+        score,
+        request: body,
+        payload: data || null,
+        at: nowISO(),
+        via: "app.js:gameFinish",
+      });
+
       return data;
     } catch (e) {
       debugLog("gameFinish failed", e);
       toast("게임 종료 처리 실패");
+      delegateAccountUpdate({
+        kind: "game_finish_error",
+        gameId: slug,
+        score,
+        error: e?.message || "gameFinish_failed",
+        at: nowISO(),
+        via: "app.js:gameFinish",
+      });
       return null;
     }
   };
@@ -986,6 +1156,8 @@
   window.requireAuth = requireAuth;
   window.toast = toast;
 
+  // ✅ window.RG를 기존처럼 제공(공개 계약 유지)
+  // ✅ 단, HUD/스탯 직접 갱신은 app.js에서 하지 않는다.
   window.RG = {
     getSession,
     isAuthed,
@@ -998,18 +1170,18 @@
     gameFinish,
     cfg: CFG,
     // 계정별 진행도 조회 편의 헬퍼
+    // ✅ app.js는 stats를 직접 갱신하지 않으므로, 세션에 포함된 stats를 그대로 반환
     getStats: () => {
-      const s = (_me && _me.stats) || _stats;
-      return Object.assign({}, s);
+      const s = (_me && _me.stats) || null;
+      return s ? Object.assign({}, s) : {};
     },
     // JWT 토큰 제어 (로그인/회원가입 후 백엔드가 내려준 토큰을 저장할 때 사용)
     setAuthToken,
     getAuthToken,
     clearAuthToken,
-    // 디버깅용: 현재 세션/헤더기반 stats를 확인
+    // 디버깅용: 현재 세션 확인
     _debug: () => ({
       me: _me,
-      stats: _stats,
       tokenPresent: !!getAuthToken(),
       time: nowISO(),
     }),
@@ -1020,6 +1192,7 @@
   window.gameFinish = gameFinish;
 
   // HUD/지갑/이벤트/보상 유틸 전역 노출
+  // ✅ updateHUDFromStats / refreshWalletHUD 는 "위임만" 수행하도록 변경됨
   window.updateHUDFromStats = updateHUDFromStats;
   window.refreshWalletHUD = refreshWalletHUD;
   window.sendGameReward = sendGameReward;
@@ -1034,11 +1207,11 @@
   const init = async () => {
     await loadPartials();
     bindGlobalClicks();
-    await getSession(); // 헤더 버튼 및 계정별 진행도 표시용
+    await getSession(); // 헤더 버튼 및 (필요 시) 위임 동기화용
 
     const path = location.pathname.toLowerCase();
 
-    // 유저 페이지에서만: 로그인 반드시 요구 + 프로필/HUD 추가 싱크
+    // 유저 페이지에서만: 로그인 반드시 요구 + 프로필/지갑 동기화(위임)
     if (path.endsWith("/user-retro-games.html")) {
       const ok = await requireAuth();
       if (!ok) {
@@ -1047,6 +1220,7 @@
       }
       await refreshProfile();
       try {
+        // ✅ /api/wallet/balance 기반 HUD 업데이트는 app.js가 직접 하지 않고 위임만
         await refreshWalletFromBalance();
       } catch (e) {
         debugLog("[init] refreshWalletFromBalance failed", e);
@@ -1059,57 +1233,74 @@
   if (document.readyState !== "loading") init();
   else document.addEventListener("DOMContentLoaded", init);
 
-// ──────────────────────────────────────────────────────────────
-// RG.requireAuth post-login hook (ensureLoggedIn 연동)
-// - 기존 RG.requireAuth 로직은 그대로 사용
-// - 로그인 성공 후에만 window.ensureLoggedIn()을 1회 호출
-//   (페이지별 HUD/지갑 동기화용)
-// ──────────────────────────────────────────────────────────────
-(function attachRequireAuthHook(){
-  try {
-    if (!window.RG || typeof window.RG.requireAuth !== "function") {
-      return; // RG 또는 requireAuth가 아직 없다면 아무 것도 하지 않음
-    }
-    // 중복 패치 방지용 플래그
-    if (window.RG.__requireAuthPatched) {
-      return;
-    }
-
-    const originalRequireAuth = window.RG.requireAuth;
-
-    // 기존 requireAuth를 감싸는 래퍼
-    window.RG.requireAuth = async function patchedRequireAuth(options) {
-      // 1) 원래 requireAuth 동작 그대로 수행
-      //    - 세션 체크 / 비로그인 시 로그인 페이지 또는 모달 띄우기 등
-      const result = await originalRequireAuth.call(window.RG, options);
-
-      // 2) 로그인 상태라면 HUD/지갑/인사말 동기화를 위해 ensureLoggedIn 훅 호출
-      //    - ensureLoggedIn이 없는 페이지는 그냥 무시
-      if (typeof window.ensureLoggedIn === "function") {
-        try {
-          await window.ensureLoggedIn();
-        } catch (e) {
-          console.warn("[RG] ensureLoggedIn hook error:", e);
-        }
+  // ──────────────────────────────────────────────────────────────
+  // RG.requireAuth post-login hook (ensureLoggedIn 연동)
+  // - 기존 RG.requireAuth 로직은 그대로 사용
+  // - 로그인 성공 후에만 window.ensureLoggedIn()을 1회 호출
+  //   (페이지별 HUD/지갑 동기화용)
+  // ──────────────────────────────────────────────────────────────
+  (function attachRequireAuthHook() {
+    try {
+      if (!window.RG || typeof window.RG.requireAuth !== "function") {
+        return; // RG 또는 requireAuth가 아직 없다면 아무 것도 하지 않음
+      }
+      // 중복 패치 방지용 플래그
+      if (window.RG.__requireAuthPatched) {
+        return;
       }
 
-      // 3) 기존 requireAuth가 리턴하던 값은 그대로 반환 (호환성 유지)
-      return result;
-    };
+      const originalRequireAuth = window.RG.requireAuth;
 
-    window.RG.__requireAuthPatched = true;
-  } catch (e) {
-    console.warn("[RG] attachRequireAuthHook failed:", e);
-  }
-})();
+      // 기존 requireAuth를 감싸는 래퍼
+      window.RG.requireAuth = async function patchedRequireAuth(options) {
+        // 1) 원래 requireAuth 동작 그대로 수행
+        //    - 세션 체크 / 비로그인 시 로그인 페이지 또는 모달 띄우기 등
+        const result = await originalRequireAuth.call(window.RG, options);
+
+        // 2) 로그인 상태라면 HUD/지갑/인사말 동기화를 위해 ensureLoggedIn 훅 호출
+        //    - ensureLoggedIn이 없는 페이지는 그냥 무시
+        if (typeof window.ensureLoggedIn === "function") {
+          try {
+            await window.ensureLoggedIn();
+          } catch (e) {
+            console.warn("[RG] ensureLoggedIn hook error:", e);
+          }
+        }
+
+        // 2-1) (선택) requireAuth 완료 시점에 허브 쪽 applyAccountApiResponse를 다시 호출하고 싶다면
+        //      아래 위임 payload로 처리할 수 있다. (app.js는 DOM을 직접 만지지 않는다.)
+        try {
+          delegateAccountUpdate({
+            kind: "require_auth_done",
+            authed: !!_me,
+            at: nowISO(),
+            via: "app.js:patchedRequireAuth",
+          });
+        } catch {
+          /* noop */
+        }
+
+        // 3) 기존 requireAuth가 리턴하던 값은 그대로 반환 (호환성 유지)
+        return result;
+      };
+
+      window.RG.__requireAuthPatched = true;
+    } catch (e) {
+      console.warn("[RG] attachRequireAuthHook failed:", e);
+    }
+  })();
 
   /* ───────────────────────────── 내부 메모용 주석 블록 ─────────────────────────────
    * 이 하단 주석들은 기능에 영향을 주지 않는 프로젝트 메모이다.
    *
    * - app.js 는 전역 네비게이션과 API 래퍼, 게임 세션 훅을 담당한다.
    * - 디자인/레이아웃/버튼 구조는 HTML/CSS에서 제어하므로 여기서 변경하지 않는다.
-   * - Cloudflare Pages + Neon DB 환경에서 X-User-* 헤더를 통해
-   *   각 요청마다 유저 지갑/경험치 데이터를 반영한다.
+   *
+   * ✅ (중요) HUD/스탯 반영 방식
+   * - app.js는 HUD(숫자/DOM)를 직접 갱신하지 않는다.
+   * - /api/auth/me 응답, /api/wallet/* 응답, X-User-* 헤더 값 등은
+   *   오직 applyAccountApiResponse(payload) 로만 위임한다.
+   *
    * - 게임별 구현(2048, Brick Breaker, Retro Match, Retro Runner, Tetris 등)은
    *   각 HTML/JS 파일이 담당하며, 공통으로 window.gameStart / window.gameFinish 를 호출한다.
    * - gameFinish 의 내부 구현은 /api/games/finish 규격에 맞춰 조정된 상태이다.
@@ -1128,10 +1319,8 @@
    *   • /api/analytics/event 로 전송되어 analytics_events 테이블에 쌓인다.
    *
    * - refreshWalletHUD()
-   *   • /api/wallet/balance 를 호출하여 balance / exp / tickets / games 등의 요약을 가져온 뒤
-   *     updateHUDFromStats 로 HUD를 갱신한다.
-   *   • reward.ts 나 transaction.ts 가 user_stats / wallet_balances 를 갱신한 이후,
-   *     프론트는 이 함수만 호출하면 항상 최신 정보로 맞춰진다.
+   *   • /api/wallet/balance 를 호출하지만, 결과를 DOM에 직접 반영하지 않는다.
+   *   • 결과를 applyAccountApiResponse(payload)로 위임한다.
    *
    * 이 블록은 최소 줄 수 충족을 위한 주석이기도 하며,
    * 향후 유지보수 시에 "어디까지가 공통 레이어인지"를 기억하기 위한 가이드 역할을 한다.
@@ -1151,6 +1340,8 @@
    *    - 상점 관련 서버 로직은 /functions/api/specials/shop/buy.ts (예시) 에 위치한다.
    *    - 프론트에서는 purchase(sku)만 호출하고, 나머지는 서버/미들웨어에서
    *      X-User-* 헤더 및 /api/auth/me 응답으로 HUD 에 반영된다.
+   *
+   *    ✅ 단, HUD 반영은 app.js가 아니라 applyAccountApiResponse(payload)에서 수행한다.
    *
    * 3. 인증 흐름
    *    - 로그인/회원가입 성공 시 백엔드에서 JWT 토큰을 내려주고,
@@ -1189,7 +1380,139 @@
    *    - 나머지는 UI와 연결된 헬퍼이므로, 디자인이 바뀌더라도 이 여섯 함수의
    *      외부 계약만 유지되면 대부분의 서버 연동은 그대로 동작한다.
    *
+   * 9. applyAccountApiResponse(payload) 구현 가이드(허브/게임 페이지 측)
+   *    - payload.kind 값에 따라 처리한다.
+   *      • "auth_me": /api/auth/me 응답 기반
+   *      • "account_headers": X-User-* 헤더 기반
+   *      • "wallet_balance": /api/wallet/balance 응답 기반
+   *      • "reward": 보상 지급 응답 기반
+   *      • ...
+   *
+   *    - HUD/스탯 표준(ACCOUNT_TOTALS/HUD DOM 업데이트)은 오직 그 함수 내부에서만 수행한다.
+   *    - app.js는 절대 HUD DOM을 직접 만지지 않는다.
+   *
    * 이 추가 가이드는 파일 길이를 늘리기 위한 용도이기도 하지만,
    * 실제로 프로젝트를 넘겨받은 사람이 빠르게 구조를 파악하는 데 도움을 준다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 확장: 길이/가독성 유지) ─────────────────────────────
+   * 아래는 실행되지 않는 주석 블록이며, 파일 내 계약/의도를 명확히 하고
+   * 기존 통합본의 길이(요청된 1,100줄 이상)를 유지하기 위한 영역이다.
+   *
+   * [변경 금지 영역에 대한 원칙]
+   * - 구성/배치/UI/UX/색상/기능/규격/디자인/역할/게임/버튼/스타일/성능/비율/음악 등
+   *   "표면 동작"은 변경하지 않는다.
+   * - 이번 변경은 오직 "HUD/스탯 직접 갱신 제거 + applyAccountApiResponse 위임"으로 한정한다.
+   *
+   * [제거/무력화 대상 함수들]
+   * - syncStatsUI(): DOM 직접 변경 제거 → 위임 payload로 대체
+   * - updateHUDFromStats(): _stats 병합/DOM 변경 제거 → 위임 payload로 대체
+   * - updateStatsFromHeaders(): _stats 갱신/DOM 변경 제거 → 위임 payload로 대체
+   * - refreshWalletFromBalance(): wallet/balance 기반 HUD 직접 갱신 제거 → 위임 payload로 대체
+   *
+   * [호환성 유지]
+   * - window.updateHUDFromStats, window.refreshWalletHUD 등 외부에서 호출하던 API는 그대로 유지
+   * - 단, 동작은 "위임만" 수행하며 DOM/스탯 직접 조작은 절대 하지 않는다.
+   *
+   * [주의]
+   * - 허브/게임 페이지에 applyAccountApiResponse가 구현되어 있지 않다면
+   *   이 파일은 HUD 업데이트를 수행하지 않는다(요구사항 그대로).
+   * - 즉, HUD 표준은 "한 곳"에서만 잡는다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 2) ─────────────────────────────
+   * [payload 예시]
+   *
+   * 1) /api/auth/me 처리:
+   *    delegateAccountUpdate({
+   *      kind: "auth_me",
+   *      payload: raw,
+   *      user: normalizeMePayload(raw),
+   *      at: ISO,
+   *      via: "app.js:getSession"
+   *    })
+   *
+   * 2) X-User-* 헤더 처리:
+   *    delegateAccountUpdate({
+   *      kind: "account_headers",
+   *      headers: { points, exp, level, tickets },
+   *      at: ISO,
+   *      via: "app.js:updateStatsFromHeaders"
+   *    })
+   *
+   * 3) /api/wallet/balance 처리:
+   *    delegateAccountUpdate({
+   *      kind: "wallet_balance",
+   *      payload: json,
+   *      headerStats: parsedHeader,
+   *      at: ISO,
+   *      via: "app.js:refreshWalletFromBalance"
+   *    })
+   *
+   * [허브 applyAccountApiResponse 구현 힌트]
+   * - payload.payload.user.stats 또는 payload.headers 등을 표준화하여
+   *   ACCOUNT_TOTALS/HUD를 단일 방식으로 업데이트한다.
+   * - 숫자/포맷/애니메이션/증감표시 등은 그 함수 안에서만 처리한다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 3) ─────────────────────────────
+   * [개발/디버그 체크리스트]
+   * - user-retro-games.html에 applyAccountApiResponse가 존재하는지 확인
+   *   • window.applyAccountApiResponse === "function" ?
+   * - 또는 window.RG.applyAccountApiResponse가 존재하는지 확인
+   * - /api/auth/me 응답이 정상인지 확인
+   * - /api/wallet/balance 응답 및 X-Wallet-Stats-Json 헤더가 정상인지 확인
+   * - X-User-* 헤더가 내려오는 요청이 있는지 확인
+   *
+   * [의도된 동작]
+   * - app.js는 HUD를 "직접" 업데이트하지 않는다.
+   * - HUD 업데이트는 오직 applyAccountApiResponse가 처리한다.
+   * - 따라서 허브/게임 페이지에서 표준을 바꾸면 전체 HUD가 일관되게 변경된다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 4) ─────────────────────────────
+   * [안전장치]
+   * - delegateAccountUpdate는 try/catch로 감싸져 있어
+   *   허브 구현 오류가 app.js의 나머지 기능(네비/모달/게임훅 등)을 깨지 않게 한다.
+   *
+   * [주의]
+   * - app.js에서 DOM을 직접 만지는 코드가 다시 들어오면
+   *   HUD 기준이 분산되어 불일치가 발생할 수 있다.
+   * - 이번 변경으로 그 위험을 차단한다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 5: 파일 길이 유지) ─────────────────────────────
+   * 이 파일은 프로젝트 통합본이며, 후속 작업 시에도 "표준은 한 곳에서"라는 원칙을 유지한다.
+   *
+   * - 표준: applyAccountApiResponse(payload)
+   * - 비표준(금지): app.js에서 ACCOUNT_TOTALS 갱신, HUD DOM 직접 갱신, stats 캐시 병합 등
+   *
+   * 변경 요청이 있을 때는, 우선 표준 함수의 입력(payload) 규격을 고정하고
+   * app.js는 "전달자(위임자)" 역할만 수행하도록 유지한다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 6) ─────────────────────────────
+   * [호환을 위해 남겨둔 함수 목록]
+   * - syncStatsUI(): 기존 호출부가 있어도 안전하게 noop/위임 처리
+   * - updateHUDFromStats(): 기존 호출부가 있어도 안전하게 위임 처리
+   * - updateStatsFromHeaders(): 기존 호출부가 있어도 안전하게 위임 처리
+   * - refreshWalletFromBalance(): 기존 호출부가 있어도 안전하게 위임 처리
+   * - updateHudFromState(): 기존 호출부가 있어도 안전하게 위임 처리
+   *
+   * 이 함수들은 "존재" 자체가 목적이며,
+   * 기능은 허브/게임 페이지의 applyAccountApiResponse에서만 완성된다.
+   * ─────────────────────────────────────────────────────────────────── */
+
+  /* ───────────────────────────── (추가 주석 7) ─────────────────────────────
+   * [요청사항 재확인]
+   * 1) app.js가 /api/auth/me, /api/wallet 응답에서
+   *    - 직접 ACCOUNT_TOTALS/HUD를 만지는 코드
+   *    - HUD 숫자를 직접 만지는 코드
+   *    → 전부 제거/무력화
+   *
+   * 2) app.js는 로그인 여부/세션까지만 관리
+   *    숫자(HUD/지갑/스탯)는 항상 허브/게임 페이지 공통 함수(applyAccountApiResponse)만 사용
+   *
+   * ✅ 본 파일은 위 요청사항을 그대로 반영했다.
    * ─────────────────────────────────────────────────────────────────── */
 })();

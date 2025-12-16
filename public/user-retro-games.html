@@ -2007,13 +2007,138 @@
     }
 
     function applyAccountApiResponse(payload){
+      // ✅ 외부/내부 진입점은 이름을 유지하되,
+      // 실제 반영은 로컬 반영 함수 1개로만 통일
+      applyAccountApiResponseLocal(payload);
+    }
+
+    function addReward({coins=0,tickets=0,xp=0}={}){
+      const base = readTotalsFromLocal();
+      base.coins   += NUM(coins);
+      base.tickets += NUM(tickets);
+      base.xp      += NUM(xp);
+      writeTotalsToLocal(base);
+
+      // ✅ HUD 단일 루트
+      pushHudFromTotals();
+      renderShopCounters();
+    }
+
+    function fmt(n){ return Number(n||0).toLocaleString('en-US'); }
+
+    /**
+     * ✅ HUD 단일화 (전역 1회)
+     * - HUD 갱신 진입점: applyAccountApiResponseLocal(payload) 단 하나
+     * - totals → HUD 갱신: pushHudFromTotals() 단 하나
+     *
+     * ✅ renderHUD() 전체 제거
+     * ✅ HUD 전용 "순수 렌더 함수": renderHudFromState()
+     */
+
+    // app.js가 제공하면 그걸 사용(덮어쓰지 않음). 없을 때만 fallback(최소)
+    (function ensureHudApplyFallback(){
+      if (typeof window.applyAccountApiResponse === "function") return;
+      window.applyAccountApiResponse = function(payload){
+        try{
+          applyAccountApiResponseLocal(payload);
+        }catch(e){}
+      };
+    })();
+
+    // totals → HUD 갱신 (전역)
+    function pushHudFromTotals(){
+      try{
+        const t = readTotals();
+        const prefix = getStoragePrefix();
+        const localPlays = NUM(localStorage.getItem(prefix + '_plays') || 0);
+        const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
+
+        window.applyAccountApiResponse({
+          userId: ACCOUNT_TOTALS.userId,
+          stats: {
+            points: t.coins,
+            tickets: t.tickets,
+            exp: t.xp,
+            xpCap: t.xpCap,
+            plays: plays,
+            level: ACCOUNT_TOTALS.level
+          }
+        });
+      }catch(e){
+        console.warn("[RG] pushHudFromTotals error:", e);
+      }
+    }
+
+    // ✅ HUD 전용 “순수 렌더 함수” (DOM만 갱신, state 계산/저장 금지)
+    function renderHudPure(state){
+      const s = state || {};
+      const coins   = NUM(s.coins);
+      const tickets = NUM(s.tickets);
+      const xp      = NUM(s.xp);
+      const xpCap   = NUM(s.xpCap || 20000);
+      const plays   = NUM(s.plays);
+      const lvl     = (s.level != null) ? NUM(s.level) : null;
+
+      const coinEl   = document.getElementById('coinVal');
+      const xpEl     = document.getElementById('xpVal');
+      const ticketEl = document.getElementById('ticketVal');
+      const playEl   = document.getElementById('playVal');
+
+      // 기존 ID 기반 HUD 갱신 (디자인/동작 유지)
+      if (coinEl)   coinEl.textContent   = fmt(coins);
+      if (xpEl)     xpEl.textContent     = fmt(xp);
+      if (ticketEl) ticketEl.textContent = fmt(tickets);
+      if (playEl)   playEl.textContent   = fmt(plays);
+
+      const pct = Math.max(0, Math.min(100, (xp / Math.max(1,xpCap)) * 100));
+      const xpBar = document.getElementById('xpBar');
+      if (xpBar) xpBar.style.width = pct + "%";
+      const xpCapEl = document.getElementById('xpCap');
+      if (xpCapEl) xpCapEl.textContent = "/ " + (xpCap >= 1000 ? fmt(xpCap/1000)+"K" : fmt(xpCap));
+
+      // ✅ 공통 HUD DOM(data-hud="*")에도 동일 값 주입
+      document.querySelectorAll('[data-hud="coins"]').forEach(function(el){
+        el.textContent = fmt(coins);
+      });
+      document.querySelectorAll('[data-hud="exp"]').forEach(function(el){
+        el.textContent = fmt(xp);
+      });
+      document.querySelectorAll('[data-hud="tickets"]').forEach(function(el){
+        el.textContent = fmt(tickets);
+      });
+      document.querySelectorAll('[data-hud="gamesPlayed"]').forEach(function(el){
+        el.textContent = fmt(plays);
+      });
+      document.querySelectorAll('[data-hud="level"]').forEach(function(el){
+        el.textContent = (lvl != null) ? fmt(lvl) : "-";
+      });
+    }
+
+    // ✅ HUD 계산(상태) → 순수 렌더 호출(렌더만)
+    function renderHudFromState(){
+      const t = readTotals();
+      const prefix = getStoragePrefix();
+      const localPlays = NUM(localStorage.getItem(prefix + '_plays') || 0);
+      const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
+
+      renderHudPure({
+        coins: t.coins,
+        tickets: t.tickets,
+        xp: t.xp,
+        xpCap: t.xpCap,
+        plays: plays,
+        level: ACCOUNT_TOTALS.level
+      });
+    }
+
+    // HUD/지갑/스탯 공통 반영 (전역)
+    function applyAccountApiResponseLocal(payload){
       if(!payload) return;
 
       const current = readTotals();
-      const stats  = payload.stats  || {};
-      const wallet = payload.wallet || {};
+      const stats   = payload.stats  || {};
+      const wallet  = payload.wallet || {};
 
-      // 현재 값 기반 초기값
       let coins   = current.coins;
       let tickets = current.tickets;
       let xp      = current.xp;
@@ -2023,9 +2148,8 @@
         : NUM(localStorage.getItem(getStoragePrefix() + '_plays') || 0);
       let level   = ACCOUNT_TOTALS.level;
 
-      // 공통 소스에서 숫자 추출
       const coinsSrc =
-        stats.points ?? stats.coins ?? stats.balance ??
+        stats.points ?? stats.coins ??
         wallet.points ?? wallet.coins ??
         payload.points ?? payload.coins;
 
@@ -2035,14 +2159,14 @@
         payload.exp ?? payload.xp;
 
       const ticketsSrc =
-        stats.tickets ?? stats.ticket ??
-        wallet.tickets ?? wallet.ticket ??
+        stats.tickets ??
+        wallet.tickets ??
         payload.tickets;
 
       const playsSrc =
-        stats.plays ?? stats.play_count ?? stats.totalPlays ??
-        wallet.plays ?? wallet.play_count ?? wallet.totalPlays ??
-        payload.plays ?? payload.play_count ?? payload.totalPlays;
+        stats.plays ?? stats.play_count ??
+        wallet.plays ?? wallet.play_count ??
+        payload.plays ?? payload.play_count;
 
       const xpCapSrc =
         stats.xpCap ?? wallet.xpCap ?? payload.xpCap;
@@ -2059,12 +2183,12 @@
       if (xpCapSrc   != null) xpCap   = NUM(xpCapSrc);
       if (levelSrc   != null) level   = NUM(levelSrc);
 
-      // userId 갱신(있을 때만)
+      // userId 동기화
       if (payload.userId != null || payload.user_id != null){
         ACCOUNT_TOTALS.userId = String(payload.userId ?? payload.user_id);
       }
 
-      // 전역 합계 갱신
+      // totals 반영
       ACCOUNT_TOTALS.coins   = coins;
       ACCOUNT_TOTALS.tickets = tickets;
       ACCOUNT_TOTALS.xp      = xp;
@@ -2072,7 +2196,7 @@
       ACCOUNT_TOTALS.plays   = plays;
       ACCOUNT_TOTALS.level   = level;
 
-      // 로컬스토리지 동기화
+      // localStorage 반영
       writeTotalsToLocal({
         coins:   coins,
         tickets: tickets,
@@ -2080,41 +2204,11 @@
         xpCap:   xpCap,
       });
 
-      // HUD + Shop 카운터 동기화
-      renderHUD();
-      renderShopCounters();
-
-      // 허브에서 공통으로 계정 요약을 가져갈 수 있도록 유지
-      try{
-        window.RG_HUB = window.RG_HUB || {};
-        window.RG_HUB.getAccountTotals = function(){
-          return {
-            userId:  ACCOUNT_TOTALS.userId,
-            coins:   ACCOUNT_TOTALS.coins,
-            xp:      ACCOUNT_TOTALS.xp,
-            tickets: ACCOUNT_TOTALS.tickets,
-            xpCap:   ACCOUNT_TOTALS.xpCap,
-            plays:   ACCOUNT_TOTALS.plays,
-            level:   ACCOUNT_TOTALS.level
-          };
-        };
-      }catch(e){}
-    }
-
-
-    function addReward({coins=0,tickets=0,xp=0}={}){
-      const base = readTotalsFromLocal();
-      base.coins   += NUM(coins);
-      base.tickets += NUM(tickets);
-      base.xp      += NUM(xp);
-      writeTotalsToLocal(base);
-      renderHUD();
+      // ✅ HUD는 여기서만 갱신
+      renderHudFromState();
       renderShopCounters();
     }
 
-    function fmt(n){ return Number(n||0).toLocaleString('en-US'); }
-
-    function renderHUD(){
       const t = readTotals();
 
       const coinEl   = document.getElementById('coinVal');
@@ -2138,25 +2232,10 @@
       const xpCap = document.getElementById('xpCap');
       if (xpCap) xpCap.textContent = "/ " + (t.xpCap >= 1000 ? fmt(t.xpCap/1000)+"K" : fmt(t.xpCap));
 
-      // ✅ 공통 HUD DOM(data-hud="*")에도 동일 값 주입
-      document.querySelectorAll('[data-hud="coins"]').forEach(function(el){
-        el.textContent = fmt(t.coins);
-      });
-      document.querySelectorAll('[data-hud="exp"]').forEach(function(el){
-        el.textContent = fmt(t.xp);
-      });
-      document.querySelectorAll('[data-hud="tickets"]').forEach(function(el){
-        el.textContent = fmt(t.tickets);
-      });
-      document.querySelectorAll('[data-hud="gamesPlayed"]').forEach(function(el){
-        el.textContent = fmt(plays);
-      });
-
       const lvl = ACCOUNT_TOTALS.level;
       document.querySelectorAll('[data-hud="level"]').forEach(function(el){
         el.textContent = (lvl != null) ? fmt(lvl) : "-";
       });
-    }
 
     // ✅ 로그인 실패/로그아웃 시 HUD + 로컬스토리지 초기화
     function resetAccountTotalsAndStorage(){
@@ -2165,7 +2244,7 @@
       ACCOUNT_TOTALS.xp      = 0;
       ACCOUNT_TOTALS.plays   = 0;
       ACCOUNT_TOTALS.xpCap   = 20000;
-      ACCOUNT_TOTALS.level   = null;   // ✅ 레벨도 초기화
+      ACCOUNT_TOTALS.level   = null;
 
       try{
         const prefix = getStoragePrefix();
@@ -2178,11 +2257,13 @@
         console.warn("[RG] resetAccountTotalsAndStorage localStorage error:", e);
       }
 
-      renderHUD();
+      // ✅ HUD 단일 루트
+      pushHudFromTotals();
       renderShopCounters();
     }
-    
-    renderHUD();
+
+    // ✅ 초기 HUD 동기화: 직접 renderHUD() 호출 금지
+    pushHudFromTotals();
     window.addEventListener('storage', e=>{
       if(!e.key) return;
       // ✅ 유저별 prefix가 달라도 suffix만 맞으면 HUD 갱신
@@ -2193,7 +2274,8 @@
         e.key.endsWith('_xp_cap')  ||
         e.key.endsWith('_plays')
       ){
-        renderHUD();
+        // ✅ HUD 단일 루트
+        pushHudFromTotals();
         renderShopCounters();
       }
     });
@@ -2233,7 +2315,7 @@
     function applyAccountStatsFromUser(user){
       if(!user) return;
       const stats = user.stats || {};
-      applyAccountApiResponse({
+      applyAccountApiResponseLocal({
         userId: (user.id != null)
           ? user.id
           : (user.user_id != null ? user.user_id : undefined),
@@ -2256,7 +2338,7 @@
         if(!data || !data.wallet) return;
 
         // ✅ 지갑 응답은 전부 공통 함수로 처리
-        applyAccountApiResponse({ wallet: data.wallet });
+        applyAccountApiResponseLocal({ wallet: data.wallet });
       }catch(err){
         console.warn("[RG][wallet] sync from /api/wallet failed:", err);
       }
@@ -3231,11 +3313,12 @@
           typeof data.level    !== "undefined" ||
           typeof data.xpCap    !== "undefined"
         ){
-          applyAccountApiResponse(data);
+          applyAccountApiResponseLocal(data);
         }else{
           // ✅ 2순위: 별도 필드가 없으면 /api/wallet 요약을 다시 불러와서 반영
           await syncWalletFromServer().catch(()=>{});
         }
+
       }catch(e){
         console.error("[RG][shop] buy error:", e);
         showShopToast("네트워크 오류로 구매에 실패했습니다.");
@@ -3342,7 +3425,7 @@
             const cur = NUM(localStorage.getItem(key) || 0) + 1;
             localStorage.setItem(key, cur);
             ACCOUNT_TOTALS.plays = cur;
-            renderHUD();
+            pushHudFromTotals();
           }catch(e){
             console.warn("[RG] gameStart plays update error:", e);
           }

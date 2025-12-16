@@ -2006,12 +2006,6 @@
       };
     }
 
-    function applyAccountApiResponse(payload){
-      // ✅ 외부/내부 진입점은 이름을 유지하되,
-      // 실제 반영은 로컬 반영 함수 1개로만 통일
-      applyAccountApiResponseLocal(payload);
-    }
-
     function addReward({coins=0,tickets=0,xp=0}={}){
       const base = readTotalsFromLocal();
       base.coins   += NUM(coins);
@@ -2025,26 +2019,6 @@
     }
 
     function fmt(n){ return Number(n||0).toLocaleString('en-US'); }
-
-    /**
-     * ✅ HUD 단일화 (전역 1회)
-     * - HUD 갱신 진입점: applyAccountApiResponseLocal(payload) 단 하나
-     * - totals → HUD 갱신: pushHudFromTotals() 단 하나
-     *
-     * ✅ renderHUD() 전체 제거
-     * ✅ HUD 전용 "순수 렌더 함수": renderHudFromState()
-     */
-
-    // app.js가 제공하면 그걸 사용(덮어쓰지 않음). 없을 때만 fallback(최소)
-    (function ensureHudApplyFallback(){
-      if (typeof window.applyAccountApiResponse === "function") return;
-      window.applyAccountApiResponse = function(payload){
-        try{
-          applyAccountApiResponseLocal(payload);
-        }catch(e){}
-      };
-    })();
-
     // totals → HUD 갱신 (전역)
     function pushHudFromTotals(){
       try{
@@ -2053,12 +2027,12 @@
         const localPlays = NUM(localStorage.getItem(prefix + '_plays') || 0);
         const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
 
-        window.applyAccountApiResponse({
+        applyAccountApiResponseLocal({
           userId: ACCOUNT_TOTALS.userId,
           stats: {
-            points: t.coins,
+            points: t.points,
             tickets: t.tickets,
-            exp: t.xp,
+            xp: t.xp,
             xpCap: t.xpCap,
             plays: plays,
             level: ACCOUNT_TOTALS.level

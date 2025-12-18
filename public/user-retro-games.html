@@ -2030,7 +2030,7 @@
         applyAccountApiResponseLocal({
           userId: ACCOUNT_TOTALS.userId,
           stats: {
-            points: t.points,
+            points: t.coins,
             tickets: t.tickets,
             xp: t.xp,
             xpCap: t.xpCap,
@@ -2183,33 +2183,15 @@
       renderShopCounters();
     }
 
-      const t = readTotals();
+    // (B) ✅ 전역 공통 함수 노출: 다른 페이지가 “허브 함수”를 호출할 수 있게 만들기
+    if (!window.applyAccountApiResponse) {
+      window.applyAccountApiResponse = applyAccountApiResponseLocal;
+    }
 
-      const coinEl   = document.getElementById('coinVal');
-      const xpEl     = document.getElementById('xpVal');
-      const ticketEl = document.getElementById('ticketVal');
-      const playEl   = document.getElementById('playVal');
-
-      // 기존 ID 기반 HUD 갱신 (디자인/동작 유지)
-      if (coinEl)   coinEl.textContent   = fmt(t.coins);
-      if (xpEl)     xpEl.textContent     = fmt(t.xp);
-      if (ticketEl) ticketEl.textContent = fmt(t.tickets);
-
-      const prefix = getStoragePrefix();
-      const localPlays = NUM(localStorage.getItem(prefix + '_plays') || 0);
-      const plays = ACCOUNT_TOTALS.plays != null ? ACCOUNT_TOTALS.plays : localPlays;
-      if (playEl) playEl.textContent = fmt(plays);
-
-      const pct = Math.max(0, Math.min(100, (t.xp / Math.max(1,t.xpCap)) * 100));
-      const xpBar = document.getElementById('xpBar');
-      if (xpBar) xpBar.style.width = pct + "%";
-      const xpCap = document.getElementById('xpCap');
-      if (xpCap) xpCap.textContent = "/ " + (t.xpCap >= 1000 ? fmt(t.xpCap/1000)+"K" : fmt(t.xpCap));
-
-      const lvl = ACCOUNT_TOTALS.level;
-      document.querySelectorAll('[data-hud="level"]').forEach(function(el){
-        el.textContent = (lvl != null) ? fmt(lvl) : "-";
-      });
+    // (선택) 호환용 별칭이 필요하면(다른 파일들이 이 이름을 쓴다면)
+    if (!window.RG_applyAccountApiResponse) {
+      window.RG_applyAccountApiResponse = window.applyAccountApiResponse;
+    }
 
     // ✅ 로그인 실패/로그아웃 시 HUD + 로컬스토리지 초기화
     function resetAccountTotalsAndStorage(){

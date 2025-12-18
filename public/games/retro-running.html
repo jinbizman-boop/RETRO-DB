@@ -2066,26 +2066,32 @@
         }
       }
 
-      const game = new Dino(document.getElementById('game'));
-      (function initUI() {
-        const tier = $('#tier'), lvl = $('#lvlRange');
-        const applyTier = (t) => {
-          let lv = {
-            beginner: 1,
-            intermediate: 11,
-            advanced: 21,
-            hell: 40,
-            doom: 50,
-            insane: 100
-          }[t] || 1;
-          lvl.value = lv;
-          game.setLevel(lv);
-        };
-        applyTier(tier.value);
-        lvl.addEventListener('input', () => game.setLevel(+lvl.value));
-        updateTicketUI();
-        // ✅ 허브에서 통합 월렛 관리, 게임 페이지에서는 스텁만 유지
-        RG_syncWalletHUD();
+      (async function bootstrapRetroRunning(){
+        try{
+          if (typeof window.requireAuth === 'function'){
+            const ok = await window.requireAuth();
+            if(!ok) return;
+          }
+        }catch(e){}
+        
+        const game = new Dino(document.getElementById('game'));
+        (function initUI(){
+          const tier = $('#tier'), lvl = $('#lvlRange');
+
+          const applyTier = (t) => {
+            let lv = { beginner: 1, intermediate: 11, advanced: 21, hell: 40, doom: 50, insane: 100 }[t] || 1;
+            lvl.value = lv;
+            game.setLevel(lv);
+          };
+
+          applyTier(tier.value);
+          lvl.addEventListener('input', () => game.setLevel(+lvl.value));
+
+          // 티켓 UI
+          updateTicketUI();
+          // 서버 wallet 최신 반영
+          if(typeof window.refreshWalletHUD === 'function') window.refreshWalletHUD();
+        })();
       })();
     })();
 

@@ -876,13 +876,19 @@
     }
 
     /***** Match-3 Game (기능/디자인 유지 + 좌표 매핑 및 허브/지갑/광고 연동 보완) *****/
-    (function(){
+    (async function(){
+      try{
+        if (typeof window.requireAuth === 'function'){
+          const ok = await window.requireAuth();
+          if(!ok) return;
+        }
+      }catch(e){}
       const EMPTY   = 0;
-      const NORMAL  = 1;
-      const ROCK    = 2;
-      const ICE     = 3;
-      const STRIPE_H= 4;
-      const STRIPE_V= 5;
+      const RED     = 1;
+      const GREEN   = 2;
+      const BLUE    = 3;
+      const YELLOW  = 4;
+      const PURPLE  = 5;
       const BOMB    = 6;
       const RAINBOW = 7;
 

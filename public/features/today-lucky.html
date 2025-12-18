@@ -555,31 +555,22 @@
     const safePayload = payload || {};
     const game = gameId || "today-lucky";
 
-    // 1) 전역 훅 먼저 호출 (허브에서 HUD/지갑 동기화)
-    try{
-      if (typeof window.RG_addReward === "function") {
-        // 통일된 시그니처: (gameId, payload)
-        window.RG_addReward(game, {
-          score:          safePayload.score        || 0,
-          pointsEarned:   safePayload.pointsEarned || 0,
-          ticketsEarned:  safePayload.ticketsEarned|| 0,
-          playsIncrement: safePayload.playsIncrement||0,
-          meta:           safePayload.meta || {}
-        });
-      }
-    }catch(e){
-      console.warn('[RG][reward] RG_addReward hook error:', e);
-    }
+    // 서버가 idempotency를 지원하면 runId까지 보내는 게 100% 완성도에 유리
+    // (지원 안 해도 무해: 무시되면 그만)
+    const kind  = (safePayload.meta && safePayload.meta.kind) ? String(safePayload.meta.kind) : "reward";
+    const runId = safePayload.runId || (game + ":" + kind + ":" + Date.now() + ":" + Math.random().toString(16).slice(2));
 
-    // 2) /api/wallet POST – 서버 지갑/기록 반영
+    // 1) /api/wallet POST – 서버 지갑/기록 반영
     try{
       const body = {
         game: game,
         action: 'reward',
-        score:          safePayload.score        || 0,
-        pointsEarned:   safePayload.pointsEarned || 0,
-        ticketsEarned:  safePayload.ticketsEarned|| 0,
-        playsIncrement: safePayload.playsIncrement||0,
+        runId: runId,
+
+        score:          safePayload.score         || 0,
+        pointsEarned:   safePayload.pointsEarned  || 0,
+        ticketsEarned:  safePayload.ticketsEarned || 0,
+        playsIncrement: safePayload.playsIncrement|| 0,
         meta:           safePayload.meta || {}
       };
 
@@ -590,11 +581,59 @@
         body: JSON.stringify(body)
       });
 
-      if(!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json().catch(()=>null);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+
+      // 2) ✅ 공통 갱신 연결 (today-lucky도 허브와 동일 규칙 적용)
+      try{
+        const hasWalletLike =
+          !!(data && (data.wallet || data.stats || data.progress || data.snapshot ||
+              typeof data.points !== "undefined" ||
+              typeof data.coins  !== "undefined" ||
+              typeof data.tickets!== "undefined" ||
+              typeof data.xp     !== "undefined"));
+
+        if (hasWalletLike && typeof window.applyAccountApiResponse === "function") {
+          // snapshot이 있으면 snapshot 우선 (games/finish 패턴 대응)
+          window.applyAccountApiResponse(data.snapshot ? data.snapshot : data);
+
+        } else if (typeof window.RG_queueReward === "function") {
+          // 응답에 지갑/스탯이 없거나 공통 함수가 없을 때 최소 fallback
+          window.RG_queueReward({
+            coins:   safePayload.pointsEarned  || 0,
+            tickets: safePayload.ticketsEarned || 0,
+            xp:      safePayload.expEarned || safePayload.xpEarned || 0,
+          });
+
+        } else if (typeof window.RG_addReward === "function") {
+          // 최후의 fallback (구형 훅만 남아있는 경우)
+          window.RG_addReward(game, {
+            score:          safePayload.score         || 0,
+            pointsEarned:   safePayload.pointsEarned  || 0,
+            ticketsEarned:  safePayload.ticketsEarned || 0,
+            playsIncrement: safePayload.playsIncrement|| 0,
+            meta:           safePayload.meta || {}
+          });
+        }
+      }catch(e){
+        console.warn('[RG][today-lucky] applyAccountApiResponse/queue fallback error:', e);
+      }
+
       console.log('[RG][wallet] today-lucky synced:', data);
       return data;
+
     }catch(err){
+      // 서버 반영 실패 시에도 최소한 “허브에서 먹을 보상 큐”라도 남겨서 손실 방지
+      try{
+        if (typeof window.RG_queueReward === "function") {
+          window.RG_queueReward({
+            coins:   safePayload.pointsEarned  || 0,
+            tickets: safePayload.ticketsEarned || 0,
+            xp:      safePayload.expEarned || safePayload.xpEarned || 0,
+          });
+        }
+      }catch(e){}
+
       console.warn('[RG][wallet] today-lucky sync failed:', err);
       return null;
     }

@@ -917,26 +917,33 @@
     if(e.target.id==='recModal') $('#recModal').style.display='none';
   });
 
-  /* ================= 🔗 전역 허브 보상 연동 (retro-running 규격과 동일) ================= */
-  function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
+/* ================= 🔗 전역 허브 보상 연동 (retro-running 규격과 동일) ================= */
+  async function applyGlobalRewardAndSyncWallet(gameCode, delta, meta){
     try{
+      const d = delta || {};
+      const m = meta || {};
+
+      // ✅ 지갑에 적립될 "포인트/코인"은 delta.coins(또는 delta.points)를 사용
+      const walletPoints =
+        Number.isFinite(+d.coins)  ? +d.coins  :
+        Number.isFinite(+d.points) ? +d.points :
+        0;
+
       if (typeof window.sendGameReward === 'function'){
-        const d = delta || {};
-        const m = meta || {};
-        window.sendGameReward(gameCode, {
+        await window.sendGameReward(gameCode, {
           score:   m.score  || 0,
-          points:  m.points || 0,
+          points:  walletPoints,
           exp:     d.xp     || 0,
           tickets: d.tickets|| 0,
-          level:   m.level  || 0,
           meta:    m
         });
       }
+
       if (typeof window.refreshWalletHUD === 'function'){
-        window.refreshWalletHUD();
+        await window.refreshWalletHUD();
       }
     }catch(e){
-      console.warn('[retro-running] applyGlobalRewardAndSyncWallet error:', e);
+      console.warn('[brick-breaker] applyGlobalRewardAndSyncWallet error:', e);
     }
   }
 
@@ -1178,7 +1185,7 @@
       this.draw();
     }
 
-    manualEnd(){
+    async manualEnd(){
       if(this._ended) return;
       this._ended=true;
       this.running=false;
@@ -1194,24 +1201,30 @@
       const earnedPoints = this.points|0;
       const playTimeSec = this.timeSinceStart || 0;
 
-      notifyFinish(finalScore);
-
-      /* ✅ 중앙 지갑 연동 – retro-running과 동일한 보상 규격 + meta(playTime/manualEnd) */
+      /* ✅ 계정 지갑/프로필 공통 갱신 흐름(RETRO-RUNNING과 동일) */
       try{
         const delta = (typeof window.calcReward === 'function')
           ? window.calcReward(finalScore, earnedPoints, this.level||1)
-          : { xp:0, tickets:0, coins:0 };
+          : (typeof calcRewardDelta === 'function')
+            ? calcRewardDelta(finalScore)
+            : { xp:0, tickets:0, coins:0 };
 
-        applyGlobalRewardAndSyncWallet(GAME_CODE, delta, {
-          score:    finalScore,
-          points:   earnedPoints,
-          level:    this.level||1,
-          playTime: playTimeSec,
-          manualEnd: true
-        });
+        const meta = {
+          score:     finalScore,
+          points:    earnedPoints,
+          level:     this.level||1,
+          playTime:  playTimeSec,
+          manualEnd: true,
+          ts:        Date.now()
+        };
+
+        await applyGlobalRewardAndSyncWallet('brick-breaker', delta, meta);
       }catch(e){
         console.error('reward sync error', e);
       }
+
+      /* ✅ 서버 세션 종료 (최종 점수 보고) */
+      notifyFinish(finalScore);
     }
 
     updateHUD(){
@@ -1579,7 +1592,7 @@
       this.updateHUD();
     }
 
-    gameOver(){
+    async gameOver(){
       if(this._ended) return;
       this._ended=true;
       this.running=false;
@@ -1598,24 +1611,30 @@
       const earnedPoints = this.points|0;
       const playTimeSec = this.timeSinceStart || 0;
 
-      notifyFinish(finalScore);
-
-      /* ✅ 중앙 지갑 연동 – retro-running과 동일한 보상 규격 + meta(playTime/manualEnd) */
+      /* ✅ 계정 지갑/프로필 공통 갱신 흐름(RETRO-RUNNING과 동일) */
       try{
         const delta = (typeof window.calcReward === 'function')
           ? window.calcReward(finalScore, earnedPoints, this.level||1)
-          : { xp:0, tickets:0, coins:0 };
+          : (typeof calcRewardDelta === 'function')
+            ? calcRewardDelta(finalScore)
+            : { xp:0, tickets:0, coins:0 };
 
-        applyGlobalRewardAndSyncWallet(GAME_CODE, delta, {
-          score:    finalScore,
-          points:   earnedPoints,
-          level:    this.level||1,
-          playTime: playTimeSec,
-          manualEnd: false
-        });
+        const meta = {
+          score:     finalScore,
+          points:    earnedPoints,
+          level:     this.level||1,
+          playTime:  playTimeSec,
+          manualEnd: false,
+          ts:        Date.now()
+        };
+
+        await applyGlobalRewardAndSyncWallet('brick-breaker', delta, meta);
       }catch(e){
         console.error('reward sync error', e);
       }
+
+      /* ✅ 서버 세션 종료 (최종 점수 보고) */
+      notifyFinish(finalScore);
     }
 
     draw(){
@@ -1769,10 +1788,20 @@
     initSideBanners();
   }
 
+  async function __rg_bootstrap__(){
+    try{
+      if (typeof window.requireAuth === 'function'){
+        const ok = await window.requireAuth();
+        if(!ok) return;
+      }
+    }catch(e){}
+    bootstrapBrickBreaker();
+  }
+
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
-    setTimeout(bootstrapBrickBreaker, 0);
+    setTimeout(__rg_bootstrap__, 0);
   }else{
-    document.addEventListener('DOMContentLoaded', bootstrapBrickBreaker);
+    document.addEventListener('DOMContentLoaded', __rg_bootstrap__);
   }
   </script>
 

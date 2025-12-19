@@ -1211,6 +1211,26 @@
   window.toast = toast;
 
   // ✅ window.RG를 기존처럼 제공(공개 계약 유지)
+  // ✅ AdSense: 중복 push 방지 유틸 (SPA/팝업 주입 대비)
+  function initAds(root = document) {
+    try {
+      const slots = root.querySelectorAll('ins.adsbygoogle:not([data-ad-loaded])');
+      slots.forEach(slot => {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+          slot.setAttribute('data-ad-loaded', '1');
+        } catch (e) {
+          console.warn('AdSense load error', e);
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // 필요하면 페이지에서도 직접 호출 가능하게 노출
+  window.initAds = initAds;
+
   // ✅ 단, HUD/스탯 직접 갱신은 app.js에서 하지 않는다.
   window.RG = {
     getSession,
@@ -1222,6 +1242,7 @@
     refreshProfile,
     gameStart,
     gameFinish,
+    initAds,
     cfg: CFG,
     // 계정별 진행도 조회 편의 헬퍼
     // ✅ app.js는 stats를 직접 갱신하지 않으므로, 세션에 포함된 stats를 그대로 반환
@@ -1258,7 +1279,31 @@
   }
 
   /* ───────────────────────────── 부트스트랩 ───────────────────────────── */
+  function ensureAdsenseLoader() {
+    try {
+      const SRC = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310";
+
+      // 이미 로드(또는 삽입)되어 있으면 중복 로드 금지
+      const exists = document.querySelector(`script[src="${SRC}"]`)
+        || document.querySelector('script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]');
+
+      // push가 먼저 실행돼도 안전하게 큐는 유지되도록
+      window.adsbygoogle = window.adsbygoogle || [];
+
+      if (exists) return;
+
+      const s = document.createElement("script");
+      s.async = true;
+      s.src = SRC;
+      s.crossOrigin = "anonymous";
+      document.head.appendChild(s);
+    } catch (e) {
+      // 조용히 실패(광고는 “없어도 앱 기능은 정상”이어야 함)
+    }
+  }
+
   const init = async () => {
+    ensureAdsenseLoader();
     await loadPartials();
     bindGlobalClicks();
     await getSession(); // 헤더 버튼 및 (필요 시) 위임 동기화용

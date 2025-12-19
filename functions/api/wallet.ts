@@ -690,30 +690,127 @@ export async function onRequestPost(context: {
 
       const sql = getSql(env);
 
-      await sql`
-        INSERT INTO transactions (
-          user_id,
-          amount,
-          type,
-          reason,
-          meta,
-          game,
-          exp_delta,
-          tickets_delta,
-          plays_delta
-        )
-        VALUES (
-          ${userId}::uuid,
-          ${pointsDelta},
-          'reward',
-          ${reason},
-          ${metaJson},
-          ${game},
-          ${expDelta},
-          ${ticketsDelta},
-          ${playsDelta}
-        )
-      `;
+      // runId (멱등성): today-lucky.html이 이미 runId를 보내고 있음
+      const runId =
+        (typeof body.runId === "string" && body.runId.trim().slice(0, 200)) ||
+        (typeof body.idempotencyKey === "string" && body.idempotencyKey.trim().slice(0, 200)) ||
+        null;
+
+      // game 정규화(소문자/허용문자) → daily unique index 매칭을 100% 보장
+      const gameRaw =
+        (typeof body.game === "string" && body.game.trim()) ||
+        "reward";
+      const gameNorm =
+        gameRaw
+          .toLowerCase()
+          .replace(/\s+/g, "")
+          .replace(/[^a-z0-9_\-]/g, "")
+          .slice(0, 64) || "reward";
+
+      try {
+        await sql`
+          INSERT INTO transactions (
+            user_id,
+            amount,
+            type,
+            reason,
+            meta,
+            game,
+            exp_delta,
+            tickets_delta,
+            plays_delta,
+            run_id
+          )
+          VALUES (
+            ${userId}::uuid,
+            ${pointsDelta},
+            'reward',
+            ${reason},
+            ${metaJson},
+            ${gameNorm},
+            ${expDelta},
+            ${ticketsDelta},
+            ${playsDelta},
+            ${runId}
+          )
+        `;
+      } catch (e: any) {
+        // Postgres unique violation
+        const code = String(e?.code || "");
+        const constraint = String(e?.constraint || "");
+
+        if (code === "23505") {
+          // 1) today-lucky 하루 1회 제한
+          if (constraint === "idx_transactions_today_lucky_daily") {
+            const snap = await getWalletSnapshot(env, userId);
+
+            const level = Math.max(1, Math.floor((snap.exp || 0) / 1000) + 1);
+            const wallet = {
+              points: snap.balance,
+              tickets: snap.tickets,
+              exp: snap.exp,
+              plays: snap.playCount,
+              level,
+              xpCap: null,
+            };
+            const stats = {
+              points: snap.balance,
+              exp: snap.exp,
+              tickets: snap.tickets,
+              gamesPlayed: snap.playCount,
+              level,
+            };
+
+            return json(
+              {
+                ok: false,
+                error: "ALREADY_SPUN_TODAY",
+                message: "이미 오늘의 행운을 사용했습니다.",
+                wallet,
+                stats,
+                snapshot: { wallet, stats },
+              },
+              { status: 409 }
+            );
+          }
+
+          // 2) run_id 멱등성(같은 runId 재호출) → 성공으로 처리
+          if (constraint === "idx_transactions_user_run") {
+            const snap = await getWalletSnapshot(env, userId);
+
+            const level = Math.max(1, Math.floor((snap.exp || 0) / 1000) + 1);
+            const wallet = {
+              points: snap.balance,
+              tickets: snap.tickets,
+              exp: snap.exp,
+              plays: snap.playCount,
+              level,
+              xpCap: null,
+            };
+            const stats = {
+              points: snap.balance,
+              exp: snap.exp,
+              tickets: snap.tickets,
+              gamesPlayed: snap.playCount,
+              level,
+            };
+
+            return json({
+              ok: true,
+              duplicate: true,
+              balance: snap.balance,
+              tickets: snap.tickets,
+              playCount: snap.playCount,
+              exp: snap.exp,
+              wallet,
+              stats,
+              snapshot: { wallet, stats },
+            });
+          }
+        }
+
+        throw e;
+      }
 
       const snap = await getWalletSnapshot(env, userId);
 

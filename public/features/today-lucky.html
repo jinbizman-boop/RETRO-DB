@@ -582,7 +582,15 @@
       });
 
       const data = await res.json().catch(()=>null);
-      if(!res.ok) throw new Error('HTTP '+res.status);
+
+      // ✅ 하루 1회 제한 UX: 서버가 명시적으로 알려주면 여기서 종료(보상 큐로 빠지지 않게)
+      if(!res.ok){
+        if (data && data.error === "ALREADY_SPUN_TODAY") {
+          alert('이미 오늘의 행운을 사용했습니다. 내일 다시 시도해 주세요!');
+          return data;
+        }
+        throw new Error('HTTP '+res.status);
+      }
 
       // 2) ✅ 공통 갱신 연결 (today-lucky도 허브와 동일 규칙 적용)
       try{

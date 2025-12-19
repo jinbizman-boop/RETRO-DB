@@ -167,8 +167,8 @@ export async function ensureUserStatsRow(sql: SqlClient, userId: string): Promis
   if (!normalizedId) return;
 
   await sql`
-    insert into user_stats (user_id, xp, coins, tickets, plays)
-    values (${normalizedId}, 0, 0, 0, 0)
+    insert into user_stats (user_id)
+    values (${normalizedId}::uuid)
     on conflict (user_id) do nothing
   `;
 }
@@ -199,60 +199,65 @@ export async function applyProgressionDeltaDb(
   const ticketsDelta = toBigIntSafe(rawDelta.ticketsDelta);
   const playsDelta = toBigIntSafe(rawDelta.playsDelta);
   const pointsDelta = toBigIntSafe(rawDelta.pointsDelta);
+
   const reason = (rawDelta.reason ?? "").trim() || null;
   const refTable = rawDelta.refTable ?? null;
   const refId = rawDelta.refId ?? null;
   const idemKey = rawDelta.idempotencyKey ?? null;
 
-  // user_stats row 보장
-  await ensureUserStatsRow(sql, userId);
-
-  // 1) 경험치 / 티켓 / 플레이 횟수 업데이트
-  if (isNonZeroBigInt(expDelta) || isNonZeroBigInt(ticketsDelta) || isNonZeroBigInt(playsDelta)) {
-    await sql`
-      update user_stats
-         set xp      = xp      + ${expDelta},
-             tickets = tickets + ${ticketsDelta},
-             plays   = plays   + ${playsDelta},
-             updated_at = now()
-       where user_id = ${userId}
-    `;
+  // 아무 변화가 없으면 종료
+  if (
+    !isNonZeroBigInt(pointsDelta) &&
+    !isNonZeroBigInt(expDelta) &&
+    !isNonZeroBigInt(ticketsDelta) &&
+    !isNonZeroBigInt(playsDelta)
+  ) {
+    return;
   }
 
-  // 2) 포인트(코인) → transactions 를 통해서만 변경
-  if (isNonZeroBigInt(pointsDelta)) {
-    const txType = pointsDelta > 0n ? "earn" : "spend";
+  // user_stats row 보장 (기본값은 DB default)
+  await ensureUserStatsRow(sql, userId);
 
-    if (idemKey && idemKey.trim()) {
-      // 멱등 트랜잭션: 같은 idempotency_key 로는 한 번만 insert
-      await sql`
-        insert into transactions (user_id, amount, type, reason, ref_table, ref_id, idempotency_key)
-        values (
-          ${userId},
-          ${pointsDelta},
-          ${txType},
-          ${reason},
-          ${refTable},
-          ${refId},
-          ${idemKey}
-        )
-        on conflict (idempotency_key) do nothing
-      `;
-    } else {
-      // 일반 트랜잭션
-      await sql`
-        insert into transactions (user_id, amount, type, reason, ref_table, ref_id)
-        values (
-          ${userId},
-          ${pointsDelta},
-          ${txType},
-          ${reason},
-          ${refTable},
-          ${refId}
-        )
-      `;
-    }
-    // user_stats.coins 는 DB 트리거가 알아서 업데이트한다고 가정
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const refIdUuid = typeof refId === "string" && UUID_RE.test(refId) ? refId : null;
+
+  const txType =
+    pointsDelta > 0n ? "earn" : pointsDelta < 0n ? "spend" : "reward";
+
+  const metaJson = JSON.stringify(rawDelta.meta ?? {});
+  const game =
+    (rawDelta.meta &&
+      typeof (rawDelta.meta as any).game === "string" &&
+      String((rawDelta.meta as any).game).trim().slice(0, 64)) ||
+    null;
+
+  if (idemKey && idemKey.trim()) {
+    await sql`
+      insert into transactions (
+        user_id, type, amount, reason, meta, game,
+        exp_delta, tickets_delta, plays_delta,
+        ref_table, ref_id, idempotency_key
+      )
+      values (
+        ${userId}::uuid, ${txType}, ${pointsDelta}, ${reason}, ${metaJson}, ${game},
+        ${expDelta}, ${ticketsDelta}, ${playsDelta},
+        ${refTable}, ${refIdUuid}::uuid, ${idemKey}
+      )
+      on conflict (idempotency_key) do nothing
+    `;
+  } else {
+    await sql`
+      insert into transactions (
+        user_id, type, amount, reason, meta, game,
+        exp_delta, tickets_delta, plays_delta,
+        ref_table, ref_id
+      )
+      values (
+        ${userId}::uuid, ${txType}, ${pointsDelta}, ${reason}, ${metaJson}, ${game},
+        ${expDelta}, ${ticketsDelta}, ${playsDelta},
+        ${refTable}, ${refIdUuid}::uuid
+      )
+    `;
   }
 }
 

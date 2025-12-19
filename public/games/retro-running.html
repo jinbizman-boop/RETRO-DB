@@ -40,11 +40,7 @@
     window.__RG_SKIP_PARTIALS__ = true;
   </script>
 
-  <!-- === /Common SEO/A11y === -->
-
-  <!-- AdSense 스니펫 (전역 로더) -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-    crossorigin="anonymous"></script>
+  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
 
   <!-- 전역 유틸 -->
   <script defer src="/assets/js/app.js"></script>
@@ -801,8 +797,7 @@
   <canvas id="fx"></canvas>
 
   <!-- 🎵 배경 음악 (30% 볼륨, 반복 재생) -->
-  <audio id="bgm" src="/assets/music/retro-running-background.mp3" preload="auto" loop></audio>
-
+<audio id="bgm" src="/assets/music/retro-running-background.mp3" preload="none" loop></audio>
   <div class="shell">
     <div class="gameLayout">
       <!-- 좌측 세로 광고 배너 -->

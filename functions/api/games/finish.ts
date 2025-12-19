@@ -827,6 +827,32 @@ export const onRequest: PagesFunction<Env> = async ({
 
     const tookMs = Math.round(performance.now() - started);
 
+    const points = Number((walletRow as any)?.points ?? (statsRow as any)?.coins ?? 0);
+    const tickets = Number((walletRow as any)?.tickets ?? (statsRow as any)?.tickets ?? 0);
+    const exp = Number((statsRow as any)?.exp ?? 0);
+    const plays = Number((statsRow as any)?.games_played ?? 0);
+    const level = Number(
+      (statsRow as any)?.level ??
+        Math.max(1, Math.floor((exp || 0) / 1000) + 1)
+    );
+
+    const wallet = {
+      points,
+      tickets,
+      exp,
+      plays,
+      level,
+      xpCap: null,
+    };
+
+    const stats = {
+      points: Number((statsRow as any)?.coins ?? points),
+      exp,
+      tickets: Number((statsRow as any)?.tickets ?? tickets),
+      gamesPlayed: plays,
+      level,
+    };
+
     return withCORS(
       json(
         {
@@ -834,6 +860,8 @@ export const onRequest: PagesFunction<Env> = async ({
           gainedExp,
           gainedPoints,
           gainedTickets,
+          wallet,
+          stats,
           snapshot: {
             stats: statsRow || null,
             wallet: walletRow || null,

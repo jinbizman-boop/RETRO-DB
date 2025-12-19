@@ -384,6 +384,30 @@
   /* ========= 2) HUD 상태 (서버 우선, 실패 시 로컬 폴백) ========= */
   const NUM = n => Number.isFinite(+n) ? +n : 0;
 
+  function __rg_apply_account__(data){
+    try{
+      if(!data) return false;
+      const payload = data.snapshot ? data.snapshot : data;
+
+      if (typeof window.applyAccountApiResponse === "function") {
+        window.applyAccountApiResponse(payload);
+        return true;
+      }
+
+      if (typeof window.RG_queueReward === "function") {
+        const coins   = payload.coins   ?? payload.points ?? payload.wallet?.coins ?? payload.wallet?.points ?? 0;
+        const tickets = payload.tickets ?? payload.wallet?.tickets ?? 0;
+        const xp      = payload.xp      ?? payload.exp    ?? payload.wallet?.xp ?? 0;
+
+        if (coins || tickets || xp) {
+          window.RG_queueReward({ coins:+coins||0, tickets:+tickets||0, xp:+xp||0 });
+          return true;
+        }
+      }
+    }catch(e){}
+    return false;
+  }
+
   function readTotals(){
     return {
       coins:   NUM(localStorage.getItem('rg_coins')   || 0),
@@ -413,16 +437,25 @@
   // ✅ 서버의 현재 로그인 유저 기준으로 HUD 값 동기화
   async function refreshHUDFromServer(){
     try{
-      if (window.RG && typeof window.RG.refreshProfile === "function"){
-        const me = await window.RG.refreshProfile();
-        if (me && typeof me.coins === 'number'){
-          const t = readTotals();
-          t.coins   = me.coins   ?? t.coins;
-          t.tickets = me.tickets ?? t.tickets;
-          t.xp      = me.xp      ?? t.xp;
-          writeTotals(t);
-        }
+      let data = null;
+
+      // app.js가 제공하는 세션 함수가 있으면 그걸 우선 사용
+      if (window.RG && typeof window.RG.getSession === "function"){
+        data = await window.RG.getSession({ refresh: true }).catch(()=>null);
       }
+
+      // 세션 함수가 없거나 실패하면 /api/auth/me 폴백
+      if(!data){
+        const r = await fetch('/api/auth/me', {
+          method:'GET',
+          credentials:'include',
+          headers:{ 'Accept':'application/json', 'Cache-Control':'no-store' }
+        });
+        if(r.ok) data = await r.json().catch(()=>null);
+      }
+
+      // ✅ 숫자 기준 단일화: 응답은 공통 함수로만 반영
+      __rg_apply_account__(data);
     }catch{
       /* 폴백: 로컬 값 유지 */
     }
@@ -591,8 +624,15 @@
     try{
       if (it.__serverId && pay==='coin'){
         const out = await API.buyByItemId(it.__serverId, 1);
-        // 서버 성공 → HUD 동기화
-        await refreshHUDFromServer();
+
+        // ✅ 우선: 구매 응답에 wallet/stats/snapshot이 있으면 즉시 반영
+        const applied = __rg_apply_account__(out);
+
+        // ✅ 응답에 지갑 정보가 없을 때만 서버 동기화로 보완
+        if(!applied){
+          await refreshHUDFromServer();
+        }
+
         renderHUD();
         queueRenderShop();
         toast(`${it.name} 구매 완료! (서버)`);

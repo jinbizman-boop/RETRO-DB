@@ -484,15 +484,15 @@ export const onRequest: PagesFunction<Env> = async ({
     // ─────────────────────────────────────────────
     // 1) canonical: v_user_wallet 기반 지갑 잔액/스탯 조회
     // ─────────────────────────────────────────────
-    const stats = await fetchFromUserStats(sql, userId);
+    const statsRow = await fetchFromUserStats(sql, userId);
 
-    if (stats.found) {
-      balanceNum = stats.coins;
-      expNum = stats.exp;
-      ticketsNum = stats.tickets;
-      gamesPlayedNum = stats.gamesPlayed;
-      lastLoginAt = stats.lastLoginAt;
-      statsUpdatedAt = stats.updatedAt;
+    if (statsRow.found) {
+      balanceNum = statsRow.coins;
+      expNum = statsRow.exp;
+      ticketsNum = statsRow.tickets;
+      gamesPlayedNum = statsRow.gamesPlayed;
+      lastLoginAt = statsRow.lastLoginAt;
+      statsUpdatedAt = statsRow.updatedAt;
       usedSource = "user_stats";
     }
 
@@ -502,9 +502,9 @@ export const onRequest: PagesFunction<Env> = async ({
     // ─────────────────────────────────────────────
     await ensureWalletBalancesSchema(sql);
 
-    const wallet = await fetchFromWalletBalances(sql, userId);
-    legacyBalance = wallet.balance;
-    legacyFound = wallet.found;
+    const legacyWallet = await fetchFromWalletBalances(sql, userId);
+    legacyBalance = legacyWallet.balance;
+    legacyFound = legacyWallet.found;
 
     if (usedSource === "none") {
       // user_stats row 자체가 없으면, wallet_balances 를 대신 사용
@@ -603,12 +603,36 @@ export const onRequest: PagesFunction<Env> = async ({
       // JSON stringify 실패는 무시
     }
 
-    // 본문 계약: { ok: true, balance } 고정 유지
+    const levelNum = progressFound
+      ? progressLevel
+      : Math.max(1, Math.floor((expNum || 0) / 1000) + 1);
+
+    const wallet = {
+      points: balanceNum,
+      tickets: ticketsNum,
+      exp: expNum,
+      plays: gamesPlayedNum,
+      level: levelNum,
+      xpCap: null,
+    };
+
+    const stats = {
+      points: balanceNum,
+      exp: expNum,
+      tickets: ticketsNum,
+      gamesPlayed: gamesPlayedNum,
+      level: levelNum,
+    };
+
+    // 본문 계약: { ok: true, balance } 유지 + (추가 필드) wallet/stats/snapshot
     return withCORS(
       json(
         {
           ok: true,
           balance: balanceNum,
+          wallet,
+          stats,
+          snapshot: { wallet, stats },
         },
         { headers }
       ),

@@ -259,21 +259,35 @@
   <div class="wrap">
     <header>
       <!-- 좌측 HUD -->
-      <div class="hudTop" aria-label="보상 현황">
+      <div id="rg-hud" class="hudTop hud-bar requires-auth" aria-label="보상 현황">
+        <div class="pill">
+          <div class="icon">⭐</div>
+          <div id="levelVal" class="amount" data-hud="level">-</div>
+          <div class="unit">LV</div>
+        </div>
+
         <div class="pill">
           <div class="icon">🪙</div>
-          <div id="coinVal" class="amount">0</div>
+          <div id="coinVal" class="amount" data-hud="coins">0</div>
           <div class="unit">COINS</div>
         </div>
+
         <div class="pill">
           <div class="icon">🎟️</div>
-          <div id="ticketVal" class="amount">0</div>
+          <div id="ticketVal" class="amount" data-hud="tickets">0</div>
           <div class="unit">TICKETS</div>
         </div>
+
         <div class="pill">
           <div class="icon">🏆</div>
-          <div id="xpVal" class="amount">0</div>
-          <div class="unit">XP</div>
+          <div id="xpVal" class="amount" data-hud="exp">0</div>
+          <div class="unit">EXP</div>
+        </div>
+
+        <div class="pill">
+          <div class="icon">🎮</div>
+          <div id="playsVal" class="amount" data-hud="gamesPlayed">-</div>
+          <div class="unit">PLAYS</div>
         </div>
       </div>
 
@@ -471,6 +485,61 @@
     if (ticketEl) ticketEl.textContent = t.tickets.toLocaleString('en-US');
     if (xpEl)     xpEl.textContent     = t.xp.toLocaleString('en-US');
   }
+
+  // ✅ app.js 위임( delegateAccountUpdate )을 받기 위한 훅
+  // - payload(stats/wallet/직접필드)를 이 페이지 HUD 규격(#rg-hud + data-hud)에 맞춰 반영
+  window.applyAccountApiResponse = function(payload){
+    try{
+      if(!payload) return;
+
+      const p = (payload.kind === "hud_state" && payload.state) ? payload.state : payload;
+      const stats  = p.stats  || {};
+      const wallet = p.wallet || {};
+
+      const coins =
+        stats.points ?? stats.coins ??
+        wallet.points ?? wallet.coins ??
+        p.points ?? p.coins;
+
+      const tickets =
+        stats.tickets ??
+        wallet.tickets ??
+        p.tickets;
+
+      const exp =
+        stats.exp ?? stats.xp ??
+        wallet.exp ?? wallet.xp ??
+        p.exp ?? p.xp;
+
+      const level =
+        stats.level ?? stats.lv ??
+        wallet.level ??
+        p.level ?? p.lv;
+
+      const plays =
+        stats.plays ?? stats.gamesPlayed ??
+        wallet.plays ?? wallet.gamesPlayed ??
+        p.plays ?? p.gamesPlayed;
+
+      // (1) 로컬 totals 반영(기존 흐름 유지)
+      const t = readTotals();
+      if (coins   != null) t.coins   = Number(coins)   || 0;
+      if (tickets != null) t.tickets = Number(tickets) || 0;
+      if (exp     != null) t.xp      = Number(exp)     || 0;
+      writeTotals(t);
+
+      // (2) 화면 갱신
+      renderHUD();
+
+      const lvlEl = document.getElementById('levelVal');
+      const plyEl = document.getElementById('playsVal');
+      if (lvlEl) lvlEl.textContent = (level == null) ? "-" : Number(level||0).toLocaleString('en-US');
+      if (plyEl) plyEl.textContent = (plays == null) ? "-" : Number(plays||0).toLocaleString('en-US');
+
+    }catch(e){
+      console.warn("applyAccountApiResponse(shop) failed:", e);
+    }
+  };
 
   /* ========= 3) 카탈로그 (서버 우선, 실패 시 폴백) ========= */
   const H = 3600e3, D = 24*H;

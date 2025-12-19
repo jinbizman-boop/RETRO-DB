@@ -876,13 +876,13 @@
     }
 
     /***** Match-3 Game (기능/디자인 유지 + 좌표 매핑 및 허브/지갑/광고 연동 보완) *****/
-    (async function(){
+    window.addEventListener('load', async () => {
       try{
-        if (typeof window.requireAuth === 'function'){
-          const ok = await window.requireAuth();
-          if(!ok) return;
-        }
-      }catch(e){}
+        const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
+        if (typeof ra === 'function') await ra();
+      }catch(e){
+        return;
+      }
       const EMPTY   = 0;
       const RED     = 1;
       const GREEN   = 2;
@@ -1715,7 +1715,7 @@
         lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
         updateTicketUI();
       })();
-    })();
+    }, { once:true });
 
     /***** Cabinet fit (뷰포트에 맞게 비율 유지) *****/
     function fitCabinet(){

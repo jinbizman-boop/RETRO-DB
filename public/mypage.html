@@ -260,6 +260,35 @@ document.addEventListener("DOMContentLoaded", function(){
   }
 
   /* -------------------------------
+   *  ✅ API 응답 → 허브 공통 반영(숫자 기준 단일화)
+   *  - 직접 HUD/ACCOUNT_TOTALS 세팅 금지
+   *  - 가능하면 applyAccountApiResponse(payload)만 호출
+   * ------------------------------- */
+  function __rg_apply_account__(data){
+    try{
+      if(!data) return false;
+      const payload = data.snapshot ? data.snapshot : data;
+
+      if (typeof window.applyAccountApiResponse === "function") {
+        window.applyAccountApiResponse(payload);
+        return true;
+      }
+
+      if (typeof window.RG_queueReward === "function") {
+        const coins   = payload.coins   ?? payload.points ?? payload.wallet?.coins ?? payload.wallet?.points ?? 0;
+        const tickets = payload.tickets ?? payload.wallet?.tickets ?? 0;
+        const xp      = payload.xp      ?? payload.exp    ?? payload.wallet?.xp ?? 0;
+
+        if (coins || tickets || xp) {
+          window.RG_queueReward({ coins:+coins||0, tickets:+tickets||0, xp:+xp||0 });
+          return true;
+        }
+      }
+    }catch(e){}
+    return false;
+  }
+
+  /* -------------------------------
    *  홈 버튼: 유저 인식 후 메인으로
    * ------------------------------- */
   async function rgDetectUser(){
@@ -321,16 +350,35 @@ document.addEventListener("DOMContentLoaded", function(){
    *  2) 지갑
    * ------------------------------- */
   function fmt(n){ return Number(n||0).toLocaleString('ko-KR'); }
+
+  function readTotals(){
+    const n = (v)=> Number.isFinite(+v) ? +v : 0;
+    return {
+      coins: n(localStorage.getItem('rg_coins') || 0),
+      xp:    n(localStorage.getItem('rg_xp')    || 0),
+    };
+  }
+
+  function renderWalletFromTotals(){
+    const t = readTotals();
+    setText('coins', fmt(t.coins));
+    setText('xp', fmt(t.xp));
+  }
+
   async function refreshWallet(){
     const wallet = await tryFetchJson(RG_WALLET_URLS);
     if(wallet){
-      const coins  = wallet.coins ?? wallet.coin ?? wallet.points ?? 0;
-      const xp     = wallet.xp    ?? wallet.exp  ?? wallet.experience ?? 0;
-      const streak = wallet.streak ?? wallet.attendanceStreak ?? 0;
-      setText('coins', fmt(coins));
-      setText('xp', fmt(xp));
-      setText('streak', streak);
+      // ✅ 숫자 기준 단일화: 응답은 공통 함수로만 반영
+      __rg_apply_account__(wallet);
+
+      // streak은 페이지 고유 항목이므로 표시만 유지
+      try{
+        const streak = wallet.streak ?? wallet.attendanceStreak ?? 0;
+        setText('streak', streak);
+      }catch(e){}
     }
+    // ✅ coins/xp는 공통 반영 결과(로컬 totals)에서 렌더
+    renderWalletFromTotals();
   }
 
   /* -------------------------------

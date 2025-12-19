@@ -7,9 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RETRO GAMES – Shop</title>
 
-  <!-- ✅ Google AdSense (세로형 배너 공통 코드) -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-    crossorigin="anonymous"></script>
+  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
 
   <style>
     :root{--gold1:#ffdf6e;--gold2:#ffb84d;--blue1:#2b7bff;--blue2:#0048ff;--bg:#0b001e;--gapY:24px}
@@ -224,7 +222,7 @@
       <ins class="adsbygoogle"
            style="display:block;width:100%;height:100%;"
            data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot=""
+           data-ad-slot="4514999077"
            data-ad-format="auto"
            data-full-width-responsive="false"></ins>
       <script>
@@ -301,6 +299,27 @@
     </header>
     <div class="divider"></div>
 
+    <!-- ✅ Shop 상단 인라인 광고 슬롯 -->
+    <div class="rg-ad rg-ad-inline" aria-label="광고(상단)">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-6713974265397310"
+           data-ad-slot="7668007538"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>
+        (function(){
+          try{
+            if (window.RG && typeof window.RG.initAds === 'function') {
+              window.RG.initAds(document);
+            } else {
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            }
+          }catch(e){}
+        })();
+      </script>
+    </div>
+
     <main>
       <div class="shopHeader">
         <h2>🛍️ 상점</h2>
@@ -308,8 +327,28 @@
       </div>
 
       <section id="shopGrid" class="grid"><!-- JS로 렌더링 --></section>
-    </main>
 
+      <!-- ✅ Shop 하단 인라인 광고 슬롯 -->
+      <div class="rg-ad rg-ad-inline" aria-label="광고(하단)">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6713974265397310"
+             data-ad-slot="7668007538"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+          (function(){
+            try{
+              if (window.RG && typeof window.RG.initAds === 'function') {
+                window.RG.initAds(document);
+              } else {
+                (window.adsbygoogle = window.adsbygoogle || []).push({});
+              }
+            }catch(e){}
+          })();
+        </script>
+      </div>
+    </main>
     <div class="divider"></div>
     <footer>©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI</footer>
   </div>

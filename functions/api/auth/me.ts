@@ -589,6 +589,23 @@ export const onRequest: PagesFunction<Env> = async ({
       // stringify 실패는 무시
     }
 
+    const wallet = {
+      points,
+      tickets,
+      exp,
+      plays: gamesPlayed,
+      level,
+      xpCap: null,
+    };
+
+    const stats = {
+      points,
+      exp,
+      level,
+      tickets,
+      gamesPlayed,
+    };
+
     return withCORS(
       json(
         {
@@ -600,8 +617,12 @@ export const onRequest: PagesFunction<Env> = async ({
               exp,
               level,
               tickets,
+              gamesPlayed,
             },
           },
+          wallet,
+          stats,
+          snapshot: { wallet, stats },
         },
         {
           headers,

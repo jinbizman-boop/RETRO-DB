@@ -1159,6 +1159,14 @@
     }
   })();
 
+  window.addEventListener('load', async () => {
+  try{
+    const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
+    if (typeof ra === 'function') await ra();
+  }catch(e){
+    return;
+  }
+
   const game=new G2048(document.getElementById('game'));
   (function(){
     const tier=$('#tier'), lvl=$('#lvlRange');
@@ -1172,6 +1180,7 @@
       window.refreshWalletHUD();
     }
   })();
+}, { once:true });
 
   // 2048 전용 BGM 초기화 (사용자 첫 상호작용 시 재생, 볼륨 30%)
   (function initBackgroundMusic(){

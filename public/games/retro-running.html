@@ -2066,13 +2066,13 @@
         }
       }
 
-      (async function bootstrapRetroRunning(){
+      window.addEventListener('load', async () => {
         try{
-          if (typeof window.requireAuth === 'function'){
-            const ok = await window.requireAuth();
-            if(!ok) return;
-          }
-        }catch(e){}
+          const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
+          if (typeof ra === 'function') await ra();
+        }catch(e){
+          return;
+        }
         
         const game = new Dino(document.getElementById('game'));
         (function initUI(){
@@ -2092,7 +2092,7 @@
           // 서버 wallet 최신 반영
           if(typeof window.refreshWalletHUD === 'function') window.refreshWalletHUD();
         })();
-      })();
+}, { once:true });
     })();
 
     /***** Cabinet fit *****/

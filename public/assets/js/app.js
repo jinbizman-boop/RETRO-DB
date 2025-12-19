@@ -132,16 +132,70 @@
    * ────────────────────────────────────────────────────────────── */
   const delegateAccountUpdate = (payload) => {
     try {
+      const targets = [];
+
       // (A) 전역 함수
       if (typeof window.applyAccountApiResponse === "function") {
-        return window.applyAccountApiResponse(payload);
+        targets.push(window.applyAccountApiResponse);
       }
+
       // (B) window.RG 네임스페이스
       if (window.RG && typeof window.RG.applyAccountApiResponse === "function") {
-        return window.RG.applyAccountApiResponse(payload);
+        targets.push(window.RG.applyAccountApiResponse);
       }
-      // (C) 없음 → noop
-      return undefined;
+
+      if (!targets.length) return undefined;
+
+      // 1) 항상 "랩핑 객체"를 먼저 전달 (kind/via 같은 메타를 쓰는 구현 대비)
+      let last;
+      for (const fn of targets) {
+        try {
+          last = fn(payload);
+        } catch (e) {
+          debugLog("[delegateAccountUpdate] call(wrapper) failed", e);
+        }
+      }
+
+      // 2) 그리고 payload 안에 원본 API 응답이 들어있다면( payload.payload )
+      //    허브가 바로 읽을 수 있도록 "원본"도 한 번 더 전달
+      const raw =
+        payload &&
+        typeof payload === "object" &&
+        payload.payload &&
+        typeof payload.payload === "object"
+          ? payload.payload
+          : null;
+
+      if (raw) {
+        for (const fn of targets) {
+          try {
+            fn(raw);
+          } catch (e) {
+            debugLog("[delegateAccountUpdate] call(raw) failed", e);
+          }
+        }
+      }
+
+      // 3) headerStats처럼 따로 들어온 경우도 허브가 원하면 읽을 수 있게 한번 더 전달(선택)
+      const hdr =
+        payload &&
+        typeof payload === "object" &&
+        payload.headerStats &&
+        typeof payload.headerStats === "object"
+          ? payload.headerStats
+          : null;
+
+      if (hdr) {
+        for (const fn of targets) {
+          try {
+            fn({ headers: hdr });
+          } catch (e) {
+            debugLog("[delegateAccountUpdate] call(headerStats) failed", e);
+          }
+        }
+      }
+
+      return last;
     } catch (e) {
       debugLog("[delegateAccountUpdate] failed", e);
       return undefined;

@@ -240,15 +240,15 @@ export const onRequest: PagesFunction<Env> = async ({
     `;
 
     // 현재 지갑 상태 조회
-    const [wallet] = await sql/* sql */`
+    const [walletRow] = await sql/* sql */`
       select points, tickets
       from user_wallet
       where user_id = ${userId}::uuid
       for update
     `;
 
-    const currentPoints = toNumber(wallet?.points) ?? 0;
-    const currentTickets = toNumber(wallet?.tickets) ?? 0;
+    const currentPoints = toNumber(walletRow?.points) ?? 0;
+    const currentTickets = toNumber(walletRow?.tickets) ?? 0;
 
     if (priceCoins > currentPoints) {
       return withCORS(
@@ -333,7 +333,35 @@ export const onRequest: PagesFunction<Env> = async ({
       where user_id = ${userId}::uuid
     `;
 
+    const [statsAfter] = await sql/* sql */`
+      select coins, exp, tickets, games_played, level
+      from user_stats
+      where user_id = ${userId}::uuid
+      limit 1
+    `;
+
     const tookMs = Math.round(performance.now() - started);
+
+    const wallet = walletAfter
+      ? {
+          points: Number((walletAfter as any)?.points ?? 0),
+          tickets: Number((walletAfter as any)?.tickets ?? 0),
+          exp: Number((statsAfter as any)?.exp ?? 0),
+          plays: Number((statsAfter as any)?.games_played ?? 0),
+          level: Number((statsAfter as any)?.level ?? 1),
+          xpCap: null,
+        }
+      : null;
+
+    const stats = statsAfter
+      ? {
+          points: Number((statsAfter as any)?.coins ?? 0),
+          exp: Number((statsAfter as any)?.exp ?? 0),
+          tickets: Number((statsAfter as any)?.tickets ?? 0),
+          gamesPlayed: Number((statsAfter as any)?.games_played ?? 0),
+          level: Number((statsAfter as any)?.level ?? 1),
+        }
+      : null;
 
     return withCORS(
       json(
@@ -351,7 +379,9 @@ export const onRequest: PagesFunction<Env> = async ({
             points: -priceCoins,
             tickets: ticketsGained,
           },
-          wallet: walletAfter || null,
+          wallet,
+          stats,
+          snapshot: { wallet, stats },
           meta: {
             tookMs,
           },

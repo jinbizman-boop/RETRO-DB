@@ -208,6 +208,7 @@ type UserStatsRow = {
  *   }
  */
 type RewardPayload = {
+  // 기존 (게임 보상)
   reward?: number;
   score?: number;
   tier?: string;
@@ -215,6 +216,12 @@ type RewardPayload = {
   reason?: string;
   game?: string;
   meta?: any;
+
+  // 신규 (수동/이벤트 보상: today-lucky 같은 곳)
+  pointsEarned?: number;      // +/-
+  ticketsEarned?: number;     // +/-
+  expEarned?: number;         // +/-
+  playsIncrement?: number;    // +/-
 };
 
 /**
@@ -276,7 +283,21 @@ type WalletDelta = {
  */
 function normalizeAction(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value.trim().toUpperCase();
+  const s = value.trim().toUpperCase();
+  if (!s) return "";
+
+  // today-lucky.html 등: action: "reward"
+  if (s === "REWARD") return "REWARD";
+
+  // 관용/레거시 alias
+  if (s === "ADDREWARD") return "ADD_REWARD";
+  if (s === "ADD_REWARD") return "ADD_REWARD";
+  if (s === "ADDGAMEREWARD") return "ADDGAMEREWARD";
+  if (s === "ADD_GAME_REWARD") return "ADDGAMEREWARD";
+
+  if (s === "SYNC_WALLET") return "SYNCWALLET";
+
+  return s;
 }
 
 /* ========================================================================== */
@@ -303,7 +324,7 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
   const rows = await sql<UserStatsRow>`
     SELECT coins, tickets, exp, games_played
     FROM user_stats
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId}::uuid
     LIMIT 1
   `;
 
@@ -311,7 +332,7 @@ async function getWalletSnapshot(env: Env, userId: string): Promise<WalletSnapsh
     // 없다면 신규 생성 (중복 방지 ON CONFLICT)
     await sql`
       INSERT INTO user_stats (user_id, coins, tickets, exp, games_played)
-      VALUES (${userId}, 0, 0, 0, 0)
+      VALUES (${userId}::uuid, 0, 0, 0, 0)
       ON CONFLICT (user_id) DO NOTHING
     `;
 
@@ -514,7 +535,7 @@ async function applyGameReward(
       plays_delta
     )
     VALUES (
-      ${delta.userId},
+      ${delta.userId}::uuid,
       ${delta.pointsDelta},
       'game',
       ${delta.reason},
@@ -616,16 +637,116 @@ export async function onRequestPost(context: {
     if (action === "SYNC" || action === "SYNCWALLET") {
       const snap = await getWalletSnapshot(env, userId);
 
+      const level = Math.max(1, Math.floor((snap.exp || 0) / 1000) + 1);
+      const wallet = {
+        points: snap.balance,
+        tickets: snap.tickets,
+        exp: snap.exp,
+        plays: snap.playCount,
+        level,
+        xpCap: null,
+      };
+      const stats = {
+        points: snap.balance,
+        exp: snap.exp,
+        tickets: snap.tickets,
+        gamesPlayed: snap.playCount,
+        level,
+      };
+
       return json({
         ok: true,
         balance: snap.balance,
         tickets: snap.tickets,
         playCount: snap.playCount,
         exp: snap.exp,
+        wallet,
+        stats,
+        snapshot: { wallet, stats },
       });
     }
 
-    // 3-2. 게임 보상 적립
+    // 3-2. 수동/이벤트 보상 (today-lucky.html: action="reward")
+    if (action === "REWARD") {
+      const toNum = (v: any) => {
+        const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : 0;
+        return Number.isFinite(n) ? Math.trunc(n) : 0;
+      };
+
+      const pointsDelta = toNum(body.pointsEarned ?? body.reward ?? 0);
+      const ticketsDelta = toNum(body.ticketsEarned ?? 0);
+      const expDelta = toNum(body.expEarned ?? 0);
+      const playsDelta = toNum(body.playsIncrement ?? 0);
+
+      const reason =
+        (typeof body.reason === "string" && body.reason.trim().slice(0, 80)) ||
+        "reward:manual";
+      const game =
+        (typeof body.game === "string" && body.game.trim().slice(0, 64)) ||
+        "reward";
+      const metaJson = JSON.stringify(
+        body.meta && typeof body.meta === "object" ? body.meta : {}
+      );
+
+      const sql = getSql(env);
+
+      await sql`
+        INSERT INTO transactions (
+          user_id,
+          amount,
+          type,
+          reason,
+          meta,
+          game,
+          exp_delta,
+          tickets_delta,
+          plays_delta
+        )
+        VALUES (
+          ${userId}::uuid,
+          ${pointsDelta},
+          'reward',
+          ${reason},
+          ${metaJson},
+          ${game},
+          ${expDelta},
+          ${ticketsDelta},
+          ${playsDelta}
+        )
+      `;
+
+      const snap = await getWalletSnapshot(env, userId);
+
+      const level = Math.max(1, Math.floor((snap.exp || 0) / 1000) + 1);
+      const wallet = {
+        points: snap.balance,
+        tickets: snap.tickets,
+        exp: snap.exp,
+        plays: snap.playCount,
+        level,
+        xpCap: null,
+      };
+      const stats = {
+        points: snap.balance,
+        exp: snap.exp,
+        tickets: snap.tickets,
+        gamesPlayed: snap.playCount,
+        level,
+      };
+
+      return json({
+        ok: true,
+        balance: snap.balance,
+        tickets: snap.tickets,
+        playCount: snap.playCount,
+        exp: snap.exp,
+        wallet,
+        stats,
+        snapshot: { wallet, stats },
+      });
+    }
+
+    // 3-3. 게임 보상 적립
     if (action === "ADD_REWARD" || action === "ADDGAMEREWARD") {
       const snap = await applyGameReward(env, userId, {
         reward: body.reward,
@@ -637,12 +758,32 @@ export async function onRequestPost(context: {
         meta: body.meta,
       });
 
+      const level = Math.max(1, Math.floor((snap.exp || 0) / 1000) + 1);
+      const wallet = {
+        points: snap.balance,
+        tickets: snap.tickets,
+        exp: snap.exp,
+        plays: snap.playCount,
+        level,
+        xpCap: null,
+      };
+      const stats = {
+        points: snap.balance,
+        exp: snap.exp,
+        tickets: snap.tickets,
+        gamesPlayed: snap.playCount,
+        level,
+      };
+
       return json({
         ok: true,
         balance: snap.balance,
         tickets: snap.tickets,
         playCount: snap.playCount,
         exp: snap.exp,
+        wallet,
+        stats,
+        snapshot: { wallet, stats },
       });
     }
 

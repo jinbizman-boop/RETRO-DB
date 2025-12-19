@@ -1028,7 +1028,14 @@
   function resumeBgm(){ try{ if(_bgm && _bgm.paused) _bgm.play().catch(()=>{}); }catch(e){} }
 
   /***** Canvas Tetris (게임 로직) *****/
-  (function(){
+  window.addEventListener('load', async () => {
+    try{
+      const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
+      if (typeof ra === 'function') await ra();
+    }catch(e){
+      return;
+    }
+    (function(){
     const COLS=10, ROWS=22, VISIBLE_ROWS=20;
     const COLORS = {
       I:'#7ad7ff', O:'#ffe17a', T:'#caa5ff', S:'#92ff9a',
@@ -1601,6 +1608,7 @@
     updateTicketUI();
     RG_syncWalletHUD();
   })();
+  }, { once:true });
 
   /***** Cabinet fit (debounced) *****/
   function fitCabinet(){

@@ -57,6 +57,13 @@
   th{opacity:.8}
   .muted{opacity:.8}
   footer{max-width:1100px;margin:32px auto;padding:0 16px;color:#a8b3cf;opacity:.8;font-size:13px}
+
+  /* ✅ Global Player HUD (공통 DOM) */
+  .hud-bar{max-width:1100px;margin:0 auto;padding:0 16px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .hud-item{display:inline-flex;gap:6px;align-items:baseline;padding:6px 10px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.20);font-weight:900}
+  .hud-item span[data-hud]{min-width:18px;text-align:right}
+
   @media(max-width:900px){ .grid.cols-2{grid-template-columns:1fr} .grid.cols-3{grid-template-columns:1fr 1fr} }
   @media(max-width:640px){ .grid.cols-3{grid-template-columns:1fr} .kv{grid-template-columns:120px 1fr} }
 </style>
@@ -78,6 +85,15 @@
     <a class="btn" href="/user-retro-games.html">내 게임</a>
     <a class="btn" href="/mypage.html">마이페이지</a>
   </nav>
+
+  <!-- ✅ Global Player HUD (공통 DOM 규격) -->
+  <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD">
+    <div class="hud-item">LV <span data-hud="level">-</span></div>
+    <div class="hud-item">EXP <span data-hud="exp">0</span></div>
+    <div class="hud-item">COINS <span data-hud="coins">0</span></div>
+    <div class="hud-item">TICKETS <span data-hud="tickets">0</span></div>
+    <div class="hud-item">PLAYS <span data-hud="gamesPlayed">0</span></div>
+  </div>
 </header>
 
 <main class="grid cols-2">
@@ -98,8 +114,11 @@
   <section class="card">
     <h2>지갑</h2>
     <div class="body">
-      <div class="kv"><div>코인</div><div id="coins">0</div></div>
-      <div class="kv"><div>경험치</div><div id="xp">0</div></div>
+      <div class="kv"><div>레벨</div><div id="level" data-hud="level">-</div></div>
+      <div class="kv"><div>경험치</div><div id="xp" data-hud="exp">0</div></div>
+      <div class="kv"><div>코인</div><div id="coins" data-hud="coins">0</div></div>
+      <div class="kv"><div>티켓</div><div id="tickets" data-hud="tickets">0</div></div>
+      <div class="kv"><div>플레이</div><div id="plays" data-hud="gamesPlayed">0</div></div>
       <div class="kv"><div>연속 출석</div><div id="streak">0</div></div>
     </div>
   </section>
@@ -350,14 +369,68 @@ document.addEventListener("DOMContentLoaded", function(){
    *  2) 지갑
    * ------------------------------- */
   function fmt(n){ return Number(n||0).toLocaleString('ko-KR'); }
+  async function refreshWallet(){
+    const wallet = await tryFetchJson(RG_WALLET_URLS);
+    if(wallet){
+      const coins   = wallet.coins   ?? wallet.coin   ?? wallet.points ?? 0;
+      const tickets = wallet.tickets ?? 0;
+      const xp      = wallet.xp      ?? wallet.exp    ?? wallet.experience ?? 0;
+      const level   = wallet.level   ?? wallet.lv     ?? null;
+      const plays   = wallet.plays   ?? wallet.gamesPlayed ?? wallet.play_count ?? 0;
+      const streak  = wallet.streak  ?? wallet.attendanceStreak ?? 0;
 
-  function readTotals(){
-    const n = (v)=> Number.isFinite(+v) ? +v : 0;
-    return {
-      coins: n(localStorage.getItem('rg_coins') || 0),
-      xp:    n(localStorage.getItem('rg_xp')    || 0),
-    };
+      setText('level',   (level == null ? "-" : fmt(level)));
+      setText('xp',      fmt(xp));
+      setText('coins',   fmt(coins));
+      setText('tickets', fmt(tickets));
+      setText('plays',   fmt(plays));
+      setText('streak',  streak);
+    }
   }
+
+  // ✅ app.js 위임( delegateAccountUpdate )을 받기 위한 훅
+  window.applyAccountApiResponse = function(payload){
+    try{
+      if(!payload) return;
+
+      const p = (payload.kind === "hud_state" && payload.state) ? payload.state : payload;
+      const stats  = p.stats  || {};
+      const wallet = p.wallet || {};
+
+      const state = {
+        level: stats.level ?? stats.lv ?? wallet.level ?? p.level ?? p.lv,
+        exp: stats.exp ?? stats.xp ?? wallet.exp ?? wallet.xp ?? p.exp ?? p.xp,
+        coins: stats.points ?? stats.coins ?? wallet.points ?? wallet.coins ?? p.points ?? p.coins,
+        tickets: stats.tickets ?? wallet.tickets ?? p.tickets,
+        gamesPlayed: stats.plays ?? stats.gamesPlayed ?? wallet.plays ?? wallet.gamesPlayed ?? p.plays ?? p.gamesPlayed,
+      };
+
+      // (1) 상단 HUD (#rg-hud)
+      const root = document.getElementById('rg-hud');
+      if(root){
+        const set = (k, v) => {
+          root.querySelectorAll(`[data-hud="${k}"]`).forEach(el => {
+            el.textContent = (v == null) ? "-" : fmt(v);
+          });
+        };
+        set("level", state.level);
+        set("exp", state.exp);
+        set("coins", state.coins);
+        set("tickets", state.tickets);
+        set("gamesPlayed", state.gamesPlayed);
+      }
+
+      // (2) 지갑 카드 (id들)
+      if(state.level != null) setText('level', fmt(state.level));
+      if(state.exp != null) setText('xp', fmt(state.exp));
+      if(state.coins != null) setText('coins', fmt(state.coins));
+      if(state.tickets != null) setText('tickets', fmt(state.tickets));
+      if(state.gamesPlayed != null) setText('plays', fmt(state.gamesPlayed));
+
+    }catch(e){
+      console.warn("applyAccountApiResponse(mypage) failed:", e);
+    }
+  };
 
   function renderWalletFromTotals(){
     const t = readTotals();

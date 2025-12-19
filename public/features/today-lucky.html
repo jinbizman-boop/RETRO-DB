@@ -307,6 +307,16 @@
     <!-- 🎰 오늘의 행운 슬롯 머신 -->
     <div class="machine" role="application" aria-label="오늘의 행운 슬롯 머신">
       <div class="header">오늘의 행운을 확인해보세요!</div>
+
+      <!-- ✅ Global Player HUD (공통 DOM 규격) : 이 페이지는 레이아웃 충돌 방지를 위해 숨김 처리 -->
+      <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD" style="display:none">
+        <span data-hud="level">-</span>
+        <span data-hud="exp">0</span>
+        <span data-hud="coins">0</span>
+        <span data-hud="tickets">0</span>
+        <span data-hud="gamesPlayed">0</span>
+      </div>
+
       <div class="stats-row" aria-live="polite">
         <div>POINTS: <span id="bank">10000</span></div>
         <div>BET: <span id="bet">100</span></div>
@@ -346,6 +356,42 @@
    * ------------------------------------------------------------------ */
   const BASE = "/";
   const AUTH_API_BASE = "/api/auth";
+
+  // ✅ app.js 위임( delegateAccountUpdate )을 받기 위한 HUD 훅 (이 페이지는 HUD를 숨김 처리)
+  window.applyAccountApiResponse = function(payload){
+    try{
+      if(!payload) return;
+
+      const p = (payload.kind === "hud_state" && payload.state) ? payload.state : payload;
+      const stats  = p.stats  || {};
+      const wallet = p.wallet || {};
+
+      const state = {
+        level: stats.level ?? stats.lv ?? wallet.level ?? p.level ?? p.lv,
+        exp: stats.exp ?? stats.xp ?? wallet.exp ?? wallet.xp ?? p.exp ?? p.xp,
+        coins: stats.points ?? stats.coins ?? wallet.points ?? wallet.coins ?? p.points ?? p.coins,
+        tickets: stats.tickets ?? wallet.tickets ?? p.tickets,
+        gamesPlayed: stats.plays ?? stats.gamesPlayed ?? wallet.plays ?? wallet.gamesPlayed ?? p.plays ?? p.gamesPlayed,
+      };
+
+      const root = document.getElementById('rg-hud');
+      if(!root) return;
+
+      const fmt = (v) => (v == null ? "-" : Number(v||0).toLocaleString('en-US'));
+      const set = (k, v) => {
+        root.querySelectorAll(`[data-hud="${k}"]`).forEach(el => { el.textContent = fmt(v); });
+      };
+
+      set("level", state.level);
+      set("exp", state.exp);
+      set("coins", state.coins);
+      set("tickets", state.tickets);
+      set("gamesPlayed", state.gamesPlayed);
+
+    }catch(e){
+      console.warn("applyAccountApiResponse(today-lucky) failed:", e);
+    }
+  };
 
   /* ------------------------------------------------------------------
    *  🔊 오늘의 행운 전용 BGM

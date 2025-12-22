@@ -291,9 +291,7 @@ export const onRequest: PagesFunction<Env> = async ({
         where user_id = ${userId}::uuid
       `;
     } else if (itemType === "booster" && effectKey === "exp_multiplier") {
-      // EXP 부스트 아이템은, 나중에 user_effects 같은 테이블 도입 시
-      // 거기에 기간/배율로 기록하는 구조로 쉽게 확장 가능.
-      // 여기서는 "구매했다"는 사실만 analytics 에 남긴다.
+      // EXP 부스트 아이템은 추후 확장
     }
 
     // analytics_events: shop_purchase 기록

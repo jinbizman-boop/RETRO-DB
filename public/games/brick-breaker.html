@@ -41,7 +41,26 @@
   <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
 
   <!-- 전역 유틸 -->
-  <script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/app.js"></script>
+<script>
+  // ✅ Game entry auth gate (pass once before gameplay/reward)
+  window.addEventListener('load', async () => {
+    try {
+      const fn =
+        (window.RG && typeof window.RG.requireAuth === 'function')
+          ? window.RG.requireAuth
+          : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
+
+      if (fn) {
+        const ok = await fn(); // 로그인 아니면 requireAuth 내부에서 리다이렉트/모달 처리
+        if (ok === false) return;
+      }
+    } catch (e) {
+      // requireAuth 내부에서 이동 처리되거나, 예외가 나도 게임 로드 자체는 막지 않음
+      console.warn('[RG][auth] requireAuth gate error:', e);
+    }
+  }, { once: true });
+</script>
   <script defer src="/assets/js/analytics.js"></script>
   <!-- ✅ 레거시 개별 게임 스크립트 제거 (통합 app.js 구조 사용) -->
   <!-- <script src="/assets/js/games/brick-breaker.js"></script> -->

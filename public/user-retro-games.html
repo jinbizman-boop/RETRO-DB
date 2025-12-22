@@ -17,10 +17,8 @@
 
   <!-- 실제 Google AdSense(자동광고) 공통 코드 -->
   <script async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js
-               ?client=ca-pub-6713974265397310"
-          crossorigin="anonymous">
-  </script>
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+          crossorigin="anonymous"></script>
 
   <!-- 전역 스크립트(App.js 최신본 + Analytics) -->
   <script defer src="/assets/js/app.js"></script>
@@ -3196,12 +3194,23 @@
 
     async function fetchShopListFromServer(){
       try{
+        const token =
+          (window.RG && typeof window.RG.getAuthToken === "function")
+            ? (window.RG.getAuthToken() || "")
+            : (localStorage.getItem("rg_token") || localStorage.getItem("token") || "");
+
+        const headers = {
+          "Accept":"application/json",
+          "Cache-Control":"no-store"
+        };
+
+        if(token){
+          headers["Authorization"] = "Bearer " + token;
+        }
+
         const res = await fetch(SHOP_API.list, {
           method:"GET",
-          headers:{
-            "Accept":"application/json",
-            "Cache-Control":"no-store"
-          },
+          headers,
           credentials:"include"
         });
         if(!res.ok){
@@ -3254,19 +3263,26 @@
       }
 
       try{
-        const res = await fetch(SHOP_API.buy, {
-          method:"POST",
-          headers:{
-            "Content-Type":"application/json",
-            "Accept":"application/json",
-            "Cache-Control":"no-store"
-          },
-          credentials:"include",
-          body: JSON.stringify({
-            itemId: item.id,
-            payWith: currency || "coins"
-          })
-        });
+      const token =
+        (window.RG && typeof window.RG.getAuthToken === "function")
+          ? (window.RG.getAuthToken() || "")
+          : (localStorage.getItem("rg_token") || localStorage.getItem("token") || "");
+
+      const headers = { "Content-Type":"application/json" };
+      if(token){
+        headers["Authorization"] = "Bearer " + token;
+      }
+
+      const res = await fetch(SHOP_API.buy, {
+        method:"POST",
+        headers,
+        body: JSON.stringify({
+          itemId: String(raw.id),
+          name: raw.name,
+          payWith
+        }),
+        credentials:"include"
+      });
 
         const data = await res.json().catch(()=>null);
 

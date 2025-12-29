@@ -12,6 +12,24 @@
  * ───────────────────────────────────────────────────────────────
  */
 
+// ✅ TypeScript 로컬 타입 shim (VSCode/tsc 타입 에러 제거용)
+// - Cloudflare Pages Functions 타입이 프로젝트에 없을 때도 빌드/편집이 되도록 최소 정의
+type PagesFunction<E = unknown> = (ctx: {
+  request: Request;
+  env: E;
+  params?: Record<string, string>;
+  data?: any;
+  waitUntil?(p: Promise<any>): void;
+  next?(): Promise<Response>;
+}) => Promise<Response> | Response;
+
+// ✅ env 최소 형태(로컬 타입용). 런타임에는 Cloudflare가 주입.
+type Env = {
+  DB: any; // (D1/Neon/래퍼) 무엇이든 허용
+  REWARD_SECRET_KEY?: string;
+  ASSETS?: any;
+};
+
 type RewardRule = {
   exp?: number;
   tickets?: number;
@@ -53,7 +71,7 @@ export const onRequest: PagesFunction = async (ctx) => {
   // Parse JSON safely
   let body: RewardRequestBody | null = null;
   try {
-    body = await request.json<RewardRequestBody>();
+    body = (await request.json()) as RewardRequestBody;
   } catch {
     return jsonErr("Invalid JSON body");
   }
@@ -198,12 +216,10 @@ export const onRequest: PagesFunction = async (ctx) => {
         );
       `);
 
-      const existing = await cx.get<{
-        user_id: string;
-      }>(
+      const existing = (await cx.get(
         `select user_id from reward_receipts where user_id = ? and game_id = ? and nonce = ?`,
         [userId, gameId, dedupeKey]
-      );
+      )) as any;
 
       if (existing?.user_id) {
         // 이미 처리된 보상 → 중복 지급 방지
@@ -233,14 +249,10 @@ export const onRequest: PagesFunction = async (ctx) => {
       );
     `);
 
-    const curProgress = await cx.get<{
-      exp: number;
-      level: number;
-      tickets: number;
-    }>(
+    const curProgress = (await cx.get(
       `select exp, level, tickets from user_progress where user_id = ?`,
       [userId]
-    );
+    )) as any;
 
     const prevExp = curProgress?.exp || 0;
     const prevTickets = curProgress?.tickets || 0;
@@ -276,10 +288,10 @@ export const onRequest: PagesFunction = async (ctx) => {
       );
     `);
 
-    const curBal = await cx.get<{ balance: number }>(
+    const curBal = (await cx.get(
       `select balance from wallet_balances where user_id = ?`,
       [userId]
-    );
+    )) as any;
 
     const prevBalance = curBal?.balance || 0;
     let newBalance = prevBalance + finalPoints;
@@ -378,20 +390,40 @@ export const onRequest: PagesFunction = async (ctx) => {
     return jsonOK({
       userId,
       game: gameId,
+
+      // ✅ HUD/프론트 표준: wallet + stats 동시 제공(키 통일)
+      wallet: {
+        coins: newBalance,
+        balance: newBalance,
+        points: newBalance,
+        exp: newExp,
+        xp: newExp,
+        tickets: newTickets,
+        level: newLevel,
+      },
+      stats: {
+        coins: newBalance,
+        balance: newBalance,
+        points: newBalance,
+        exp: newExp,
+        xp: newExp,
+        tickets: newTickets,
+        level: newLevel,
+      },
+
+      // (호환) 기존 필드 유지
       progress: {
         exp: newExp,
         level: newLevel,
         tickets: newTickets,
-      },
-      wallet: {
-        balance: newBalance,
       },
       reward: {
         exp: finalExp,
         tickets: finalTickets,
         points: finalPoints,
       },
-      // 디버깅/모니터링용으로 runId / idempotencyKey 를 응답에 포함
+
+      // 디버깅/모니터링용
       idempotency: {
         runId: rewardRunId,
         key: rewardIdempotencyKey,

@@ -203,20 +203,10 @@
   };
 
   // 하위 호환: 외부에서 직접 HUD state 갱신을 요청하던 코드가 있어도
-  // app.js는 DOM을 직접 변경하지 않고 위임만 수행한다.
+  // ✅ rg-hud가 있으면 즉시 DOM 갱신(체감 포인트)
+  // ✅ 동시에 허브/공통 처리(applyAccountApiResponse)에도 위임(일관성 유지)
   function updateHudFromState(s = {}) {
     const root = document.getElementById("rg-hud");
-
-    // HUD가 없는 페이지는 기존처럼 "위임"만 유지
-    if (!root) {
-      delegateAccountUpdate({
-        kind: "hud_state",
-        state: s || null,
-        at: nowISO(),
-        via: "app.js:updateHudFromState",
-      });
-      return;
-    }
 
     const n = (v) => {
       const x = Number(v ?? 0);
@@ -232,14 +222,24 @@
       gamesPlayed: n(s.gamesPlayed ?? s.plays ?? s.played),
     };
 
-    for (const k of ["level", "exp", "coins", "tickets", "gamesPlayed"]) {
-      const el = root.querySelector(`[data-hud='${k}']`);
-      if (el) el.textContent = String(state[k] ?? 0);
+    // ✅ (1) HUD DOM 즉시 갱신
+    if (root) {
+      for (const k of ["level", "exp", "coins", "tickets", "gamesPlayed"]) {
+        const el = root.querySelector(`[data-hud='${k}']`);
+        if (el) el.textContent = String(state[k] ?? 0);
+      }
     }
+
+    // ✅ (2) 항상 위임도 수행 (HUD 없는 페이지/허브 동기화 포함)
+    delegateAccountUpdate({
+      kind: "hud_state",
+      state,
+      at: nowISO(),
+      via: "app.js:updateHudFromState",
+    });
   }
 
   // 필요하면 다른 스크립트에서 window로 접근할 수 있게 노출(호환성 유지)
-  // ✅ 단, 이 함수는 더 이상 HUD DOM 을 직접 만지지 않음.
   window.updateHudFromState = updateHudFromState;
 
   /* ───────── SHA-256 / reward 해시 유틸 ───────── */
@@ -1072,44 +1072,35 @@
   /* ───────────────────────────── 게임 세션 훅 ───────────────────────────── */
   const gameStart = async (slug) => {
     try {
-      const token = getAuthToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/games/${slug}/start`, {
-        method: "POST",
-        credentials: CFG.credentials,
-        headers,
-      });
+      // ✅ 이 프로젝트에는 /games/:slug/start 엔드포인트가 없으므로,
+      //    runId는 프론트에서 생성하여 finish에 전달한다.
+      const runId =
+        "rg_" +
+        Date.now().toString(36) +
+        "_" +
+        Math.random().toString(36).slice(2, 10);
 
-      // ✅ 헤더 기반 진행도는 위임만
+      window.__RUN_ID__ = runId;
+
+      // (선택) 클라이언트 분석 이벤트
       try {
-        updateStatsFromHeaders(res.headers);
-      } catch (e) {
-        debugLog("[gameStart] header delegate failed", e);
-      }
+        window.Analytics?.event?.("game_start", { slug, runId });
+      } catch (_) {}
 
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(
-          (data && (data.error || data.message)) || `HTTP_${res.status}`
-        );
-      }
-      window.__RUN_ID__ = data.runId;
-      window.Analytics?.event?.("game_start", { slug, runId: data.runId });
-
-      // analytics/event API에도 기록
+      // (선택) 서버 analytics_events 기록 (실패해도 게임은 진행)
       try {
-        await trackGameEvent("game_start", slug, {
-          runId: data.runId || null,
-        });
+        await trackGameEvent("game_start", slug, { runId });
       } catch (e) {
         debugLog("track game_start failed", e);
       }
 
-      // ✅ 시작 응답 위임
+      const data = { ok: true, runId, local: true };
+
+      // ✅ 시작 위임(허브/페이지가 필요 시 반영)
       delegateAccountUpdate({
         kind: "game_start",
         gameId: slug,
-        payload: data || null,
+        payload: data,
         at: nowISO(),
         via: "app.js:gameStart",
       });
@@ -1117,7 +1108,6 @@
       return data;
     } catch (e) {
       debugLog("gameStart failed", e);
-      toast("게임 시작 오류");
       delegateAccountUpdate({
         kind: "game_start_error",
         gameId: slug,

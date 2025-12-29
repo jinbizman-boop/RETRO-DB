@@ -2208,6 +2208,9 @@
         }catch(e){
           return;
         }
+
+        // ✅ 인증 완료 → 세션 시작(runId 확보)
+        notifyStart();
         
         const game = new Dino(document.getElementById('game'));
         (function initUI(){
@@ -2253,16 +2256,26 @@
     setTimeout(fitCabinet, 0);
 
     /***** ✅ 세션 훅(안전 래퍼): 허브 분석용 앱 훅 호출 *****/
+    let __rg_finish_sent_retro_running = false;
+
     function notifyStart() {
       try {
+        __rg_finish_sent_retro_running = false;
         if (typeof window.gameStart === 'function') window.gameStart('retro-running');
       } catch (e) { }
     }
-    function notifyFinish(finalScore) {
+
+    async function notifyFinish(finalScore) {
+      if (__rg_finish_sent_retro_running) return;
+      __rg_finish_sent_retro_running = true;
       try {
-        if (typeof window.gameFinish === 'function')
-          window.gameFinish('retro-running', finalScore | 0);
-      } catch (e) { }
+        if (typeof window.gameFinish === 'function') {
+          const data = await window.gameFinish('retro-running', finalScore | 0);
+          try { if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data); } catch (_) {}
+        }
+      } catch (e) {
+        __rg_finish_sent_retro_running = false;
+      }
     }
 
     /***** 가시성 훅 + BGM 제어 *****/

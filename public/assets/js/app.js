@@ -204,14 +204,38 @@
 
   // 하위 호환: 외부에서 직접 HUD state 갱신을 요청하던 코드가 있어도
   // app.js는 DOM을 직접 변경하지 않고 위임만 수행한다.
-  function updateHudFromState(state) {
-    // ✅ DOM 직접 변경 금지 → 위임만
-    delegateAccountUpdate({
-      kind: "hud_state",
-      state: state || null,
-      at: nowISO(),
-      via: "app.js:updateHudFromState",
-    });
+  function updateHudFromState(s = {}) {
+    const root = document.getElementById("rg-hud");
+
+    // HUD가 없는 페이지는 기존처럼 "위임"만 유지
+    if (!root) {
+      delegateAccountUpdate({
+        kind: "hud_state",
+        state: s || null,
+        at: nowISO(),
+        via: "app.js:updateHudFromState",
+      });
+      return;
+    }
+
+    const n = (v) => {
+      const x = Number(v ?? 0);
+      return Number.isFinite(x) ? x : 0;
+    };
+
+    // ✅ 표준 키로 정규화 (백엔드가 coins/points/balance 등 뭐를 주든 HUD는 통일)
+    const state = {
+      level: n(s.level ?? s.lvl ?? s.userLevel),
+      exp: n(s.exp ?? s.xp ?? s.experience),
+      coins: n(s.coins ?? s.points ?? s.balance ?? s.coin),
+      tickets: n(s.tickets ?? s.ticket),
+      gamesPlayed: n(s.gamesPlayed ?? s.plays ?? s.played),
+    };
+
+    for (const k of ["level", "exp", "coins", "tickets", "gamesPlayed"]) {
+      const el = root.querySelector(`[data-hud='${k}']`);
+      if (el) el.textContent = String(state[k] ?? 0);
+    }
   }
 
   // 필요하면 다른 스크립트에서 window로 접근할 수 있게 노출(호환성 유지)
@@ -593,20 +617,37 @@
   /**
    * requireAuth()
    *
-   * - 일반 페이지: 로그인 모달(#authModal) 오픈
-   * - 게임 페이지(개별 /games/*.html): 모달이 게임 화면을 덮지 않도록
-   *   전용 로그인 페이지로 리다이렉트만 수행
+   * ✅ 단계 1-1 | 공통 로그인 보장 (강화)
+   * - 인증이 필요하면 항상 login.html?redirect=... 형태로 "복귀 경로"를 보장한다.
+   * - 게임 페이지에서는 모달이 화면을 덮지 않도록 무조건 로그인 페이지로 이동한다.
+   * - 일반 페이지에서는 모달(#authModal)이 있으면 모달을 우선 사용하고,
+   *   모달이 없으면 로그인 페이지로 이동한다.
    */
   const requireAuth = async () => {
+    // 1) 세션 확인(캐시가 있으면 그대로 사용 / 없으면 /api/auth/me 조회)
     const me = await getSession();
     if (me) return true;
 
+    // 2) 로그인 후 원래 페이지로 돌아오기 위한 redirect 파라미터
+    const backTo =
+      location.pathname + location.search + location.hash;
+    const loginUrl =
+      "login.html?redirect=" + encodeURIComponent(backTo);
+
+    // 3) 게임 페이지면 무조건 리다이렉트(모달 금지)
     if (isGamePage()) {
-      // 게임 화면 위에 "로그인 전 전체 화면"이 겹쳐 보이는 현상 방지
-      goLogin();
-    } else {
-      openAuthModal();
+      nav(loginUrl); // iframe 안이면 top으로 올려서 이동
+      return false;
     }
+
+    // 4) 일반 페이지: 모달이 있으면 모달, 없으면 리다이렉트
+    const modal = qs("#authModal");
+    if (modal) {
+      openAuthModal();
+      return false;
+    }
+
+    nav(loginUrl);
     return false;
   };
 
@@ -674,8 +715,20 @@
         body: { sku },
       });
 
-      // ✅ 구매 이후 HUD/스탯 직접 갱신 금지 → 세션 갱신 및 위임만
+      // ✅ (1-C) 구매 이후: 세션 갱신 + balance 재조회로 HUD 즉시 동기화
       await getSession({ refresh: true });
+
+      try {
+        // refreshWalletHUD()가 있으면 내부에서 /api/wallet/balance를 호출함
+        if (typeof window.refreshWalletHUD === "function") {
+          await window.refreshWalletHUD();
+        } else {
+          // 없으면 직접 balance 호출
+          await refreshWalletFromBalance();
+        }
+      } catch (e) {
+        debugLog("refresh HUD after purchase failed", e);
+      }
 
       toast("구매가 완료되었습니다.");
       window.Analytics?.event?.("purchase", { sku, res });
@@ -820,6 +873,20 @@
         at: nowISO(),
         via: "app.js:refreshWalletFromBalance",
       });
+
+      // ✅ (1-B) balance 응답이 오면 rg-hud가 있는 페이지에서는 HUD도 즉시 갱신
+      // - balance.ts가 wallet/stats 둘 다 내려주는 구조를 흡수
+      try {
+        const w = (json && json.wallet) ? json.wallet : {};
+        const s = (json && json.stats) ? json.stats : {};
+        updateHudFromState({
+          level: (w.level ?? s.level),
+          exp: (w.exp ?? w.xp ?? s.exp ?? s.xp),
+          coins: (w.coins ?? w.points ?? w.balance ?? s.coins ?? s.points ?? s.balance),
+          tickets: (w.tickets ?? s.tickets),
+          gamesPlayed: (w.gamesPlayed ?? w.plays ?? s.gamesPlayed ?? s.plays),
+        });
+      } catch (_) {}
     } catch (e) {
       debugLog("refreshWalletFromBalance failed", e);
       delegateAccountUpdate({

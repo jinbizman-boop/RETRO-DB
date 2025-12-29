@@ -608,20 +608,35 @@ export const onRequest: PagesFunction<Env> = async ({
       : Math.max(1, Math.floor((expNum || 0) / 1000) + 1);
 
     const wallet = {
-      points: balanceNum,
-      tickets: ticketsNum,
-      exp: expNum,
-      plays: gamesPlayedNum,
-      level: levelNum,
-      xpCap: null,
-    };
-
-    const stats = {
-      points: balanceNum,
+      // ✅ HUD 표준 키(프론트 공통)
+      coins: balanceNum,
       exp: expNum,
       tickets: ticketsNum,
       gamesPlayed: gamesPlayedNum,
       level: levelNum,
+
+      // ✅ 기존/호환 키(레거시 클라/코드 보호)
+      points: balanceNum,
+      balance: balanceNum,
+      plays: gamesPlayedNum,
+      xp: expNum,
+
+      xpCap: null,
+    };
+
+    const stats = {
+      // ✅ HUD 표준 키
+      coins: balanceNum,
+      exp: expNum,
+      tickets: ticketsNum,
+      gamesPlayed: gamesPlayedNum,
+      level: levelNum,
+
+      // ✅ 기존/호환 키
+      points: balanceNum,
+      balance: balanceNum,
+      xp: expNum,
+      plays: gamesPlayedNum,
     };
 
     // 본문 계약: { ok: true, balance } 유지 + (추가 필드) wallet/stats/snapshot

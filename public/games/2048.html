@@ -878,12 +878,28 @@
     }
   }
 
-  function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
-  function notifyFinish(finalScore, meta){ 
-    try{ 
-      if (typeof window.gameFinish === 'function') 
-        window.gameFinish('2048', finalScore|0, meta||null); 
-    }catch(e){} 
+  let __rg_finish_sent_2048 = false;
+
+  function notifyStart(){
+    try{
+      __rg_finish_sent_2048 = false; // 새 판 시작 시 finish 재허용
+      if (typeof window.gameStart === 'function') window.gameStart('2048');
+    }catch(e){}
+  }
+
+  async function notifyFinish(finalScore, meta){
+    if(__rg_finish_sent_2048) return;
+    __rg_finish_sent_2048 = true;
+    try{
+      if (typeof window.gameFinish === 'function'){
+        const data = await window.gameFinish('2048', finalScore|0);
+        try{
+          if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data);
+        }catch(_){}
+      }
+    }catch(e){
+      __rg_finish_sent_2048 = false;
+    }
   }
   document.addEventListener('visibilitychange', () => {});
 
@@ -1309,6 +1325,9 @@
   }catch(e){
     return;
   }
+
+  // ✅ 인증 완료 → 세션 시작(runId 확보)
+  notifyStart();
 
   const game=new G2048(document.getElementById('game'));
   (function(){

@@ -1876,8 +1876,27 @@
   setTimeout(fitCabinet, 0);
 
   /***** ✅ 세션 훅(안전 래퍼): 허브 분석용 앱 훅 호출 *****/
-  function notifyStart() { try { if (typeof window.gameStart === 'function') window.gameStart('brick-breaker'); } catch (e) { } }
-  function notifyFinish(finalScore) { try { if (typeof window.gameFinish === 'function') window.gameFinish('brick-breaker', finalScore | 0); } catch (e) { } }
+  let __rg_finish_sent_brick_breaker = false;
+
+  function notifyStart() {
+    try {
+      __rg_finish_sent_brick_breaker = false;
+      if (typeof window.gameStart === 'function') window.gameStart('brick-breaker');
+    } catch (e) { }
+  }
+
+  async function notifyFinish(finalScore) {
+    if (__rg_finish_sent_brick_breaker) return;
+    __rg_finish_sent_brick_breaker = true;
+    try {
+      if (typeof window.gameFinish === 'function') {
+        const data = await window.gameFinish('brick-breaker', finalScore | 0);
+        try { if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data); } catch (_) {}
+      }
+    } catch (e) {
+      __rg_finish_sent_brick_breaker = false;
+    }
+  }
 
   /* ================= Sanity Tests ================= */
   (function runTests(){
@@ -1927,6 +1946,9 @@
       }
     }catch(e){}
     bootstrapBrickBreaker();
+
+    // ✅ 인증 완료 → 세션 시작(runId 확보)
+    try{ notifyStart(); }catch(e){}
   }
 
   if(document.readyState === 'complete' || document.readyState === 'interactive'){

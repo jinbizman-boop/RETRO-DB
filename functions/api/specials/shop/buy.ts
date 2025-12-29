@@ -169,7 +169,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     try {
       await sql/* sql */`
         insert into wallet_balances (user_id, balance, updated_at)
-        values (${userId}, ${nextCoins}, now())
+        values (${userId}::uuid, ${nextCoins}, now())
         on conflict (user_id)
         do update set balance = excluded.balance, updated_at = excluded.updated_at
       `;

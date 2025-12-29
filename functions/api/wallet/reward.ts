@@ -1,743 +1,306 @@
-/**
- * functions/api/wallet/reward.ts
- * ───────────────────────────────────────────────────────────────
- * Retro Games – Reward API (Ultimate Version, Enhanced)
- *
- * ✔ 게임별 보상 자동 계산 (game_rewards.json + 내장 기본값)
- * ✔ EXP 레벨 커브 자동 적용 (level_curve.json + 내장 기본값)
- * ✔ 부정 플레이 방지용 SHA-256 해시 검증
- * ✔ 중복 지급 방지용 nonce / rewardId 기반 idempotency (선택 사항)
- * ✔ user_progress / wallet_balances / wallet_tx / analytics_events 통합
- * ✔ Cloudflare Pages Functions 형식 및 외부 계약 100% 유지
- * ───────────────────────────────────────────────────────────────
- */
+// functions/api/wallet/reward.ts
+// ------------------------------------------------------------
+// POST /api/wallet/reward
+// - app.js(window.sendGameReward)에서 호출하는 보상 지급 엔드포인트
+// - ✅ Neon(getSql) 기반으로 통일
+// - ✅ app.js 해시 규칙과 100% 일치:
+//     raw = `${userId}|${gameId}|${exp}|${tickets}|${points}|${secret}`
+// - ✅ 응답: { success:true, wallet, stats, reward, game, userId }
+//
+// 주의:
+// - 이미 게임들이 /api/games/finish 와 /api/wallet/reward 를 "둘 다" 호출하면
+//   보상이 중복될 수 있음. (게임 페이지에서 한 쪽만 쓰도록 정리 권장)
+// ------------------------------------------------------------
 
-// ✅ TypeScript 로컬 타입 shim (VSCode/tsc 타입 에러 제거용)
-// - Cloudflare Pages Functions 타입이 프로젝트에 없을 때도 빌드/편집이 되도록 최소 정의
-type PagesFunction<E = unknown> = (ctx: {
+import { json, readJSON } from "../_utils/json";
+import { withCORS, preflight } from "../_utils/cors";
+import { getSql, type Env } from "../_utils/db";
+import { allow as rateAllow } from "../_utils/rate-limit";
+
+type CfEventLike<E = unknown> = {
   request: Request;
   env: E;
   params?: Record<string, string>;
-  data?: any;
   waitUntil?(p: Promise<any>): void;
   next?(): Promise<Response>;
-}) => Promise<Response> | Response;
-
-// ✅ env 최소 형태(로컬 타입용). 런타임에는 Cloudflare가 주입.
-type Env = {
-  DB: any; // (D1/Neon/래퍼) 무엇이든 허용
-  REWARD_SECRET_KEY?: string;
-  ASSETS?: any;
+  data?: Record<string, unknown>;
 };
+type PagesFunction<E = unknown> = (ctx: CfEventLike<E>) => Promise<Response> | Response;
 
-type RewardRule = {
-  exp?: number;
-  tickets?: number;
-  points?: number;
-  maxExp?: number;
-  maxTickets?: number;
-  maxPoints?: number;
-};
-
-type GameRewardTable = Record<string, RewardRule>;
-type LevelCurve = Record<string, number>;
-
-interface RewardRequestBody {
-  userId?: string;
-  game?: string;
-  reason?: string;
-  exp?: number;
-  tickets?: number;
-  points?: number;
-  hash?: string;
-  nonce?: string; // 중복 지급 방지용 클라이언트 요청 식별자(선택)
-  // ▶ runId 처럼 사용할 외부 식별자
-  //    - 클라이언트에서 별도의 rewardId 를 보낼 수 있도록 확장
-  //    - 없으면 기존 nonce 를 그대로 사용
-  rewardId?: string;
+function toStr(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
 }
-
-export const onRequest: PagesFunction = async (ctx) => {
-  const { request, env } = ctx;
-
-  // Only POST allowed
-  if (request.method !== "POST") {
-    return new Response(
-      JSON.stringify({ success: false, error: "Only POST supported" }),
-      { status: 405 }
-    );
-  }
-
-  // Parse JSON safely
-  let body: RewardRequestBody | null = null;
-  try {
-    body = (await request.json()) as RewardRequestBody;
-  } catch {
-    return jsonErr("Invalid JSON body");
-  }
-
-  // Extract input values
-  const userId = String(body?.userId || "").trim();
-  const gameId = (String(body?.game || "").trim() || "unknown").toLowerCase();
-  const reason = String(body?.reason || "reward").trim() || "reward";
-
-  // 기존 nonce 필드(해시/백워드 호환용)는 그대로 유지
-  const nonce = body?.nonce ? String(body.nonce).trim() : ""; // 선택 사용
-
-  // ───────────────────────────────────────────────
-  // 4-1. body 에서 idempotency 후보 추출
-  //      - rewardId 가 있으면 우선 사용
-  //      - 없으면 기존 nonce 를 그대로 활용
-  //      - 둘 다 없으면 null
-  // ───────────────────────────────────────────────
-  const rawNonce = body?.nonce ?? null;
-  const rawRewardId = (body as any)?.rewardId ?? null;
-
-  const idemSource =
-    (rawRewardId && String(rawRewardId).trim()) ||
-    (rawNonce && String(rawNonce).trim()) ||
-    null;
-
-  const rewardRunId = idemSource ? String(idemSource).trim() : null;
-
-  // 최종 멱등키 규칙:
-  //   wallet_reward:{userId}:{gameId}:{rewardRunId 또는 타임스탬프}
-  // userId / gameId 가 비어있을 수 있는 초기 단계도 고려하여 방어적 생성
-  const rewardIdempotencyKey =
-    rewardRunId && userId && gameId
-      ? `wallet_reward:${userId}:${gameId}:${rewardRunId}`
-      : userId && gameId
-      ? `wallet_reward:${userId}:${gameId}:${Date.now()}`
-      : null;
-
-  // reward_receipts 의 PK 로 사용할 실제 dedupe 키
-  // - 기존 nonce 기반 로직과 완전히 호환되도록
-  const dedupeKey = rewardRunId || nonce || "";
-
-  // Client provided deltas (optional / can be overridden by game rules)
-  const clientExp = normalizeNumber(body?.exp);
-  const clientTickets = normalizeNumber(body?.tickets);
-  const clientPoints = normalizeNumber(body?.points);
-
-  // Anti-Cheat Hash Validation
-  const providedHash = String(body?.hash || "");
-  const secretKey = env.REWARD_SECRET_KEY || "";
-
-  if (!secretKey) return jsonErr("Missing server REWARD_SECRET_KEY", 500);
-  if (!providedHash) return jsonErr("Missing reward hash");
-
-  // 기존 해시 규칙은 그대로 유지 (nonce 사용)
-  const rawPayload = [
-    userId,
-    gameId,
-    clientExp,
-    clientTickets,
-    clientPoints,
-    nonce,
-    secretKey,
-  ].join("|");
-
-  const calculatedHash = await sha256(rawPayload);
-  if (providedHash !== calculatedHash) {
-    return jsonErr("Hash mismatch – reward rejected (anti-cheat)");
-  }
-
-  if (!userId) return jsonErr("Missing userId");
-  if (!gameId) return jsonErr("Missing game");
-
-  // Ensure no negative values
-  if (clientExp < 0 || clientTickets < 0 || clientPoints < 0) {
-    return jsonErr("Values must not be negative");
-  }
-
-  // Load Game Reward Table & Level Curve (with safe fallback)
-  const gameRewards = await loadGameRewards(env);
-  const levelCurve = await loadLevelCurve(env);
-
-  const rule: RewardRule | undefined = gameRewards[gameId];
-  if (!rule) {
-    return jsonErr(`No reward table defined for game: ${gameId}`);
-  }
-
-  // Final reward calculation (rule 우선, 클라이언트 값은 상한선 내에서만 허용)
-  const finalExp = clampReward(
-    clientExp > 0 ? clientExp : rule.exp || 0,
-    rule.maxExp
-  );
-  const finalTickets = clampReward(
-    clientTickets > 0 ? clientTickets : rule.tickets || 0,
-    rule.maxTickets
-  );
-  const finalPoints = clampReward(
-    clientPoints > 0 ? clientPoints : rule.points || 0,
-    rule.maxPoints
-  );
-
-  // 아무 변화도 없으면 굳이 DB 접근 안 하고 바로 반환
-  if (finalExp === 0 && finalTickets === 0 && finalPoints === 0) {
-    return jsonOK({
-      userId,
-      game: gameId,
-      progress: {
-        exp: 0,
-        level: 1,
-        tickets: 0,
-      },
-      wallet: {
-        balance: 0,
-      },
-      reward: {
-        exp: 0,
-        tickets: 0,
-        points: 0,
-      },
-      noop: true,
-    });
-  }
-
-  // SQL Connection
-  const sql = env.DB;
-  const cx = await sql.begin();
-
-  try {
-    // ───────────────────────────────────────────────
-    // 0) 중복 지급 방지용 nonce / rewardId 처리
-    //    - 같은 userId + gameId + (rewardRunId 또는 nonce) 조합이
-    //      이미 처리됐다면 즉시 반환
-    // ───────────────────────────────────────────────
-    if (dedupeKey) {
-      await cx.run(`
-        create table if not exists reward_receipts (
-          user_id text not null,
-          game_id text not null,
-          nonce text not null,
-          created_at timestamptz default now(),
-          primary key (user_id, game_id, nonce)
-        );
-      `);
-
-      const existing = (await cx.get(
-        `select user_id from reward_receipts where user_id = ? and game_id = ? and nonce = ?`,
-        [userId, gameId, dedupeKey]
-      )) as any;
-
-      if (existing?.user_id) {
-        // 이미 처리된 보상 → 중복 지급 방지
-        await cx.rollback();
-        return jsonErr("Duplicate reward (idempotent key already used)", 409);
-      }
-
-      await cx.run(
-        `
-        insert into reward_receipts(user_id, game_id, nonce)
-        values(?, ?, ?)
-        `,
-        [userId, gameId, dedupeKey]
-      );
-    }
-
-    // ───────────────────────────────────────────────
-    // 1) user_progress 생성/업데이트
-    // ───────────────────────────────────────────────
-    await cx.run(`
-      create table if not exists user_progress (
-        user_id text primary key,
-        exp bigint default 0,
-        level int default 1,
-        tickets bigint default 0,
-        updated_at timestamptz default now()
-      );
-    `);
-
-    const curProgress = (await cx.get(
-      `select exp, level, tickets from user_progress where user_id = ?`,
-      [userId]
-    )) as any;
-
-    const prevExp = curProgress?.exp || 0;
-    const prevTickets = curProgress?.tickets || 0;
-
-    let newExp = prevExp + finalExp;
-    let newTickets = prevTickets + finalTickets;
-    if (newExp < 0) newExp = 0;
-    if (newTickets < 0) newTickets = 0;
-
-    const newLevel = calcLevel(newExp, levelCurve);
-
-    await cx.run(
-      `
-      insert into user_progress(user_id, exp, level, tickets)
-      values(?, ?, ?, ?)
-      on conflict(user_id)
-      do update set
-        exp = excluded.exp,
-        level = excluded.level,
-        tickets = excluded.tickets,
-        updated_at = now()
-      `,
-      [userId, newExp, newLevel, newTickets]
-    );
-
-    // ───────────────────────────────────────────────
-    // 2) wallet_balances 업데이트 (포인트 → balance)
-    // ───────────────────────────────────────────────
-    await cx.run(`
-      create table if not exists wallet_balances (
-        user_id text primary key,
-        balance bigint default 0
-      );
-    `);
-
-    const curBal = (await cx.get(
-      `select balance from wallet_balances where user_id = ?`,
-      [userId]
-    )) as any;
-
-    const prevBalance = curBal?.balance || 0;
-    let newBalance = prevBalance + finalPoints;
-    if (newBalance < 0) newBalance = 0;
-
-    await cx.run(
-      `
-      insert into wallet_balances(user_id, balance)
-      values(?, ?)
-      on conflict(user_id)
-      do update set balance = excluded.balance
-      `,
-      [userId, newBalance]
-    );
-
-    // ───────────────────────────────────────────────
-    // 3) wallet_tx 보상 지급 로그 기록
-    //    - 여기서는 applyWalletTransaction 류의 헬퍼 대신
-    //      기존 wallet_tx 테이블을 유지하면서,
-    //      runId / idempotencyKey 정보를 메타 레벨에서 보존한다.
-    // ───────────────────────────────────────────────
-    await cx.run(`
-      create table if not exists wallet_tx (
-        id uuid primary key default gen_random_uuid(),
-        user_id text not null,
-        amount bigint not null,
-        reason text default 'reward',
-        game_id text default '',
-        created_at timestamptz default now()
-      );
-    `);
-
-    if (finalPoints !== 0) {
-      await cx.run(
-        `
-        insert into wallet_tx(user_id, amount, reason, game_id)
-        values(?, ?, ?, ?)
-        `,
-        [userId, finalPoints, reason, gameId]
-      );
-    }
-
-    // ───────────────────────────────────────────────
-    // 4) analytics_events 로그 (선택 기능, UI/통계용)
-    //     - rewardRunId / rewardIdempotencyKey 를 함께 기록
-    //       → 추후 Neon / transactions 체계와 연동할 때
-    //         동일한 개념의 runId / idempotencyKey 로 재사용 가능
-    // ───────────────────────────────────────────────
-    await cx.run(`
-      create table if not exists analytics_events (
-        id uuid primary key default gen_random_uuid(),
-        user_id text,
-        game_id text,
-        event_type text not null,
-        meta_json jsonb,
-        created_at timestamptz default now()
-      );
-    `);
-
-    await cx.run(
-      `
-      insert into analytics_events(user_id, game_id, event_type, meta_json)
-      values(?, ?, 'reward', jsonb_build_object(
-        'exp', ?,
-        'tickets', ?,
-        'points', ?,
-        'prevExp', ?,
-        'prevTickets', ?,
-        'prevBalance', ?,
-        'nonce', ?,
-        'rewardRunId', ?,
-        'idempotencyKey', ?
-      ))
-      `,
-      [
-        userId,
-        gameId,
-        finalExp,
-        finalTickets,
-        finalPoints,
-        prevExp,
-        prevTickets,
-        prevBalance,
-        nonce || null,
-        rewardRunId || null,
-        rewardIdempotencyKey || null,
-      ]
-    );
-
-    // ───────────────────────────────────────────────
-    // 커밋
-    // ───────────────────────────────────────────────
-    await cx.commit();
-
-    // Response
-    return jsonOK({
-      userId,
-      game: gameId,
-
-      // ✅ HUD/프론트 표준: wallet + stats 동시 제공(키 통일)
-      wallet: {
-        coins: newBalance,
-        balance: newBalance,
-        points: newBalance,
-        exp: newExp,
-        xp: newExp,
-        tickets: newTickets,
-        level: newLevel,
-      },
-      stats: {
-        coins: newBalance,
-        balance: newBalance,
-        points: newBalance,
-        exp: newExp,
-        xp: newExp,
-        tickets: newTickets,
-        level: newLevel,
-      },
-
-      // (호환) 기존 필드 유지
-      progress: {
-        exp: newExp,
-        level: newLevel,
-        tickets: newTickets,
-      },
-      reward: {
-        exp: finalExp,
-        tickets: finalTickets,
-        points: finalPoints,
-      },
-
-      // 디버깅/모니터링용
-      idempotency: {
-        runId: rewardRunId,
-        key: rewardIdempotencyKey,
-      },
-    });
-  } catch (err: any) {
-    await cx.rollback();
-    return jsonErr("DB Error", 500, err?.message ?? String(err));
-  }
-};
-
-/* ───────────────────────────────────────────────
- * Helper: JSON OK Response
- * ───────────────────────────────────────────────*/
-function jsonOK(obj: any) {
-  return new Response(JSON.stringify({ success: true, ...obj }), {
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/* ───────────────────────────────────────────────
- * Helper: JSON Error Response
- * ───────────────────────────────────────────────*/
-function jsonErr(msg: string, code: number = 400, detail: any = null) {
-  return new Response(
-    JSON.stringify({
-      success: false,
-      error: msg,
-      detail,
-    }),
-    {
-      status: code,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
-}
-
-/* ───────────────────────────────────────────────
- * Normalize number (NaN → 0)
- * ───────────────────────────────────────────────*/
-function normalizeNumber(v: unknown): number {
+function toNum(v: unknown): number {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
 }
-
-/* ───────────────────────────────────────────────
- * Clamp reward value with optional max cap
- * ───────────────────────────────────────────────*/
-function clampReward(value: number, max?: number): number {
-  if (!Number.isFinite(value)) return 0;
-  if (value < 0) return 0;
-  if (typeof max === "number" && Number.isFinite(max) && max >= 0) {
-    return Math.min(value, max);
-  }
-  return value;
+function clampNonNeg(n: number): number {
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.floor(n);
 }
 
-/* ───────────────────────────────────────────────
- * SHA-256 Hashing (Anti-Cheat)
- * ───────────────────────────────────────────────*/
-async function sha256(text: string): Promise<string> {
+/**
+ * userId 해석 우선순위:
+ * 1) _middleware.ts가 주입한 ctx.data.auth.userId
+ * 2) 헤더 X-User-Id
+ * 3) body.userId
+ */
+function resolveUserId(ctx: CfEventLike<Env>, body: any): string | null {
+  const dataUserId = (ctx.data as any)?.auth?.userId;
+  const headerId =
+    ctx.request.headers.get("X-User-Id") ||
+    ctx.request.headers.get("x-user-id") ||
+    "";
+  const bodyId = body?.userId;
+
+  const id = toStr(dataUserId || headerId || bodyId);
+  return id || null;
+}
+
+async function sha256Hex(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(hash)]
+  return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
-/* ───────────────────────────────────────────────
- * Load JSON file from the /api/_utils folder
- * (Cloudflare Pages Assets + 안전한 기본값 제공)
- * ───────────────────────────────────────────────*/
-async function loadGameRewards(env: any): Promise<GameRewardTable> {
-  const fallback = defaultGameRewards();
-  try {
-    if (!env.ASSETS) return fallback;
-    const res = await env.ASSETS.fetch(
-      "/functions/api/_utils/game_rewards.json"
+/**
+ * ✅ app.js(buildRewardHash)와 동일 규칙
+ * raw = `${userId}|${gameId}|${exp}|${tickets}|${points}|${secret}`
+ */
+async function buildServerRewardHash(
+  userId: string,
+  gameId: string,
+  exp: number,
+  tickets: number,
+  points: number,
+  secret: string
+): Promise<string> {
+  const raw = `${userId}|${gameId}|${exp}|${tickets}|${points}|${secret}`;
+  return sha256Hex(raw);
+}
+
+/**
+ * 기본 보상 테이블 (game_rewards.json이 없거나 접근 실패 시 fallback)
+ * - 필요하면 너가 실제 밸런스에 맞게 수치 조정 가능
+ */
+function fallbackRewardRule(gameId: string) {
+  const g = gameId.toLowerCase();
+
+  if (g === "2048") return { exp: 20, tickets: 1, points: 8, maxExp: 200, maxTickets: 3, maxPoints: 100 };
+  if (g === "tetris") return { exp: 18, tickets: 1, points: 7, maxExp: 200, maxTickets: 3, maxPoints: 100 };
+  if (g === "brick-breaker") return { exp: 16, tickets: 1, points: 6, maxExp: 200, maxTickets: 3, maxPoints: 100 };
+  if (g === "retro-running") return { exp: 16, tickets: 1, points: 6, maxExp: 200, maxTickets: 3, maxPoints: 100 };
+  if (g === "brick-match") return { exp: 14, tickets: 1, points: 5, maxExp: 180, maxTickets: 3, maxPoints: 90 };
+  if (g === "today-lucky" || g === "lucky-slot") return { exp: 5, tickets: 1, points: 2, maxExp: 50, maxTickets: 2, maxPoints: 15 };
+
+  // unknown game: 클라이언트 전달값만 허용(상한은 넉넉히)
+  return { exp: 0, tickets: 0, points: 0, maxExp: 200, maxTickets: 5, maxPoints: 200 };
+}
+
+function clampByMax(v: number, max?: number): number {
+  const n = clampNonNeg(v);
+  if (typeof max === "number" && Number.isFinite(max) && max >= 0) return Math.min(n, Math.floor(max));
+  return n;
+}
+
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const { request, env } = ctx;
+
+  if (request.method === "OPTIONS") return preflight(env.CORS_ORIGIN);
+
+  if (request.method !== "POST") {
+    return withCORS(json({ success: false, error: "Only POST supported" }, { status: 405 }), env.CORS_ORIGIN);
+  }
+
+  // (선택) 간단 레이트리밋 (프로젝트 유틸: allow(req)만 제공)
+  const ok = await rateAllow(request);
+  if (!ok) {
+    return withCORS(
+      json(
+        { success: false, error: "rate_limited" },
+        { status: 429, headers: { "Cache-Control": "no-store" } }
+      ),
+      env.CORS_ORIGIN
     );
-    if (!res.ok) return fallback;
-    const json = (await res.json()) as GameRewardTable;
-    return json && typeof json === "object" ? json : fallback;
-  } catch {
-    return fallback;
   }
-}
 
-async function loadLevelCurve(env: any): Promise<LevelCurve> {
-  const fallback = defaultLevelCurve();
+  // Parse JSON safely
+  let body: any = null;
   try {
-    if (!env.ASSETS) return fallback;
-    const res = await env.ASSETS.fetch(
-      "/functions/api/_utils/level_curve.json"
-    );
-    if (!res.ok) return fallback;
-    const json = (await res.json()) as LevelCurve;
-    return json && typeof json === "object" ? json : fallback;
+    body = await readJSON(request);
   } catch {
-    return fallback;
+    body = null;
   }
-}
-
-/* ───────────────────────────────────────────────
- * Default Game Rewards (내장 기본값)
- * ───────────────────────────────────────────────*/
-function defaultGameRewards(): GameRewardTable {
-  return {
-    "2048": {
-      exp: 20,
-      tickets: 1,
-      points: 5,
-      maxExp: 100,
-      maxTickets: 3,
-      maxPoints: 30,
-    },
-    brickbreaker: {
-      exp: 30,
-      tickets: 2,
-      points: 10,
-      maxExp: 150,
-      maxTickets: 3,
-      maxPoints: 50,
-    },
-    dino: {
-      exp: 10,
-      tickets: 1,
-      points: 3,
-      maxExp: 80,
-      maxTickets: 2,
-      maxPoints: 20,
-    },
-    "lucky-slot": {
-      exp: 5,
-      tickets: 1,
-      points: 2,
-      maxExp: 50,
-      maxTickets: 2,
-      maxPoints: 15,
-    },
-    "fruit-ninja": {
-      exp: 40,
-      tickets: 2,
-      points: 15,
-      maxExp: 200,
-      maxTickets: 4,
-      maxPoints: 80,
-    },
-  };
-}
-
-/* ───────────────────────────────────────────────
- * Default Level Curve (내장 기본값)
- * level : required total EXP
- * ───────────────────────────────────────────────*/
-function defaultLevelCurve(): LevelCurve {
-  return {
-    "1": 0,
-    "2": 100,
-    "3": 300,
-    "4": 700,
-    "5": 1500,
-    "6": 3000,
-    "7": 5000,
-    "8": 8000,
-    "9": 12000,
-    "10": 17000,
-  };
-}
-
-/* ───────────────────────────────────────────────
- * EXP Level Curve 계산
- * level_curve.json 예:
- * {
- *   "1": 0,
- *   "2": 100,
- *   "3": 300,
- *   "4": 700,
- *   "5": 1500
- * }
- * ───────────────────────────────────────────────*/
-function calcLevel(exp: number, curve: LevelCurve): number {
-  if (!Number.isFinite(exp) || exp <= 0) return 1;
-
-  let level = 1;
-  const entries = Object.entries(curve)
-    .map(([lv, need]) => [Number(lv), Number(need)] as [number, number])
-    .filter(([lv, need]) => Number.isFinite(lv) && Number.isFinite(need))
-    .sort((a, b) => a[0] - b[0]);
-
-  for (const [lv, need] of entries) {
-    if (exp >= need) level = lv;
-    else break;
+  if (!body) {
+    return withCORS(json({ success: false, error: "Invalid JSON body" }, { status: 400 }), env.CORS_ORIGIN);
   }
 
-  if (!Number.isFinite(level) || level < 1) return 1;
-  return level;
-}
+  const userId = resolveUserId(ctx, body);
+  const gameId = toStr(body?.game || body?.gameId || body?.slug || "unknown").toLowerCase();
+  const reason = toStr(body?.reason || "reward") || "reward";
 
-/* ───────────────────────────────────────────────────────────────
- * 아래 블록은 실행되지 않는 내부 메모/문서용 주석이다.
- * - 코드 줄 수 확보(500줄 이상)와 동시에, 추후 유지보수 시
- *   전체 흐름을 빠르게 이해하는 데 도움을 주기 위한 설명이다.
- * ───────────────────────────────────────────────────────────────
+  if (!userId) return withCORS(json({ success: false, error: "Missing userId" }, { status: 401 }), env.CORS_ORIGIN);
+  if (!gameId) return withCORS(json({ success: false, error: "Missing game" }, { status: 400 }), env.CORS_ORIGIN);
 
-[1] 전체 Reward API 흐름 정리
+  // client values (0이면 서버 룰로 자동계산)
+  const clientExp = clampNonNeg(toNum(body?.exp));
+  const clientTickets = clampNonNeg(toNum(body?.tickets));
+  const clientPoints = clampNonNeg(toNum(body?.points));
 
-  1) 클라이언트 → /api/wallet/reward 로 POST 요청
-     - body: { userId, game, reason, exp, tickets, points, hash, nonce, rewardId? }
+  // ✅ 해시 검증
+  // - app.js는 nonce 없이 계산하므로, 서버도 동일 규칙으로 맞춘다.
+  // - env.REWARD_SECRET_KEY가 없으면 빈 문자열로 처리(개발 단계에서 동작 보장)
+  const providedHash = toStr(body?.hash);
+  const secretKey = String((env as any).REWARD_SECRET_KEY || "");
 
-  2) 서버는 body 를 파싱하고, userId / gameId / reason / nonce / rewardId 를 추출한다.
+  if (!providedHash) {
+    return withCORS(json({ success: false, error: "Missing reward hash" }, { status: 400 }), env.CORS_ORIGIN);
+  }
 
-  3) rewardRunId / rewardIdempotencyKey 생성
-     - rewardId 가 있으면 우선 사용하고, 없으면 nonce 를 사용한다.
-     - 둘 다 없으면 runId 는 null 이지만, 응답에는 그대로 노출되지 않는다.
-     - rewardIdempotencyKey 는 wallet_reward:{userId}:{gameId}:{runId} 형식으로 만든다.
+  const expected = await buildServerRewardHash(userId, gameId, clientExp, clientTickets, clientPoints, secretKey);
+  if (providedHash !== expected) {
+    return withCORS(
+      json(
+        { success: false, error: "Hash mismatch – reward rejected (anti-cheat)" },
+        { status: 409 }
+      ),
+      env.CORS_ORIGIN
+    );
+  }
 
-  4) Anti-Cheat
-     - REWARD_SECRET_KEY 와 함께 userId, gameId, clientExp, clientTickets, clientPoints, nonce 를
-       " | " 로 이어 붙여 SHA-256 해시를 계산한다.
-     - 클라이언트가 보낸 hash 와 일치하지 않으면 부정 시도로 보고 거절한다.
+  // ✅ 보상 최종값 결정: (클라 값 > 0) 우선, 아니면 서버 룰
+  const rule = fallbackRewardRule(gameId);
 
-  5) Game Reward Table / Level Curve 로 최종 보상 계산
-     - game_rewards.json / level_curve.json 을 먼저 시도하고,
-       실패 시 defaultGameRewards / defaultLevelCurve 를 사용한다.
-     - rule.maxExp / maxTickets / maxPoints 로 상한을 걸어준다.
+  const finalExp = clampByMax(clientExp > 0 ? clientExp : (rule.exp || 0), rule.maxExp);
+  const finalTickets = clampByMax(clientTickets > 0 ? clientTickets : (rule.tickets || 0), rule.maxTickets);
+  const finalPoints = clampByMax(clientPoints > 0 ? clientPoints : (rule.points || 0), rule.maxPoints);
 
-  6) 중복 지급 방지 (idempotency)
-     - reward_receipts(user_id, game_id, nonce) 의 PK 를 사용한다.
-     - 여기서 nonce 컬럼에는 (rewardRunId || nonce)를 저장하므로,
-       동일한 rewardId 또는 nonce 로 다시 호출해도 409 Conflict 로 막힌다.
+  if (finalExp === 0 && finalTickets === 0 && finalPoints === 0) {
+    return withCORS(
+      json(
+        {
+          success: true,
+          userId,
+          game: gameId,
+          reward: { exp: 0, tickets: 0, points: 0 },
+          wallet: { coins: 0, balance: 0, points: 0, tickets: 0, exp: 0, xp: 0, level: 1 },
+          stats: { coins: 0, balance: 0, points: 0, tickets: 0, exp: 0, xp: 0, level: 1 },
+          noop: true,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      ),
+      env.CORS_ORIGIN
+    );
+  }
 
-  7) user_progress / wallet_balances 업데이트
-     - EXP 및 티켓은 user_progress(exp, level, tickets)에 반영된다.
-     - 포인트는 wallet_balances(balance)에 반영된다.
+  const sql = getSql(env);
 
-  8) wallet_tx / analytics_events 기록
-     - wallet_tx 는 코인(포인트) 변화를 단순 기록한다.
-     - analytics_events.meta_json 에는
-       exp, tickets, points, prevExp, prevTickets, prevBalance 외에
-       nonce, rewardRunId, idempotencyKey 도 함께 저장한다.
+  try {
+    // ✅ getSql은 begin()/commit() 트랜잭션을 제공하지 않음
+    // ✅ 단일 CTE 쿼리로: (1) user_stats 보정 (2) 갱신 (3) wallet_balances 동기화
+    const [st] = await sql/* sql */`
+      with ensure as (
+        insert into user_stats (user_id)
+        values (${userId}::uuid)
+        on conflict (user_id) do nothing
+      ),
+      cur as (
+        select coins, exp, tickets, games_played, level
+        from user_stats
+        where user_id = ${userId}::uuid
+      ),
+      upd as (
+        update user_stats
+        set coins = greatest(0, (select coins from cur) + ${finalPoints}),
+            exp = greatest(0, (select exp from cur) + ${finalExp}),
+            tickets = greatest(0, (select tickets from cur) + ${finalTickets}),
+            updated_at = now()
+        where user_id = ${userId}::uuid
+        returning coins, exp, tickets, games_played, level
+      ),
+      wb as (
+        insert into wallet_balances (user_id, balance, updated_at)
+        select ${userId}::uuid, (select coins from upd), now()
+        on conflict (user_id)
+        do update set balance = excluded.balance, updated_at = excluded.updated_at
+      )
+      select
+        (select coins from upd) as coins,
+        (select exp from upd) as exp,
+        (select tickets from upd) as tickets,
+        (select games_played from upd) as games_played,
+        (select level from upd) as level
+    `;
 
-  9) 응답
-     - { success: true, userId, game, progress, wallet, reward, idempotency } 형식으로 반환한다.
-     - idempotency.runId / idempotency.key 는 클라이언트 디버깅용이다.
+    const nextCoins = Math.max(0, Number(st?.coins ?? 0));
+    const nextExp = Math.max(0, Number(st?.exp ?? 0));
+    const nextTickets = Math.max(0, Number(st?.tickets ?? 0));
+    const curGames = Math.max(0, Number(st?.games_played ?? 0));
+    const curLevel = Math.max(1, Number(st?.level ?? 1));
 
+    // analytics_events가 있으면 기록(없어도 보상은 성공)
+    try {
+      await sql/* sql */`
+        insert into analytics_events (user_id, event_type, meta, created_at)
+        values (
+          ${userId}::uuid,
+          'wallet_reward',
+          ${JSON.stringify({
+            gameId,
+            reason,
+            exp: finalExp,
+            tickets: finalTickets,
+            points: finalPoints,
+          })}::jsonb,
+          now()
+        )
+      `;
+    } catch (_) {}
 
-[2] /api/games/finish.ts 와의 개념적 정렬
+    const wallet = {
+      coins: nextCoins,
+      balance: nextCoins,
+      points: nextCoins,
+      exp: nextExp,
+      xp: nextExp,
+      tickets: nextTickets,
+      gamesPlayed: curGames,
+      level: curLevel,
+    };
+    const stats = {
+      coins: nextCoins,
+      balance: nextCoins,
+      points: nextCoins,
+      exp: nextExp,
+      xp: nextExp,
+      tickets: nextTickets,
+      gamesPlayed: curGames,
+      level: curLevel,
+    };
 
-  - finish.ts:
-      * gameRuns 의 runId 로부터 idempotencyKey 를 구성
-      * applyWalletTransaction 계열 로직에서 runId / idempotencyKey 를 함께 사용
-
-  - reward.ts:
-      * 외부에서 받은 rewardId 또는 nonce 를 runId 처럼 사용
-      * reward_receipts + analytics_events 를 통해 동일한 개념을 구현
-
-  → 두 엔드포인트 모두
-      "같은 runId/rewardId 로는 보상이 한 번만 지급된다" 는
-      공통 철학을 갖도록 정렬한 상태이다.
-
-
-[3] 앞으로 Neon / transactions 스키마로의 확장 아이디어 (설명용)
-
-  - 현재 파일은 D1/SQLite 기반 schema(user_progress, wallet_balances, wallet_tx)를 사용한다.
-  - 향후 Neon(PostgreSQL) 환경의 transactions + apply_wallet_transaction 트리거와
-    완전히 통합하고 싶다면 다음과 같은 단계를 고려할 수 있다.
-
-    1) reward.ts 에서도 transactions 테이블에 insert 하는 applyWalletTransaction 헬퍼를 사용
-       - type: "reward"
-       - amount: finalPoints
-       - exp_delta: finalExp
-       - tickets_delta: finalTickets
-       - plays_delta: 0
-       - ref_table: "wallet_reward"
-       - ref_id: null
-       - run_id: rewardRunId
-       - idempotency_key: rewardIdempotencyKey
-
-    2) user_progress / wallet_balances 는
-       - Neon 기반 user_stats / transactions 로 대체하거나,
-       - 마이그레이션 기간 동안만 병행 운용 후 정리
-
-    3) analytics_events 는 지금처럼 meta_json 에 runId / idempotencyKey 를 남겨
-       디버깅 및 데이터 이행에 활용.
-
-  - 이 파일은 그러한 확장 방향을 염두에 두고
-    runId / idempotencyKey 개념만 먼저 맞춰 둔 상태라고 볼 수 있다.
-
-
-[4] 테스트 시나리오 메모
-
-  1) 정상 보상
-     - 동일 userId, game, nonce/rewardId 로 한 번 호출
-     - success: true 반환, progress/ wallet/ reward 값이 기대대로 증가
-
-  2) 중복 호출
-     - 동일 파라미터로 2번 연속 호출
-     - 첫 번째: success: true
-     - 두 번째: success: false, status 409, error "Duplicate reward (idempotent key already used)"
-
-  3) hash 불일치
-     - hash 를 임의로 바꾸어 호출
-     - success: false, error "Hash mismatch – reward rejected (anti-cheat)"
-
-  4) rewardId 만 사용 (nonce 없이)
-     - body: { rewardId: "abc123", nonce: undefined }
-     - rewardRunId = "abc123", dedupeKey = "abc123"
-     - 동일 rewardId 로 2회 호출 시 409 발생
-
-  5) legacy nonce 만 사용
-     - body: { nonce: "old-style", rewardId: undefined }
-     - 이전 버전과 동일하게 동작해야 한다.
-
-
-이 주석은 실행에 영향을 주지 않으며,
-프로젝트 인수/인계와 디버깅에 도움이 되도록 남겨둔 내부 문서이다.
-──────────────────────────────────────────────────────────────────*/
+    return withCORS(
+      json(
+        {
+          success: true,
+          userId,
+          game: gameId,
+          reward: { exp: finalExp, tickets: finalTickets, points: finalPoints },
+          wallet,
+          stats,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      ),
+      env.CORS_ORIGIN
+    );
+  } catch (e: any) {
+    return withCORS(
+      json(
+        { success: false, error: "DB Error", detail: String(e?.message || e) },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      ),
+      env.CORS_ORIGIN
+    );
+  }
+};

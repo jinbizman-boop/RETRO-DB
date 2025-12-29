@@ -2307,7 +2307,7 @@
 
     async function syncWalletFromServer(){
       try{
-        const res = await fetch(WALLET_API_BASE + "?summary=1", {
+        const res = await fetch("/api/wallet/balance", {
           method: "GET",
           credentials: "include",
           headers: {
@@ -2317,10 +2317,11 @@
         });
         if(!res.ok) return;
         const data = await res.json().catch(()=>null);
-        if(!data || !data.wallet) return;
+        if(!data) return;
 
-        // ✅ 지갑 응답은 전부 공통 함수로 처리
-        applyAccountApiResponseLocal({ wallet: data.wallet });
+        // ✅ /api/wallet/balance 응답은 wallet/stats를 함께 포함하므로
+        // ✅ 그대로 공통 반영 함수에 넘기면 HUD/로컬스토리지까지 동기화됨
+        applyAccountApiResponseLocal(data);
       }catch(err){
         console.warn("[RG][wallet] sync from /api/wallet failed:", err);
       }

@@ -9,6 +9,7 @@
   <meta name="google-adsense-account" content="ca-pub-6713974265397310" />
 
   <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="stylesheet" href="/assets/css/game-frame.css">
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
   <link rel="manifest" href="/site.webmanifest">
@@ -40,6 +41,87 @@
 
   <!-- ✅ 프로젝트 공통 스크립트 (정상 app.js 버전 / 오토 인젝트는 app.js 내부 조건으로 게임 페이지에서 스킵) -->
   <script defer src="/assets/js/app.js"></script>
+  <script>
+  // ✅ Game entry auth gate (auth first → then start game)
+  // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
+  // - 이유: 게임 스크립트가 window.load / DOMReady 타이밍에 의존해도 안전하게 초기화됨
+  (function () {
+    const PARAM = 'rg_authed';
+    const KEY = 'rg_authed_once:' + location.pathname;
+
+    function hasAuthedParam() {
+      try {
+        return new URLSearchParams(location.search).get(PARAM) === '1';
+      } catch {
+        return false;
+      }
+    }
+
+    function hasSessionFlag() {
+      try {
+        return sessionStorage.getItem(KEY) === '1';
+      } catch {
+        return false;
+      }
+    }
+
+    function setSessionFlag() {
+      try {
+        sessionStorage.setItem(KEY, '1');
+      } catch {}
+    }
+
+    function cleanUrlParam() {
+      try {
+        const clean = new URL(location.href);
+        clean.searchParams.delete(PARAM);
+        history.replaceState({}, document.title, clean.toString());
+      } catch {}
+    }
+
+    async function ensureAuthThenReloadOnce() {
+      try {
+        const fn =
+          (window.RG && typeof window.RG.requireAuth === 'function')
+            ? window.RG.requireAuth
+            : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
+
+        // app.js가 아직 로드되지 않았으면 그냥 통과(다만 보통 load 시점엔 로드됨)
+        if (!fn) return;
+
+        const ok = await fn(); // 비로그인이면 requireAuth 내부에서 모달/리다이렉트 처리
+        if (ok === false) return;
+
+        // 로그인 확인 완료 → 이 페이지에서 1회만 리로드하도록 플래그
+        setSessionFlag();
+
+        // param이 없으면 param을 붙여 리로드(게임을 "지금부터" 시작)
+        if (!hasAuthedParam()) {
+          const url = new URL(location.href);
+          url.searchParams.set(PARAM, '1');
+          location.replace(url.toString());
+          return;
+        }
+
+        // param이 이미 있으면(리로드 후) URL만 정리
+        cleanUrlParam();
+      } catch (e) {
+        console.warn('[RG][auth] requireAuth gate error:', e);
+      }
+    }
+
+    // 이미 인증 리로드를 한 상태면(세션 플래그 or param) 그냥 진행 + param 정리
+    if (hasAuthedParam() || hasSessionFlag()) {
+      if (hasAuthedParam()) cleanUrlParam();
+      return;
+    }
+
+    // app.js가 defer라서, 안전하게 load 이후 requireAuth 실행
+    window.addEventListener('load', function () {
+      void ensureAuthThenReloadOnce();
+    }, { once: true });
+  })();
+</script>
   <script defer src="/assets/js/analytics.js"></script>
 
   <style>
@@ -614,6 +696,7 @@
         score:          safePayload.score         || 0,
         pointsEarned:   safePayload.pointsEarned  || 0,
         ticketsEarned:  safePayload.ticketsEarned || 0,
+        expEarned:      safePayload.expEarned     || safePayload.xpEarned || 0,
         playsIncrement: safePayload.playsIncrement|| 0,
         meta:           safePayload.meta || {}
       };

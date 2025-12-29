@@ -1021,6 +1021,10 @@
       }catch(e){
         return;
       }
+
+      // ✅ 인증 완료 → 세션 시작(runId 확보)
+      notifyStart();
+
       const EMPTY   = 0;
       const RED     = 1;
       const GREEN   = 2;
@@ -1875,15 +1879,26 @@
     setTimeout(fitCabinet, 0);
 
     /***** 세션 훅(안전 래퍼) *****/
+    let __rg_finish_sent_match3 = false;
+
     function notifyStart(){
       try{
+        __rg_finish_sent_match3 = false;
         if(typeof window.gameStart === 'function') window.gameStart('match-3');
       }catch(e){}
     }
-    function notifyFinish(finalScore){
+
+    async function notifyFinish(finalScore){
+      if(__rg_finish_sent_match3) return;
+      __rg_finish_sent_match3 = true;
       try{
-        if(typeof window.gameFinish === 'function') window.gameFinish('match-3', finalScore|0);
-      }catch(e){}
+        if(typeof window.gameFinish === 'function'){
+          const data = await window.gameFinish('match-3', finalScore|0);
+          try{ if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data); }catch(_){}
+        }
+      }catch(e){
+        __rg_finish_sent_match3 = false;
+      }
     }
 
     /***** 가시성 훅 *****/

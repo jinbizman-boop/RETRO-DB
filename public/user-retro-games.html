@@ -1481,7 +1481,14 @@
   <div class="wrap">
     <header>
       <!-- 좌측: HUD (공통 HUD DOM 규격: id="rg-hud" + data-hud="*") -->
-      <div id="rg-hud" class="hudTop hud-bar requires-auth" aria-label="보상 현황">
+        <!-- ✅ 공통 HUD 영역 (단계 2-1 표준 DOM) -->
+        <div id="rg-hud" class="hud-bar">
+          <span data-hud="level">-</span>
+          <span data-hud="exp">0</span>
+          <span data-hud="coins">0</span>
+          <span data-hud="tickets">0</span>
+          <span data-hud="gamesPlayed">0</span>
+        </div>
         <span class="sr-only">계정 보상 HUD</span>
 
         <!-- Lv. HUD (신규) -->

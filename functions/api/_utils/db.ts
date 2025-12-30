@@ -31,6 +31,9 @@ export type Env = {
   JWT_SECRET?: string;
   JWT_ISSUER?: string;
   JWT_AUD?: string;
+
+  // ✅ 보상 해시 검증용 시크릿 (프론트의 window.RETRO_REWARD_SECRET 과 동일 값 권장)
+  REWARD_SECRET_KEY?: string;
 };
 
 /* ─────────────────────────────── 튜너블 상수 ───────────────────────────── */

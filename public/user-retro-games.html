@@ -2426,6 +2426,8 @@
         ACCOUNT_TOTALS.userId = null;
         updateUserGreeting(null);
         resetAccountTotalsAndStorage();  // ✅
+      }finally{
+        try{ document.body.classList.remove("auth-pending"); }catch(e){}
       }
     };
 
@@ -3362,7 +3364,7 @@
 
         const data = await res.json().catch(()=>null);
 
-        if(!res.ok || !data || data.ok === false){
+        if(!res.ok || !data || data.ok === false || data.success === false){
           const msg = (data && (data.message || data.error)) || "구매에 실패했습니다. 잠시 후 다시 시도해 주세요.";
           showShopToast(msg);
           return;
@@ -3378,6 +3380,7 @@
           typeof data.coins    !== "undefined" ||
           typeof data.tickets  !== "undefined" ||
           typeof data.xp       !== "undefined" ||
+          typeof data.exp      !== "undefined" ||
           typeof data.plays    !== "undefined" ||
           typeof data.level    !== "undefined" ||
           typeof data.xpCap    !== "undefined"

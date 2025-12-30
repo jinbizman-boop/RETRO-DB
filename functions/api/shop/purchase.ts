@@ -1,403 +1,329 @@
 // functions/api/shop/purchase.ts
-// ───────────────────────────────────────────────────────────────
-// RETRO-GAMES Cloudflare API: 상점 아이템 구매
-//
-// - 인증 필수 (JWT → _middleware → data.auth.userId)
-// - shop_items 에 정의된 item_key 를 기반으로
-//   • ticket_*   → user_wallet / user_stats.tickets 증가
-//   • exp_boost* → 추후 부스트 로직 확장 가능 (지금은 analytics 에만 기록)
-// - analytics_events 에 'shop_purchase' 이벤트 기록
-// - DB 실제 컬럼( item_key / price_points / is_active … )에 맞게 매핑
-// ───────────────────────────────────────────────────────────────
+// ------------------------------------------------------------
+// POST /api/shop/purchase
+// - ✅ Canonical: transactions + user_stats (user_wallet 사용 금지)
+// - shop_items의 price_points 기반으로 coins(=points) 차감
+// - ticket_small/medium/large 구매 시 tickets_delta 지급
+// - idempotency_key 지원(헤더: Idempotency-Key)
+// - 응답: { ok:true, item, wallet, stats, userId, idempotent }
+// ------------------------------------------------------------
 
 import { json, readJSON } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";
 import { getSql, type Env } from "../_utils/db";
-import * as Rate from "../_utils/rate-limit";
+import { requireUser } from "../_utils/auth";
+import { ensureUserStatsRow } from "../_utils/progression";
 
-/* ───────── Cloudflare Pages ambient types ───────── */
-type CfEventLike<E> = {
+type PagesFunction<E = unknown> = (ctx: {
   request: Request;
   env: E;
-  params?: Record<string, string>;
-  waitUntil?(p: Promise<any>): void;
-  next?(): Promise<Response>;
-  data?: Record<string, unknown>;
-};
-type PagesFunction<E = unknown> = (
-  ctx: CfEventLike<E>
-) => Promise<Response> | Response;
+}) => Response | Promise<Response>;
 
-/* ───────── Helpers ───────── */
-function toStringOrNull(v: unknown): string | null {
-  if (v == null) return null;
-  const s = String(v);
-  return s.length ? s : null;
+function toInt(v: any, def = 0): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return def;
+  return Math.trunc(n);
 }
 
-function toNumber(v: unknown): number | null {
-  if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  if (typeof v === "bigint") return Number(v);
-  if (typeof v === "string") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
+function isInsufficientBalance(err: any): boolean {
+  const msg = String(err?.message ?? err ?? "").toLowerCase();
+  // 트리거 apply_wallet_transaction()에서 coins 부족 시 raise
+  return msg.includes("insufficient balance") || msg.includes("23514");
+}
+
+function cleanText(v: any, max = 120): string {
+  const s = (typeof v === "string" ? v : String(v ?? "")).trim();
+  if (!s) return "";
+  return s.length > max ? s.slice(0, max) : s;
+}
+
+function getIdemKey(req: Request): string | null {
+  const k =
+    req.headers.get("Idempotency-Key") ||
+    req.headers.get("idempotency-key") ||
+    req.headers.get("X-Idempotency-Key") ||
+    req.headers.get("x-idempotency-key");
+  const s = (k ?? "").trim();
+  return s ? s.slice(0, 200) : null;
+}
+
+function ticketRewardByKey(itemKey: string): number {
+  switch ((itemKey || "").toLowerCase()) {
+    case "ticket_small":
+      return 5;
+    case "ticket_medium":
+      return 10;
+    case "ticket_large":
+      return 20;
+    default:
+      return 0;
   }
+}
+
+async function findShopItem(sql: any, selector: { itemId?: string; itemKey?: string; name?: string }) {
+  // 1) item_key 우선
+  if (selector.itemKey) {
+    try {
+      const rows = (await sql/* sql */ `
+        select *
+        from shop_items
+        where item_key = ${selector.itemKey}
+          and (is_active is null or is_active = true)
+        limit 1
+      `) as any[];
+      if (rows?.length) return rows[0];
+    } catch (_) {}
+  }
+
+  // 2) id::text 매칭 (uuid/serial 모두 대응)
+  if (selector.itemId) {
+    try {
+      const rows = (await sql/* sql */ `
+        select *
+        from shop_items
+        where (id::text = ${selector.itemId})
+          and (is_active is null or is_active = true)
+        limit 1
+      `) as any[];
+      if (rows?.length) return rows[0];
+    } catch (_) {}
+  }
+
+  // 3) name 매칭(최후 수단)
+  if (selector.name) {
+    try {
+      const rows = (await sql/* sql */ `
+        select *
+        from shop_items
+        where name = ${selector.name}
+          and (is_active is null or is_active = true)
+        limit 1
+      `) as any[];
+      if (rows?.length) return rows[0];
+    } catch (_) {}
+  }
+
   return null;
 }
 
-type PurchasePayload = {
-  itemId?: number;
-  name?: string;
+export const onRequestOptions: PagesFunction<Env> = async ({ env }) => {
+  return preflight(env.CORS_ORIGIN);
 };
 
-function parsePurchaseBody(body: unknown): PurchasePayload {
-  const b = body as any;
-  const itemId = toNumber(b?.itemId);
-  const name = toStringOrNull(b?.name);
-  if (!itemId && !name) {
-    throw new Error("item_required");
-  }
-  return {
-    itemId: itemId ?? undefined,
-    name: name ?? undefined,
-  };
-}
-
-function getClientMeta(request: Request) {
-  const headers = request.headers;
-  const ip =
-    headers.get("cf-connecting-ip") ||
-    headers.get("x-forwarded-for") ||
-    headers.get("x-real-ip") ||
-    null;
-  const ua = headers.get("user-agent") || null;
-  return { ip, ua };
-}
-
-/* ───────── Handler ───────── */
-export const onRequest: PagesFunction<Env> = async ({
-  request,
-  env,
-  data,
-}) => {
-  // Preflight
+export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   if (request.method === "OPTIONS") return preflight(env.CORS_ORIGIN);
-
   if (request.method !== "POST") {
-    return withCORS(
-      json({ error: "method_not_allowed" }, { status: 405 }),
-      env.CORS_ORIGIN
-    );
+    return withCORS(json({ ok: false, error: "Method Not Allowed" }, { status: 405 }), env.CORS_ORIGIN);
   }
-
-  if (!(await Rate.allow(request))) {
-    return withCORS(
-      json(
-        { error: "too_many_requests" },
-        { status: 429, headers: { "Retry-After": "60" } }
-      ),
-      env.CORS_ORIGIN
-    );
-  }
-
-  const started = performance.now();
 
   try {
-    // 인증 정보 (signup/login + _middleware 연동)
-    const auth = (data?.auth || data?.user || {}) as
-      | { userId?: string; id?: string }
-      | undefined;
-    const userId =
-      toStringOrNull((auth as any)?.userId) ||
-      toStringOrNull((auth as any)?.id);
+    // ✅ 로그인 사용자 식별(정본)
+    // - Authorization Bearer 기반
+    const me = await requireUser(request, env as any);
+    const userId = String((me as any).sub || "");
 
     if (!userId) {
-      return withCORS(
-        json({ error: "unauthorized" }, { status: 401 }),
-        env.CORS_ORIGIN
-      );
+      return withCORS(json({ ok: false, error: "Unauthorized" }, { status: 401 }), env.CORS_ORIGIN);
     }
 
     const body = await readJSON(request);
-    const { itemId, name } = parsePurchaseBody(body);
-    const { ip, ua } = getClientMeta(request);
+
+    const itemId = cleanText(body?.itemId, 80);
+    const itemKey = cleanText(body?.itemKey, 80);
+    const name = cleanText(body?.name, 120);
+    const payWith = cleanText(body?.payWith || "coins", 20).toLowerCase();
 
     const sql = getSql(env);
 
-    // shop_items 테이블 존재 확인
-    const [{ exists }] = await sql/* sql */`
-      select exists (
-        select 1
-        from   information_schema.tables
-        where  table_schema = 'public'
-        and    table_name   = 'shop_items'
-      ) as exists
-    `;
-    if (!exists) {
+    // user_stats row 선 보장
+    await ensureUserStatsRow(sql as any, userId);
+
+    const item = await findShopItem(sql, { itemId, itemKey, name });
+
+    if (!item) {
       return withCORS(
-        json({ error: "shop_not_ready" }, { status: 500 }),
+        json({ ok: false, error: "Item not found", message: "상점 아이템을 찾을 수 없습니다." }, { status: 404 }),
         env.CORS_ORIGIN
       );
     }
 
-    // 대상 아이템 조회 (DB 실제 컬럼 → 예상 컬럼으로 매핑)
-    let rows: any[];
-    if (itemId != null) {
-      rows = await sql/* sql */`
-        select
-          id,
-          item_key,
-          name,
-          description,
-          price_points                                  as price_coins,
-          price_tickets,
-          duration_sec,
-          max_stack,
-          is_active                                     as active,
-          -- 가상 컬럼들 (list.ts 와 동일한 규칙)
-          case
-            when item_key like 'ticket_%'    then 'ticket'
-            when item_key like 'exp_boost_%' then 'booster'
-            else 'other'
-          end                                           as item_type,
-          case
-            when item_key like 'ticket_%'    then 'tickets'
-            when item_key like 'exp_boost_%' then 'exp_multiplier'
-            else null
-          end                                           as effect_key,
-          case
-            when item_key = 'ticket_small'  then 5
-            when item_key = 'ticket_medium' then 10
-            when item_key = 'ticket_large'  then 20
-            when item_key = 'exp_boost_10'  then 10
-            when item_key = 'exp_boost_20'  then 20
-            else null
-          end::bigint                                   as effect_value
-        from shop_items
-        where id = ${itemId}
-          and is_active = true
-      `;
-    } else {
-      rows = await sql/* sql */`
-        select
-          id,
-          item_key,
-          name,
-          description,
-          price_points                                  as price_coins,
-          price_tickets,
-          duration_sec,
-          max_stack,
-          is_active                                     as active,
-          case
-            when item_key like 'ticket_%'    then 'ticket'
-            when item_key like 'exp_boost_%' then 'booster'
-            else 'other'
-          end                                           as item_type,
-          case
-            when item_key like 'ticket_%'    then 'tickets'
-            when item_key like 'exp_boost_%' then 'exp_multiplier'
-            else null
-          end                                           as effect_key,
-          case
-            when item_key = 'ticket_small'  then 5
-            when item_key = 'ticket_medium' then 10
-            when item_key = 'ticket_large'  then 20
-            when item_key = 'exp_boost_10'  then 10
-            when item_key = 'exp_boost_20'  then 20
-            else null
-          end::bigint                                   as effect_value
-        from shop_items
-        where name = ${name}
-          and is_active = true
-      `;
-    }
+    // 스키마 호환: price_points 우선, 없으면 price_coins / price 등 fallback
+    const priceCoins =
+      toInt(item.price_points ?? item.price_coins ?? item.priceCoins ?? item.price ?? 0, 0);
 
-    if (!rows?.length) {
+    const priceTickets = toInt(item.price_tickets ?? item.priceTickets ?? 0, 0);
+
+    if (payWith !== "coins" && payWith !== "tickets") {
       return withCORS(
-        json({ error: "item_not_found" }, { status: 404 }),
+        json({ ok: false, error: "Invalid payWith", message: "결제 수단이 올바르지 않습니다." }, { status: 400 }),
         env.CORS_ORIGIN
       );
     }
 
-    const item = rows[0];
-
-    const priceCoins = toNumber(item.price_coins) ?? 0;
-    const effectKey = toStringOrNull(item.effect_key);
-    const effectValue = toNumber(item.effect_value) ?? 0;
-    const itemType = toStringOrNull(item.item_type);
-
-    // user_wallet / user_stats row 보정 (없으면 생성)
-    await sql/* sql */`
-      insert into user_wallet (user_id)
-      values (${userId}::uuid)
-      on conflict (user_id) do nothing
-    `;
-    await sql/* sql */`
-      insert into user_stats (user_id)
-      values (${userId}::uuid)
-      on conflict (user_id) do nothing
-    `;
-
-    // 현재 지갑 상태 조회
-    const [walletRow] = await sql/* sql */`
-      select points, tickets
-      from user_wallet
-      where user_id = ${userId}::uuid
-      for update
-    `;
-
-    const currentPoints = toNumber(walletRow?.points) ?? 0;
-    const currentTickets = toNumber(walletRow?.tickets) ?? 0;
-
-    if (priceCoins > currentPoints) {
+    // 현재 프론트(UI)는 coins 구매만 제공하므로, tickets 결제는 막아둠(원하면 풀어드림)
+    if (payWith === "tickets") {
       return withCORS(
-        json(
-          {
-            error: "insufficient_points",
-            required: priceCoins,
-            current: currentPoints,
-          },
-          { status: 400 }
-        ),
+        json({ ok: false, error: "Not supported", message: "현재는 코인 결제만 지원합니다." }, { status: 400 }),
         env.CORS_ORIGIN
       );
     }
 
-    // ───── 포인트 차감 + 효과 적용 ─────
-
-    // 1) 포인트 차감
-    await sql/* sql */`
-      update user_wallet
-      set points = points - ${priceCoins}
-      where user_id = ${userId}::uuid
-    `;
-
-    let ticketsGained = 0;
-
-    // 2) 효과 적용
-    if (itemType === "ticket" || effectKey === "tickets") {
-      ticketsGained = effectValue;
-
-      await sql/* sql */`
-        update user_wallet
-        set tickets = tickets + ${ticketsGained}
-        where user_id = ${userId}::uuid
-      `;
-
-      await sql/* sql */`
-        update user_stats
-        set tickets = tickets + ${ticketsGained}
-        where user_id = ${userId}::uuid
-      `;
-    } else if (itemType === "booster" && effectKey === "exp_multiplier") {
-      // EXP 부스트 아이템은 추후 확장
+    if (priceCoins <= 0) {
+      return withCORS(
+        json({ ok: false, error: "Invalid price", message: "아이템 가격이 올바르지 않습니다." }, { status: 400 }),
+        env.CORS_ORIGIN
+      );
     }
 
-    // analytics_events: shop_purchase 기록
-    await sql/* sql */`
-      insert into analytics_events (user_id, event_name, game_id, score, metadata)
-      values (
-        ${userId}::uuid,
-        'shop_purchase',
-        null,
-        null,
-        ${JSON.stringify({
-          ip,
-          ua,
-          itemId: item.id,
-          name: item.name,
-          itemType,
-          effectKey,
-          effectValue,
-          priceCoins,
-          ticketsGained,
-          before: {
-            points: currentPoints,
-            tickets: currentTickets,
-          },
-          after: {
-            points: currentPoints - priceCoins,
-            tickets: currentTickets + ticketsGained,
-          },
-        })}::jsonb
-      )
-    `;
+    // 티켓 지급(아이템 키 기반)
+    const key = String(item.item_key ?? itemKey ?? "");
+    const ticketsGain = ticketRewardByKey(key);
 
-    // 최종 스냅샷
-    const [walletAfter] = await sql/* sql */`
-      select points, tickets
-      from user_wallet
-      where user_id = ${userId}::uuid
-    `;
+    const amount = BigInt(-priceCoins);
+    const idem = getIdemKey(request);
 
-    const [statsAfter] = await sql/* sql */`
-      select coins, exp, tickets, games_played, level
+    const refId = String(item.id ?? itemId ?? key);
+    const reason = `shop:${key || refId}`;
+
+    let idempotent = false;
+
+    try {
+      if (idem) {
+        const rows = (await sql/* sql */ `
+          insert into transactions (
+            user_id,
+            type,
+            amount,
+            reason,
+            game,
+            exp_delta,
+            tickets_delta,
+            plays_delta,
+            ref_table,
+            ref_id,
+            idempotency_key,
+            meta,
+            note
+          )
+          values (
+            ${userId}::uuid,
+            'purchase'::txn_type,
+            ${amount.toString()}::bigint,
+            ${reason},
+            'shop',
+            0,
+            ${ticketsGain},
+            0,
+            'shop_items',
+            ${refId},
+            ${idem},
+            ${JSON.stringify({ payWith, itemKey: key, itemId: refId })}::jsonb,
+            ${reason}
+          )
+          on conflict (idempotency_key) do nothing
+          returning 1
+        `) as any[];
+
+        idempotent = true;
+        // rows.length===0이면 이미 처리된 idem → 그대로 OK로 처리
+      } else {
+        await sql/* sql */ `
+          insert into transactions (
+            user_id,
+            type,
+            amount,
+            reason,
+            game,
+            exp_delta,
+            tickets_delta,
+            plays_delta,
+            ref_table,
+            ref_id,
+            meta,
+            note
+          )
+          values (
+            ${userId}::uuid,
+            'purchase'::txn_type,
+            ${amount.toString()}::bigint,
+            ${reason},
+            'shop',
+            0,
+            ${ticketsGain},
+            0,
+            'shop_items',
+            ${refId},
+            ${JSON.stringify({ payWith, itemKey: key, itemId: refId })}::jsonb,
+            ${reason}
+          )
+        `;
+      }
+    } catch (e: any) {
+      if (isInsufficientBalance(e)) {
+        return withCORS(
+          json({ ok: false, error: "Insufficient coins", message: "코인이 부족합니다." }, { status: 400 }),
+          env.CORS_ORIGIN
+        );
+      }
+      throw e;
+    }
+
+    // ✅ 반영된 user_stats 반환(정본)
+    const statsRows = (await sql/* sql */ `
+      select
+        coins,
+        tickets,
+        exp,
+        level,
+        games_played
       from user_stats
       where user_id = ${userId}::uuid
       limit 1
-    `;
+    `) as any[];
 
-    const tookMs = Math.round(performance.now() - started);
+    const s = statsRows?.[0] ?? {};
+    const wallet = {
+      coins: Number(s.coins ?? 0),
+      points: Number(s.coins ?? 0), // 호환
+      tickets: Number(s.tickets ?? 0),
+      exp: Number(s.exp ?? 0),
+      level: Number(s.level ?? 1),
+      plays: Number(s.games_played ?? 0),
+    };
 
-    const wallet = walletAfter
-      ? {
-          points: Number((walletAfter as any)?.points ?? 0),
-          tickets: Number((walletAfter as any)?.tickets ?? 0),
-          exp: Number((statsAfter as any)?.exp ?? 0),
-          plays: Number((statsAfter as any)?.games_played ?? 0),
-          level: Number((statsAfter as any)?.level ?? 1),
-          xpCap: null,
-        }
-      : null;
-
-    const stats = statsAfter
-      ? {
-          points: Number((statsAfter as any)?.coins ?? 0),
-          exp: Number((statsAfter as any)?.exp ?? 0),
-          tickets: Number((statsAfter as any)?.tickets ?? 0),
-          gamesPlayed: Number((statsAfter as any)?.games_played ?? 0),
-          level: Number((statsAfter as any)?.level ?? 1),
-        }
-      : null;
+    const safeItem = {
+      id: item.id ?? null,
+      itemKey: String(item.item_key ?? key ?? ""),
+      name: String(item.name ?? ""),
+      description: String(item.description ?? ""),
+      priceCoins,
+      ticketsGain,
+    };
 
     return withCORS(
       json(
         {
           ok: true,
-          item: {
-            id: item.id,
-            name: item.name,
-            itemType,
-            priceCoins,
-            effectKey,
-            effectValue,
-          },
-          delta: {
-            points: -priceCoins,
-            tickets: ticketsGained,
-          },
+          userId,
+          item: safeItem,
           wallet,
-          stats,
-          snapshot: { wallet, stats },
-          meta: {
-            tookMs,
-          },
+          stats: wallet, // 프론트 applyAccountApiResponseLocal 호환
+          idempotent,
         },
         {
+          status: 200,
           headers: {
             "Cache-Control": "no-store",
-            "X-Shop-Purchase-Took-ms": String(tookMs),
           },
         }
       ),
       env.CORS_ORIGIN
     );
-  } catch (err: any) {
+  } catch (e: any) {
     return withCORS(
       json(
-        { error: String(err?.message || err) },
-        { status: 400, headers: { "Cache-Control": "no-store" } }
+        { ok: false, error: "Purchase failed", message: String(e?.message ?? e ?? "unknown error") },
+        { status: 500 }
       ),
       env.CORS_ORIGIN
     );

@@ -1291,6 +1291,7 @@
   // ✅ 단, HUD/스탯 직접 갱신은 app.js에서 하지 않는다.
   window.RG = {
     getSession,
+    requireAuth,
     isAuthed,
     signout,
     listGames,
@@ -1368,7 +1369,11 @@
     const path = location.pathname.toLowerCase();
 
     // 유저 페이지에서만: 로그인 반드시 요구 + 프로필/지갑 동기화(위임)
-    if (path.endsWith("/user-retro-games.html")) {
+    if (
+      path.endsWith("/user-retro-games") ||
+      path.endsWith("/user-retro-games/") ||
+      path.endsWith("/user-retro-games.html")
+    ) {
       const ok = await requireAuth();
       if (!ok) {
         debugLog("[init] user-retro-games requires auth; redirected/login modal");

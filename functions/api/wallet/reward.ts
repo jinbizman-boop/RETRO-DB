@@ -60,7 +60,8 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     const points = toInt((body as any)?.points, 0);
 
     const hash = String((body as any)?.hash || "");
-    const secret = env.JWT_SECRET || "";
+    const secret = env.REWARD_SECRET_KEY || env.JWT_SECRET || "";
+
 
     if (!userId || !gameId) {
       return withCORS(json({ success: false, error: "bad_request" }, { status: 400 }), env.CORS_ORIGIN);

@@ -1,266 +1,254 @@
 // functions/api/shop/purchase.ts
-// ------------------------------------------------------------------
+// ------------------------------------------------------------
 // POST /api/shop/purchase
-// - ✅ canonical: transactions + user_stats(trigger) 기반
-// - ✅ shop_orders 기록 + idempotency 로 중복구매 방지
-// - ✅ user_wallet 테이블 의존 제거
-// ------------------------------------------------------------------
+// - Canonical: transactions + user_stats (single source of truth)
+// - Frontend contract 유지:
+//   • request: { itemId, itemKey, name/title, payWith?("coins"|"tickets") }
+//   • response: { ok:true, item, paid, wallet, stats, snapshot }
+// ------------------------------------------------------------
 
 import { json, readJSON } from "../_utils/json";
 import { withCORS, preflight } from "../_utils/cors";
 import { getSql, type Env } from "../_utils/db";
+import { requireUser } from "../_utils/auth";
 import * as Rate from "../_utils/rate-limit";
 
-// tiny ambient types (에디터/빌드 타입 보호)
-type PagesFunctionContext<E = unknown> = {
-  request: Request;
-  env: E;
-  params: Record<string, string>;
-  data?: Record<string, unknown>;
-  waitUntil(promise: Promise<any>): void;
-  next(): Promise<Response>;
-};
-type PagesFunction<E = unknown> = (
-  ctx: PagesFunctionContext<E>
-) => Promise<Response> | Response;
+// Minimal Pages ambient types (type-checker only)
+type CfEventLike<E> = { request: Request; env: E; params?: Record<string, string> };
+type PagesFunction<E = unknown> = (ctx: CfEventLike<E>) => Promise<Response> | Response;
 
-function str(v: any) {
-  return typeof v === "string" ? v : v == null ? "" : String(v);
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
-function num(v: any, def = 0) {
+function toStr(v: unknown) {
+  return (typeof v === "string" ? v : "").trim();
+}
+function toNum(v: any, fallback = 0) {
+  if (v == null) return fallback;
+  if (typeof v === "bigint") return Number(v);
   const n = Number(v);
-  return Number.isFinite(n) ? n : def;
+  return Number.isFinite(n) ? n : fallback;
 }
-function clampInt(v: any, min: number, max: number, def: number) {
-  const n = Math.trunc(num(v, def));
-  return Math.max(min, Math.min(max, n));
+function computeLevelFromExp(exp: number): number {
+  const e = Math.max(0, Math.floor(exp || 0));
+  return Math.floor(e / 1000) + 1;
+}
+function computeXpCap(level: number): number {
+  const lv = Math.max(1, Math.floor(level || 1));
+  return lv * 1000;
+}
+function pickIdemKey(req: Request) {
+  const k = req.headers.get("Idempotency-Key") || req.headers.get("idempotency-key") || "";
+  const kk = k.trim();
+  if (kk) return kk;
+  // fallback(권장: 프론트에서 반드시 넣기)
+  return (globalThis.crypto && "randomUUID" in crypto)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export const onRequest: PagesFunction<Env> = async (ctx) => {
-  const { request, env } = ctx;
-
+export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   if (request.method === "OPTIONS") return preflight(env.CORS_ORIGIN);
+
   if (request.method !== "POST") {
-    return withCORS(json({ ok: false, error: "Method Not Allowed" }, { status: 405 }), env.CORS_ORIGIN);
+    return withCORS(json({ ok: false, message: "Method Not Allowed" }, { status: 405 }), env.CORS_ORIGIN);
   }
 
-  // rate-limit
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   if (!(await Rate.allow(request))) {
-    return withCORS(json({ ok: false, error: "Too Many Requests" }, { status: 429 }), env.CORS_ORIGIN);
+    return withCORS(json({ ok: false, message: "Too Many Requests" }, { status: 429 }), env.CORS_ORIGIN);
   }
 
   const sql = getSql(env);
 
   try {
-    // auth: middleware 주입 우선, 없으면 body.userId fallback
+    const me = await requireUser(request, env);
+    const userId = String((me as any)?.userId || (me as any)?.id || "");
+    if (!isUuid(userId)) {
+      return withCORS(json({ ok: false, message: "unauthorized" }, { status: 401 }), env.CORS_ORIGIN);
+    }
+
     const body = await readJSON(request);
+    const rawItemId = toStr((body as any)?.itemId || (body as any)?.id);
+    const rawItemKey = toStr((body as any)?.itemKey || (body as any)?.item_key || (body as any)?.sku);
+    const rawName = toStr((body as any)?.name || (body as any)?.title);
 
-    const authUserId =
-      str((ctx as any)?.data?.auth?.userId) ||
-      str((ctx as any)?.data?.user?.id) ||
-      "";
+    const payWithReq = toStr((body as any)?.payWith).toLowerCase(); // "coins" | "tickets" | ""
+    const idemKey = pickIdemKey(request);
 
-    const userId = authUserId || str((body as any)?.userId);
-    if (!userId) return withCORS(json({ ok: false, error: "unauthorized" }, { status: 401 }), env.CORS_ORIGIN);
+    const itemId = isUuid(rawItemId) ? rawItemId : null;
+    const itemKey = rawItemKey ? rawItemKey : null;
+    const itemName = rawName ? rawName : null;
 
-    const itemId = str((body as any)?.itemId);
-    const sku = str((body as any)?.sku);
-    const name = str((body as any)?.name);
-    const qty = clampInt((body as any)?.qty, 1, 99, 1);
-
-    const payWithRaw = str((body as any)?.payWith).toLowerCase(); // "coins" | "tickets"
-    // header idempotency 우선
-    const idemHeader = request.headers.get("Idempotency-Key") || request.headers.get("X-Idempotency-Key") || "";
-    const idemKey = idemHeader || `shop:${userId}:${itemId || sku || name}:${qty}:${payWithRaw || "auto"}`;
-
-    // 아이템 조회 (id > sku > name)
+    // ✅ shop_items 스키마가 (new: price_points/title/item_key) 든 (legacy: price_coins/name/sku) 든 모두 흡수
     const [item] = await sql/*sql*/`
       select
         id,
-        sku,
-        name,
-        description,
-        category,
-        is_active,
-        price_coins,
-        price_tickets,
-        wallet_coins_delta,
-        wallet_tickets_delta,
-        wallet_exp_delta,
-        effect_key,
-        effect_value,
-        effect_duration_minutes,
-        inventory_grant_sku,
-        inventory_grant_amount
+        coalesce(item_key, sku, '') as item_key,
+        coalesce(title, name, '') as title,
+        coalesce(description, '') as description,
+
+        coalesce(price_points, price_coins, 0)::bigint  as price_points,
+        coalesce(price_tickets, 0)::bigint             as price_tickets,
+        coalesce(price_type, '')                       as price_type,
+
+        coalesce(wallet_coins_delta, 0)::bigint   as wallet_coins_delta,
+        coalesce(wallet_tickets_delta, 0)::bigint as wallet_tickets_delta,
+        coalesce(wallet_exp_delta, 0)::bigint     as wallet_exp_delta,
+        coalesce(wallet_plays_delta, 0)::bigint   as wallet_plays_delta
+
       from shop_items
-      where
-        (
-          (${itemId} <> '' and id = ${itemId}::uuid)
-          or
-          (${itemId} = '' and ${sku} <> '' and sku = ${sku})
-          or
-          (${itemId} = '' and ${sku} = '' and ${name} <> '' and name = ${name})
+      where (archived is null or archived = false)
+        and (is_active is null or is_active = true)
+        and (
+          (${itemId}::uuid is not null and id = ${itemId}::uuid)
+          or (${itemKey} is not null and (item_key = ${itemKey} or sku = ${itemKey}))
+          or (${itemName} is not null and (title = ${itemName} or name = ${itemName}))
         )
       limit 1
     `;
 
-    if (!item) return withCORS(json({ ok: false, error: "item_not_found" }, { status: 404 }), env.CORS_ORIGIN);
-    if (!(item as any).is_active) return withCORS(json({ ok: false, error: "item_inactive" }, { status: 400 }), env.CORS_ORIGIN);
+    if (!item?.id) {
+      return withCORS(json({ ok: false, message: "존재하지 않는 상품입니다." }, { status: 404 }), env.CORS_ORIGIN);
+    }
 
-    const priceCoins = Math.trunc(num((item as any).price_coins, 0)) * qty;
-    const priceTickets = Math.trunc(num((item as any).price_tickets, 0)) * qty;
+    const priceCoins = toNum(item.price_points, 0);
+    const priceTickets = toNum(item.price_tickets, 0);
 
-    const grantCoins = Math.trunc(num((item as any).wallet_coins_delta, 0)) * qty;
-    const grantTickets = Math.trunc(num((item as any).wallet_tickets_delta, 0)) * qty;
-    const grantExp = Math.trunc(num((item as any).wallet_exp_delta, 0)) * qty;
-
-    // payWith 결정
-    const payWith =
-      payWithRaw === "tickets" ? "tickets" :
-      payWithRaw === "coins" ? "coins" :
-      (priceCoins > 0 ? "coins" : (priceTickets > 0 ? "tickets" : "coins"));
+    // payWith 결정: 요청 > price_type > 가격값 기반 추론
+    let payWith: "coins" | "tickets" = "coins";
+    if (payWithReq === "tickets") payWith = "tickets";
+    else if (payWithReq === "coins") payWith = "coins";
+    else {
+      const pt = String(item.price_type || "").toLowerCase();
+      if (pt === "tickets") payWith = "tickets";
+      else if (pt === "coins") payWith = "coins";
+      else {
+        // 추론: tickets 가격만 있으면 tickets, 아니면 coins
+        payWith = priceTickets > 0 && priceCoins <= 0 ? "tickets" : "coins";
+      }
+    }
 
     const costCoins = payWith === "coins" ? priceCoins : 0;
     const costTickets = payWith === "tickets" ? priceTickets : 0;
 
-    // ✅ net delta (trigger가 user_stats 갱신)
-    const coinsDelta = grantCoins - costCoins;                 // transactions.amount
-    const ticketsDelta = grantTickets - costTickets;           // transactions.tickets_delta
-    const expDelta = grantExp;                                 // transactions.exp_delta
+    if (payWith === "coins" && costCoins <= 0) {
+      return withCORS(json({ ok: false, message: "구매 금액(코인)이 올바르지 않습니다." }, { status: 400 }), env.CORS_ORIGIN);
+    }
+    if (payWith === "tickets" && costTickets <= 0) {
+      return withCORS(json({ ok: false, message: "구매 금액(티켓)이 올바르지 않습니다." }, { status: 400 }), env.CORS_ORIGIN);
+    }
 
-    const ua = request.headers.get("User-Agent") || "";
+    // ✅ 순수 단일소스 반영: transactions insert → 트리거가 user_stats 갱신
+    const rewardCoins = toNum(item.wallet_coins_delta, 0);
+    const rewardTickets = toNum(item.wallet_tickets_delta, 0);
+    const rewardExp = toNum(item.wallet_exp_delta, 0);
+    const rewardPlays = toNum(item.wallet_plays_delta, 0);
+
+    const netAmount = (-costCoins) + rewardCoins; // coins 변화(지출+보상)
+    const netTickets = (-costTickets) + rewardTickets;
+
+    // txn_type 결정(실질적으로 감소가 있으면 spend, 아니면 earn)
+    const txnType =
+      (netAmount < 0 || netTickets < 0) ? "spend" : "earn";
+
     const meta = {
-      itemId: (item as any).id,
-      sku: (item as any).sku,
-      name: (item as any).name,
-      qty,
-      payWith,
-      costCoins,
-      costTickets,
-      grantCoins,
-      grantTickets,
-      grantExp,
-      ip,
-      ua,
+      kind: "shop_purchase",
+      item: {
+        id: String(item.id),
+        itemKey: String(item.item_key || ""),
+        title: String(item.title || ""),
+      },
+      paid: { payWith, coins: costCoins, tickets: costTickets },
+      reward: { coins: rewardCoins, tickets: rewardTickets, exp: rewardExp, plays: rewardPlays },
     };
 
-    // ✅ 단일 호출로 “주문+거래+부가효과(인벤/효과)”까지 최대한 일관되게 처리
-    const [row] = await sql/*sql*/`
-      with
-      o as (
-        insert into shop_orders (user_id, item_id, item_key, item_name, amount_coins, amount_tickets, metadata, idempotency_key)
-        values (
-          ${userId}::uuid,
-          ${(item as any).id}::uuid,
-          coalesce(${(item as any).sku}, ${(item as any).id}::text),
-          ${(item as any).name},
-          ${costCoins},
-          ${costTickets},
-          ${JSON.stringify(meta)}::jsonb,
-          ${idemKey}
-        )
-        on conflict (user_id, idempotency_key) do update
-          set metadata = excluded.metadata
-        returning id
-      ),
-      tx_ins as (
-        insert into transactions (user_id, type, amount, tickets_delta, exp_delta, reason, meta, ref_table, ref_id, idempotency_key)
-        values (
-          ${userId}::uuid,
-          case when ${coinsDelta} < 0 then 'spend' else 'earn' end,
-          ${coinsDelta},
-          ${ticketsDelta},
-          ${expDelta},
-          'shop_purchase',
-          ${JSON.stringify(meta)}::jsonb,
-          'shop_orders',
-          (select id from o),
-          ${idemKey}
-        )
-        on conflict (user_id, idempotency_key) do nothing
-        returning id, balance_after
-      ),
-      tx as (
-        select * from tx_ins
-        union all
-        select id, balance_after
-        from transactions
-        where user_id = ${userId}::uuid and idempotency_key = ${idemKey}
-        limit 1
-      ),
-      inv as (
-        insert into user_inventory (user_id, sku, quantity, updated_at)
-        select
-          ${userId}::uuid,
-          ${(item as any).inventory_grant_sku},
-          greatest(1, coalesce(${num((item as any).inventory_grant_amount, 1)}, 1) * ${qty}),
-          now()
-        where ${(item as any).inventory_grant_sku} is not null
-          and exists (select 1 from tx_ins) -- ✅ “새 거래 발생”시에만 지급
-        on conflict (user_id, sku) do update
-          set quantity = user_inventory.quantity + excluded.quantity,
-              updated_at = now()
-        returning 1
-      ),
-      eff as (
-        insert into user_effects (user_id, effect_key, effect_value, expires_at, source, metadata)
-        select
-          ${userId}::uuid,
-          ${(item as any).effect_key},
-          ${(item as any).effect_value},
-          case
-            when ${(item as any).effect_duration_minutes} is null then null
-            else now() + ((${(item as any).effect_duration_minutes}::text || ' minutes')::interval)
-          end,
-          'shop',
-          jsonb_build_object('idempotency_key', ${idemKey})
-        where ${(item as any).effect_key} is not null
-          and exists (select 1 from tx_ins) -- ✅ “새 거래 발생”시에만 적용
-        returning 1
-      )
-      select
-        (select id from tx) as tx_id,
-        (select balance_after from tx) as balance_after
-    `;
+    try {
+      // user_stats row 보장(없으면 생성)
+      await sql/*sql*/`
+        insert into user_stats (user_id, coins, tickets, exp, games_played)
+        values (${userId}::uuid, 0, 0, 0, 0)
+        on conflict (user_id) do nothing
+      `;
 
-    const [stats] = await sql/*sql*/`
-      select coins, exp, tickets, games_played, level
+      // transactions insert (idempotency)
+      await sql/*sql*/`
+        insert into transactions (
+          user_id, type, amount,
+          ref_table, ref_id,
+          note, idempotency_key,
+          reason, meta,
+          game,
+          exp_delta, tickets_delta, plays_delta
+        )
+        values (
+          ${userId}::uuid,
+          ${txnType}::txn_type,
+          ${Math.trunc(netAmount)}::bigint,
+          'shop_items', ${item.id}::uuid,
+          ${`SHOP:${String(item.title || "")}`},
+          ${idemKey},
+          'SHOP_PURCHASE',
+          ${JSON.stringify(meta)}::jsonb,
+          null,
+          ${Math.trunc(rewardExp)}::bigint,
+          ${Math.trunc(netTickets)}::bigint,
+          ${Math.trunc(rewardPlays)}::bigint
+        )
+        on conflict (idempotency_key) do nothing
+      `;
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+
+      // 트리거/체크제약에서 나는 “잔액 부족”류를 사용자 메시지로 변환
+      if (/insufficient|not enough|balance|coins|tickets|negative/i.test(msg)) {
+        return withCORS(
+          json({ ok: false, message: "보유 자원이 부족합니다." }, { status: 400 }),
+          env.CORS_ORIGIN
+        );
+      }
+
+      return withCORS(
+        json({ ok: false, message: "구매 처리 중 오류가 발생했습니다.", detail: msg }, { status: 500 }),
+        env.CORS_ORIGIN
+      );
+    }
+
+    // 최신 스냅샷 반환 (user_stats 기준)
+    const [s] = await sql/*sql*/`
+      select coins, tickets, exp, games_played
       from user_stats
       where user_id = ${userId}::uuid
       limit 1
     `;
 
-    const wallet = {
-      points: Number((stats as any)?.coins ?? 0),
-      tickets: Number((stats as any)?.tickets ?? 0),
-      exp: Number((stats as any)?.exp ?? 0),
-      plays: Number((stats as any)?.games_played ?? 0),
-      level: Number((stats as any)?.level ?? 1),
-    };
+    const coins = toNum(s?.coins, 0);
+    const tickets = toNum(s?.tickets, 0);
+    const exp = toNum(s?.exp, 0);
+    const plays = toNum(s?.games_played, 0);
+
+    const level = computeLevelFromExp(exp);
+    const xpCap = computeXpCap(level);
+
+    const wallet = { points: coins, tickets, exp, plays, level, xpCap };
+    const stats = { coins, tickets, exp, games_played: plays, level, xpCap };
+    const snapshot = { wallet, stats };
 
     return withCORS(
-      json({
-        ok: true,
-        item: {
-          id: (item as any).id,
-          sku: (item as any).sku,
-          name: (item as any).name,
-          category: (item as any).category,
+      json(
+        {
+          ok: true,
+          item: { id: String(item.id), itemKey: String(item.item_key || ""), name: String(item.title || "") },
+          paid: { payWith, coins: costCoins, tickets: costTickets },
+          wallet,
+          stats,
+          snapshot,
         },
-        order: { idempotencyKey: idemKey },
-        tx: row,
-        delta: { coinsDelta, ticketsDelta, expDelta },
-        wallet,
-        stats,
-        snapshot: { wallet, stats },
-      }),
+        { status: 200, headers: { "Cache-Control": "no-store" } }
+      ),
       env.CORS_ORIGIN
     );
   } catch (e: any) {
-    return withCORS(
-      json({ ok: false, error: String(e?.message || e) }, { status: 400 }),
-      env.CORS_ORIGIN
-    );
+    const msg = String(e?.message || e);
+    return withCORS(json({ ok: false, message: "Server Error", detail: msg }, { status: 500 }), env.CORS_ORIGIN);
   }
 };

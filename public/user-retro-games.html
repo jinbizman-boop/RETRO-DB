@@ -3157,14 +3157,27 @@
 
     function normalizeShopItem(raw){
       const base = {...raw};
-      base.category = (base.category || "special").toLowerCase();
-      base.priceCoins = NUM(base.priceCoins ?? base.price ?? base.cost ?? 0);
-      base.rewardCoins = NUM(base.rewardCoins ?? base.coins ?? 0);
-      base.rewardTickets = NUM(base.rewardTickets ?? base.tickets ?? 0);
+
+      // 서버(list.ts) 호환: title/itemKey/pricePoints → 기존 UI가 쓰는 name/priceCoins로 매핑
+      base.id = base.id || base.itemId || base.item_id || "";
+      base.itemKey = base.itemKey || base.item_key || base.sku || String(base.id || "");
+      base.name = base.name || base.title || base.label || "";
+
+      base.category = (base.category || base.type || "special").toLowerCase();
+
+      // ✅ 핵심: pricePoints(서버) → priceCoins(UI)
+      base.priceCoins = NUM(base.priceCoins ?? base.pricePoints ?? base.price_coins ?? base.price ?? base.cost ?? 0);
+      base.priceTickets = NUM(base.priceTickets ?? base.price_tickets ?? 0);
+
+      // 보상/효과(있으면 표시용으로 보존)
+      base.rewardCoins = NUM(base.rewardCoins ?? base.coins ?? (base.walletCoinsDelta ?? base.wallet_coins_delta) ?? 0);
+      base.rewardTickets = NUM(base.rewardTickets ?? base.tickets ?? (base.walletTicketsDelta ?? base.wallet_tickets_delta) ?? 0);
+
       base.durationLabel = base.durationLabel || base.durationText || "";
       base.badge = base.badge || "";
       base.tag = base.tag || "";
-      base.sortWeight = NUM(base.sortWeight ?? 0);
+
+      base.sortWeight = NUM(base.sortWeight ?? base.sort_order ?? 0);
       return base;
     }
 

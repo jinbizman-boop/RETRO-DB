@@ -1505,11 +1505,16 @@
         data-ad-format="auto"
         data-full-width-responsive="false"></ins>
       <script>
-        try{
-          (adsbygoogle = window.adsbygoogle || []).push({});
-        }catch(e){
-          console.warn("AdSense left vertical render error:", e);
-        }
+        (function(){
+          function pushWhenReady(){
+            var ins = document.querySelector("ins.adsbygoogle[data-ad-slot='5711932417']");
+            if(!ins){ setTimeout(pushWhenReady, 200); return; }
+            var w = ins.offsetWidth || 0;
+            if(w < 50){ setTimeout(pushWhenReady, 200); return; }
+            try{ (adsbygoogle = window.adsbygoogle || []).push({}); }catch(e){}
+          }
+          setTimeout(pushWhenReady, 0);
+        })();
       </script>
     </div>
   </div>
@@ -1524,11 +1529,16 @@
         data-ad-format="auto"
         data-full-width-responsive="false"></ins>
       <script>
-        try{
-          (adsbygoogle = window.adsbygoogle || []).push({});
-        }catch(e){
-          console.warn("AdSense right vertical render error:", e);
-        }
+        (function(){
+          function pushWhenReady(){
+            var ins = document.querySelector("ins.adsbygoogle[data-ad-slot='974265397310']");
+            if(!ins){ setTimeout(pushWhenReady, 200); return; }
+            var w = ins.offsetWidth || 0;
+            if(w < 50){ setTimeout(pushWhenReady, 200); return; }
+            try{ (adsbygoogle = window.adsbygoogle || []).push({}); }catch(e){}
+          }
+          setTimeout(pushWhenReady, 0);
+        })();
       </script>
     </div>
   </div>
@@ -2464,38 +2474,47 @@
       async function runGuard() {
         // 세션 확인 시작
         document.body.classList.add("auth-pending");
-        // 1) App.js 쪽에 전역 requireAuth 가 있으면 그것을 우선 사용
-        if (window.RG && typeof window.RG.requireAuth === "function") {
-          await window.RG.requireAuth();
-          // 여기서 return 하지 않고 아래 ensureLoggedIn()도 같이 태움
-        }
 
-        // 2) 구버전/대체 전역 가드
-        if (typeof window.requireAuth === "function") {
-          window.requireAuth();
-          return;
-        }
+        try {
+          // 1) App.js 쪽에 전역 requireAuth 가 있으면 그것을 우선 사용
+          if (window.RG && typeof window.RG.requireAuth === "function") {
+            await window.RG.requireAuth();
+          }
 
-        // 3) fallback: /api/auth/me 검사 + 실패 시 로그인 페이지로 리다이렉트
-        if (typeof window.ensureLoggedIn === "function") {
-          try {
-            // ensureLoggedIn() 내부에서 ACCOUNT_TOTALS.userId 를 세팅/초기화함
-            await window.ensureLoggedIn();
+          // 2) 구버전/대체 전역 가드 (✅ 여기서 절대 return 금지)
+          if (typeof window.requireAuth === "function") {
+            try {
+              const r = window.requireAuth();
+              // Promise 반환 구현 대비
+              if (r && typeof r.then === "function") await r;
+            } catch (e) {
+              console.warn("[RG] window.requireAuth failed:", e);
+            }
+          }
 
-            // ✅ 로그인 성공이면 깜빡임 방지 해제
-            if (ACCOUNT_TOTALS.userId) document.body.classList.remove("auth-pending");
+          // 3) fallback: /api/auth/me 검사 + 실패 시 로그인 페이지로 리다이렉트
+          if (typeof window.ensureLoggedIn === "function") {
+            try {
+              // ensureLoggedIn() 내부에서 ACCOUNT_TOTALS.userId 를 세팅/초기화함
+              await window.ensureLoggedIn();
 
-            // 로그인 실패(또는 게스트)라면 로그인 페이지로 강제 이동
-            if (!ACCOUNT_TOTALS.userId) {
+              // 로그인 실패(또는 게스트)라면 로그인 페이지로 강제 이동
+              if (!ACCOUNT_TOTALS.userId) {
+                redirectToLogin();
+              }
+            } catch (e) {
+              console.error("ensureLoggedIn failed:", e);
               redirectToLogin();
             }
-          } catch (e) {
-            console.error("ensureLoggedIn failed:", e);
+          } else {
+            // ensureLoggedIn 도 없으면 바로 로그인 페이지로 이동
             redirectToLogin();
           }
-        } else {
-          // ensureLoggedIn 도 없으면 바로 로그인 페이지로 이동
-          redirectToLogin();
+        } finally {
+          // ✅ 어떤 분기든 "로그인 확인 중…"은 끝내야 함
+          document.body.classList.remove("auth-pending");
+          const ov = document.getElementById("authPendingOverlay");
+          if (ov) ov.style.display = "none";
         }
       }
 
@@ -2778,7 +2797,10 @@
 
         const unlock = () => {
           if (!hubBgmShouldPlay) return;
-          try { audio.play(); } catch (e) {}
+          try {
+            const p = audio.play();
+            if (p && typeof p.catch === "function") p.catch(()=>{});
+          } catch (e) {}
           window.removeEventListener('click', unlock);
           window.removeEventListener('keydown', unlock);
           window.removeEventListener('touchstart', unlock);

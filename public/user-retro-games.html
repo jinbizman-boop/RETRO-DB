@@ -1429,11 +1429,66 @@
        - 기존 hub 레이아웃/디자인/비율 유지
        - shop.html 레이아웃을 모달 내부에서 동일하게 재현
        - 구매는 AJAX(fetch) 기반으로만 동작, 페이지 이동 없음 */
+    </style>
+
+  <!-- ✅ AUTH-PENDING: 세션 확인 전 UI 깜빡임 방지 -->
+  <style>
+    body.auth-pending .wrap,
+    body.auth-pending .sideAd{
+      opacity: 0;
+      pointer-events: none;
+    }
+    body.auth-pending #authPendingOverlay{ display:flex; }
+
+    #authPendingOverlay{
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.55);
+      z-index: 99999;
+      backdrop-filter: blur(2px);
+    }
+    #authPendingOverlay .box{
+      min-width: 220px;
+      padding: 18px 18px;
+      border-radius: 14px;
+      background: rgba(16,16,20,.92);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 16px 50px rgba(0,0,0,.5);
+      text-align: center;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Pretendard, sans-serif;
+    }
+    #authPendingOverlay .spinner{
+      width: 28px; height: 28px;
+      margin: 0 auto 10px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.22);
+      border-top-color: rgba(255,255,255,.92);
+      animation: rgSpin 0.9s linear infinite;
+    }
+    #authPendingOverlay .txt{
+      font-size: 13px;
+      opacity: .92;
+      letter-spacing: .2px;
+    }
+    @keyframes rgSpin{ to { transform: rotate(360deg); } }
   </style>
+
 </head>
 
-<body>
+<body class="auth-pending">
   <!-- ✅ 전역 네비게이션: nav-only header partial 이 여기로만 주입됨 -->
+
+  <!-- auth pending overlay -->
+  <div id="authPendingOverlay" aria-hidden="true">
+    <div class="box">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="txt">로그인 확인 중…</div>
+    </div>
+  </div>
 
   <canvas id="fx"></canvas>
 
@@ -2405,6 +2460,8 @@
 
       // 메인 인증 가드
       async function runGuard() {
+        // 세션 확인 시작
+        document.body.classList.add("auth-pending");
         // 1) App.js 쪽에 전역 requireAuth 가 있으면 그것을 우선 사용
         if (window.RG && typeof window.RG.requireAuth === "function") {
           await window.RG.requireAuth();
@@ -2422,6 +2479,9 @@
           try {
             // ensureLoggedIn() 내부에서 ACCOUNT_TOTALS.userId 를 세팅/초기화함
             await window.ensureLoggedIn();
+
+            // ✅ 로그인 성공이면 깜빡임 방지 해제
+            if (ACCOUNT_TOTALS.userId) document.body.classList.remove("auth-pending");
 
             // 로그인 실패(또는 게스트)라면 로그인 페이지로 강제 이동
             if (!ACCOUNT_TOTALS.userId) {
@@ -2922,8 +2982,8 @@
 
     /* ===== SHOP 모달 로직 (AJAX 상점) ===== */
     const SHOP_API = {
-      list: "/specials/shop",
-      buy:  "/specials/shop/buy"
+      list: "/api/shop/list",
+      buy:  "/api/shop/purchase"
     };
 
     let shopLoaded = false;
@@ -3281,13 +3341,21 @@
         headers["Authorization"] = "Bearer " + token;
       }
 
+      // ✅ idem 키(중복 클릭/재시도 보호용)
+      const idemKey = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : (String(Date.now()) + "-" + Math.random().toString(16).slice(2));
+
+      headers["Idempotency-Key"] = idemKey;
+
       const res = await fetch(SHOP_API.buy, {
         method:"POST",
         headers,
         body: JSON.stringify({
-          itemId: String(raw.id),
-          name: raw.name,
-          payWith
+          itemId: String(item.id),
+          itemKey: item.itemKey || String(item.id),
+          name: item.name,
+          payWith: currency
         }),
         credentials:"include"
       });

@@ -681,7 +681,7 @@
     try {
       const me = await getSession();
       if (me) {
-        nav("user-retro-games.html");
+      nav("/user-retro-games");
       } else {
         nav("index.html");
       }
@@ -1369,11 +1369,19 @@
     const path = location.pathname.toLowerCase();
 
     // 유저 페이지에서만: 로그인 반드시 요구 + 프로필/지갑 동기화(위임)
-    if (
-      path.endsWith("/user-retro-games") ||
-      path.endsWith("/user-retro-games/") ||
-      path.endsWith("/user-retro-games.html")
-    ) {
+    const isUserHubPage = () => {
+      // pathname만 사용 → ?query, #hash 완전 배제
+      const p = location.pathname.toLowerCase().replace(/\/+$/, "");
+
+      // 허용 케이스:
+      // /user-retro-games
+      // /user-retro-games/
+      // /user-retro-games.html
+      // /user-retro-games/index.html
+      return /^\/user-retro-games(?:\.html|\/index\.html)?$/.test(p);
+    };
+
+    if (isUserHubPage()) {
       const ok = await requireAuth();
       if (!ok) {
         debugLog("[init] user-retro-games requires auth; redirected/login modal");

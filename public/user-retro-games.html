@@ -2394,48 +2394,34 @@
 
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
-        const res = await fetch(AUTH_API_BASE + "/me", {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Accept": "application/json",
-            "Cache-Control": "no-store"
-          }
-        });
-
-        if(!res.ok){
+        // ✅ 허브에서는 app.js(RG)의 getSession을 통해 인증 상태를 확인해야 함
+        // - app.js의 jsonFetch가 localStorage(rg_jwt_token) → Authorization: Bearer 자동 첨부
+        if (!window.RG || typeof window.RG.getSession !== "function") {
           ACCOUNT_TOTALS.userId = null;
           updateUserGreeting(null);
-          resetAccountTotalsAndStorage();   // ✅ 새 함수로 HUD+storage 초기화
+          resetAccountTotalsAndStorage();
           return;
         }
 
-        let data = null;
-        try{
-          data = await res.json();
-        }catch(_){}
+        const me = await window.RG.getSession({ refresh: true });
 
-        if(!data || !data.ok || !data.user){
+        if(!me || !me.id){
           ACCOUNT_TOTALS.userId = null;
           updateUserGreeting(null);
-          resetAccountTotalsAndStorage();   // ✅
+          resetAccountTotalsAndStorage();
           return;
         }
 
-        window.__RG_CURRENT_USER__ = data.user;
-        updateUserGreeting(data.user);
-        applyAccountStatsFromUser(data.user);
-
-        if (window.RG && typeof window.RG.getSession === "function") {
-          window.RG.getSession({ refresh: true }).catch(()=>{});
-        }
+        window.__RG_CURRENT_USER__ = me;
+        updateUserGreeting(me);
+        applyAccountStatsFromUser(me);
 
         syncWalletFromServer().catch(()=>{});
       }catch(err){
         console.error("auth check error", err);
         ACCOUNT_TOTALS.userId = null;
         updateUserGreeting(null);
-        resetAccountTotalsAndStorage();  // ✅
+        resetAccountTotalsAndStorage();
       }finally{
         try{ document.body.classList.remove("auth-pending"); }catch(e){}
       }

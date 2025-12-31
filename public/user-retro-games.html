@@ -2394,36 +2394,75 @@
 
     window.ensureLoggedIn = async function ensureLoggedIn(){
       try{
-        // ✅ 허브에서는 app.js(RG)의 getSession을 통해 인증 상태를 확인해야 함
-        // - app.js의 jsonFetch가 localStorage(rg_jwt_token) → Authorization: Bearer 자동 첨부
-        if (!window.RG || typeof window.RG.getSession !== "function") {
-          ACCOUNT_TOTALS.userId = null;
-          updateUserGreeting(null);
-          resetAccountTotalsAndStorage();
+        // ✅ 허브에서는 Bearer 토큰 기반이므로 app.js(RG)의 getSession을 우선 사용
+        if (window.RG && typeof window.RG.getSession === "function") {
+          const me = await window.RG.getSession({ refresh: true });
+
+          if(!me || !me.id){
+            ACCOUNT_TOTALS.userId = null;
+            updateUserGreeting(null);
+            resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
+            return;
+          }
+
+          window.__RG_CURRENT_USER__ = me;
+          updateUserGreeting(me);
+          applyAccountStatsFromUser(me);
+
+          syncWalletFromServer().catch(()=>{});
           return;
         }
 
-        const me = await window.RG.getSession({ refresh: true });
+        // (fallback) RG.getSession 이 없을 때만 /api/auth/me 호출 + Bearer 보강
+        const token =
+          (window.RG && typeof window.RG.getAuthToken === "function")
+            ? (window.RG.getAuthToken() || "")
+            : (
+                localStorage.getItem("rg_jwt_token") ||
+                localStorage.getItem("rg_token") ||
+                localStorage.getItem("token") ||
+                ""
+              );
 
-        if(!me || !me.id){
+        const headers = {
+          "Accept": "application/json",
+          "Cache-Control": "no-store"
+        };
+        if (token) headers["Authorization"] = "Bearer " + token;
+
+        const res = await fetch(AUTH_API_BASE + "/me", {
+          method: "GET",
+          credentials: "include",
+          headers
+        });
+
+        if(!res.ok){
           ACCOUNT_TOTALS.userId = null;
           updateUserGreeting(null);
-          resetAccountTotalsAndStorage();
+          resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
           return;
         }
 
-        window.__RG_CURRENT_USER__ = me;
-        updateUserGreeting(me);
-        applyAccountStatsFromUser(me);
+        let data = null;
+        try{ data = await res.json(); }catch(_){ }
+
+        if(!data || !data.ok || !data.user){
+          ACCOUNT_TOTALS.userId = null;
+          updateUserGreeting(null);
+          resetAccountTotalsAndStorage();  // ✅
+          return;
+        }
+
+        window.__RG_CURRENT_USER__ = data.user;
+        updateUserGreeting(data.user);
+        applyAccountStatsFromUser(data.user);
 
         syncWalletFromServer().catch(()=>{});
       }catch(err){
         console.error("auth check error", err);
         ACCOUNT_TOTALS.userId = null;
         updateUserGreeting(null);
-        resetAccountTotalsAndStorage();
-      }finally{
-        try{ document.body.classList.remove("auth-pending"); }catch(e){}
+        resetAccountTotalsAndStorage();  // ✅
       }
     };
 

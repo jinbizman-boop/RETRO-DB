@@ -924,9 +924,33 @@
       }
       if (!userId) throw new Error("Missing userId for reward");
 
-      const exp = Number(opts.exp || 0);
-      const tickets = Number(opts.tickets || 0);
-      const points = Number(opts.points || 0);
+      // ✅ exp/tickets/points 를 "생략"한 경우에는 score 기반으로 보상값을 생성
+      // - opts에 해당 키가 "존재"하는지로 생략 여부를 판정해야 0 값도 정상 처리됨
+      const hasExp = Object.prototype.hasOwnProperty.call(opts, "exp");
+      const hasTickets = Object.prototype.hasOwnProperty.call(opts, "tickets");
+      const hasPoints = Object.prototype.hasOwnProperty.call(opts, "points");
+
+      let exp = hasExp ? Number(opts.exp) : 0;
+      let tickets = hasTickets ? Number(opts.tickets) : 0;
+      let points = hasPoints ? Number(opts.points) : 0;
+
+      if (!Number.isFinite(exp)) exp = 0;
+      if (!Number.isFinite(tickets)) tickets = 0;
+      if (!Number.isFinite(points)) points = 0;
+
+      // exp/tickets/points 를 전부 생략한 경우에만 score로 보상 산정(기본 적립 보장)
+      if (!hasExp && !hasTickets && !hasPoints) {
+        const score = Number(opts.score ?? 0);
+        const safeScore = Number.isFinite(score) ? Math.max(0, Math.trunc(score)) : 0;
+
+        // ✅ 기본 규칙(현재 프로젝트에서 "적립 안 됨"을 막기 위한 최소 보장)
+        // - points: score
+        // - exp: score
+        // - tickets: 0
+        points = safeScore;
+        exp = safeScore;
+        tickets = 0;
+      }
 
       // 2) hash 생성 (reward.ts 안의 로직과 동일 포맷)
       const hash = await buildRewardHash(userId, gameId, exp, tickets, points);
@@ -934,7 +958,7 @@
       // 3) reward API 호출
       const body = {
         userId,
-        game: gameId,
+        gameId: gameId,
         exp,
         tickets,
         points,
@@ -944,16 +968,15 @@
         meta: opts.meta ?? undefined,
       };
 
-      const res = await fetch("/api/wallet/reward", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: CFG.credentials,
-        body: JSON.stringify(body),
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.success) {
-        debugLog("Reward API error", res.status, json);
+      let json = null;
+      try {
+        // ✅ 반드시 jsonFetch를 사용해서 Authorization: Bearer 자동 첨부
+        json = await jsonFetch("/api/wallet/reward", {
+          method: "POST",
+          body,
+        });
+      } catch (e) {
+        debugLog("Reward API error", e?.status, e?.body || e);
         if (window.showToast || window.toast) {
           (window.showToast || window.toast)(
             "보상 지급에 실패했습니다. 잠시 후 다시 시도해주세요.",
@@ -964,7 +987,28 @@
         delegateAccountUpdate({
           kind: "reward_error",
           gameId,
-          status: res.status,
+          status: e?.status || 0,
+          payload: e?.body || null,
+          at: nowISO(),
+          via: "app.js:sendGameReward",
+        });
+
+        return null;
+      }
+
+      if (!json || !json.success) {
+        debugLog("Reward API error", 200, json);
+        if (window.showToast || window.toast) {
+          (window.showToast || window.toast)(
+            "보상 지급에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            "error"
+          );
+        }
+
+        delegateAccountUpdate({
+          kind: "reward_error",
+          gameId,
+          status: 200,
           payload: json || null,
           at: nowISO(),
           via: "app.js:sendGameReward",

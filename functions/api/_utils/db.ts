@@ -26,13 +26,13 @@
 /* ─────────────────────────────── 공개 타입 ─────────────────────────────── */
 
 export type Env = {
-  NEON_DATABASE_URL: string; // postgres:// or postgresql://
+  NEON_DATABASE_URL: string;
   CORS_ORIGIN: string;
-  JWT_SECRET?: string;
+  JWT_SECRET: string;
   JWT_ISSUER?: string;
   JWT_AUD?: string;
 
-  // ✅ 보상 해시 검증용 시크릿 (프론트의 window.RETRO_REWARD_SECRET 과 동일 값 권장)
+  // ✅ 보상 해시 검증용 시크릿 (Cloudflare Pages: REWARD_SECRET_KEY)
   REWARD_SECRET_KEY?: string;
 };
 

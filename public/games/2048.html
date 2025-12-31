@@ -890,12 +890,9 @@
     if(__rg_finish_sent_2048) return;
     __rg_finish_sent_2048 = true;
     try{
-      if (typeof window.gameFinish === 'function'){
-        const data = await window.gameFinish('2048', finalScore|0);
-        try{
-          if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data);
-        }catch(_){}
-      }
+      // ✅ 보상 적립은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트
+      // ✅ /api/games/finish (window.gameFinish) 중복 호출 제거
+      return;
     }catch(e){
       __rg_finish_sent_2048 = false;
     }

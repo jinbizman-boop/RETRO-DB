@@ -370,11 +370,11 @@
      *   빠르게 의도를 파악하도록 돕기 위한 설명용 주석이다.
      * ────────────────────────────────────────────────────────────── */
   </style>
-</head>
 
-<!-- 전역 스크립트 (교체 후) -->
-<script src="/assets/js/app.js"></script>
-<script defer src="/assets/js/analytics.js"></script>
+  <!-- 전역 스크립트 (app.js는 DOM 파싱 후 실행되도록 defer 유지) -->
+  <script defer src="/assets/js/app.js"></script>
+  <script defer src="/assets/js/analytics.js"></script>
+</head>
 
 <body>
   <!-- 상단 사이트맵 제거: 주입 지점 자체를 없앰 -->

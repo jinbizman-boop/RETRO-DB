@@ -1284,22 +1284,22 @@
       sessionStorage.setItem(IDEMKEY, "1");
 
       try{
-        const res = await fetch('/api/games/finish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            gameId: String(gameId),
-            score: Number(score) || 0,
-            runId,
-            meta: m || {}
-          })
-        });
+        const payload = {
+          exp: Number(d.xp || d.exp || 0),
+          tickets: Number(d.tickets || 0),
+          points: Number(d.coins || d.points || 0),
+          score: Number(score) || 0,
+          meta: Object.assign({}, m || {}, { runId })
+        };
 
-        const data = await res.json().catch(()=>null);
-        if(!res.ok || !data || data.ok !== true){
+        const data =
+          (typeof window.sendGameReward === "function")
+            ? await window.sendGameReward(String(gameId), payload)
+            : null;
+
+        if(!data || data.success !== true){
           sessionStorage.removeItem(IDEMKEY);
-          throw new Error((data && data.error) ? data.error : ('HTTP '+res.status));
+          throw new Error((data && data.error) ? data.error : "reward_failed");
         }
 
         sessionStorage.setItem(LASTKEY, JSON.stringify({ runId, ts: Date.now() }));

@@ -985,8 +985,7 @@
     return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
   }
 
-  /***** 🔗 RG Wallet 공통 허브 연동 *****/
-  const RG_WALLET_ENDPOINT = '/api/wallet';
+  /***** 🔗 RG Wallet 공통 허브 연동 (✅ app.js sendGameReward로 통일) *****/
   const RG_GAME_ID         = 'tetris';
 
   function applyWalletSnapshot(wallet){
@@ -1012,38 +1011,23 @@
     }
   }
 
-  async function RG_safeFetch(body){
-    try{
-      const res = await fetch(RG_WALLET_ENDPOINT, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Accept':'application/json'},
-        credentials:'include',
-        body: JSON.stringify(body)
-      });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const data = await res.json().catch(()=>null);
-      return { ok:true, data };
-    }catch(err){
-      console.warn('[RG][wallet] fetch error:', err);
-      return { ok:false, error:err };
-    }
-  }
-
   async function RG_syncWalletHUD(){
-    const result = await RG_safeFetch({ action:'syncWallet', game: RG_GAME_ID });
-    if(!result.ok || !result.data) return;
-    const data = result.data;
-    if(data.ok === false) return;
-    if(data.wallet) applyWalletSnapshot(data.wallet);
+    try{
+      if(typeof window.refreshWalletHUD === "function"){
+        await window.refreshWalletHUD();
+      }
+    }catch(e){
+      console.warn('[RG][wallet] syncWalletHUD failed:', e);
+    }
   }
 
   window.RG_addReward = async function RG_addReward(payload){
     try{
       const body = {
-        action: 'addGameReward',
-        game: RG_GAME_ID,
-        score: (payload.score|0),
-        points: (payload.points|0),
+        exp: Number(payload.exp || 0),
+        tickets: Number(payload.tickets || 0),
+        points: Number(payload.points || 0),
+        score: Number(payload.score || 0),
         meta: {
           level: payload.level|0,
           mode: payload.mode || ($('#tier')?.value || 'beginner'),
@@ -1053,11 +1037,21 @@
           page: 'tetris.html'
         }
       };
-      const result = await RG_safeFetch(body);
-      if(!result.ok || !result.data) return;
-      const data = result.data;
-      if(data.wallet) applyWalletSnapshot(data.wallet);
-      if(data.reward && typeof data.reward.pointsDelta === 'number'){
+
+      const data =
+        (typeof window.sendGameReward === "function")
+          ? await window.sendGameReward(String(RG_GAME_ID), body)
+          : null;
+
+      if(data && data.snapshot && data.snapshot.wallet){
+        applyWalletSnapshot(data.snapshot.wallet);
+      }
+
+      if(typeof window.refreshWalletHUD === "function"){
+        await window.refreshWalletHUD();
+      }
+
+      if(data && data.reward && typeof data.reward.pointsDelta === 'number'){
         const delta = data.reward.pointsDelta;
         if(delta > 0){
           showToast(`+${delta.toLocaleString('ko-KR')}P 적립!`, 2200);
@@ -1097,22 +1091,22 @@
     sessionStorage.setItem(IDEMKEY, "1");
 
     try{
-      const res = await fetch('/api/games/finish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          gameId: String(gameId),
-          score: Number(score) || 0,
-          runId,
-          meta: m || {}
-        })
-      });
+      const payload = {
+        exp: Number(d.xp || d.exp || 0),
+        tickets: Number(d.tickets || 0),
+        points: Number(d.coins || d.points || 0),
+        score: Number(score) || 0,
+        meta: Object.assign({}, m || {}, { runId })
+      };
 
-      const data = await res.json().catch(()=>null);
-      if(!res.ok || !data || data.ok !== true){
+      const data =
+        (typeof window.sendGameReward === "function")
+          ? await window.sendGameReward(String(gameId), payload)
+          : null;
+
+      if(!data || data.success !== true){
         sessionStorage.removeItem(IDEMKEY);
-        throw new Error((data && data.error) ? data.error : ('HTTP '+res.status));
+        throw new Error((data && data.error) ? data.error : "reward_failed");
       }
 
       sessionStorage.setItem(LASTKEY, JSON.stringify({ runId, ts: Date.now() }));
@@ -1784,10 +1778,9 @@
     if(__rg_finish_sent_tetris) return;
     __rg_finish_sent_tetris = true;
     try{
-      if (typeof window.gameFinish === 'function'){
-        const data = await window.gameFinish('tetris', finalScore|0);
-        try{ if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data); }catch(_){}
-      }
+      // ✅ 보상 적립은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트로 처리됨
+      // ✅ /api/games/finish (window.gameFinish) 호출은 중복/충돌 원인이므로 여기서 제거
+      return;
     }catch(e){
       __rg_finish_sent_tetris = false;
     }

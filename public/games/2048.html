@@ -890,9 +890,11 @@
     if(__rg_finish_sent_2048) return;
     __rg_finish_sent_2048 = true;
     try{
-      // ✅ 보상 적립은 applyGlobalRewardAndSyncWallet('2048', delta, meta) 단일 루트에서만 처리
-      // ✅ 중복/충돌 방지를 위해 여기서는 gameFinish/sendGameReward를 호출하지 않음
-      return;
+      // ✅ /api/games/finish 호출 제거: reward(/api/wallet/reward)만 지갑을 건드리도록 통일
+      // (필요 시 여기서는 분석/로그 목적만 처리)
+      if (typeof window.trackGameEvent === 'function'){
+        try{ await window.trackGameEvent('finish', '2048', { score: finalScore|0, meta: meta||null }); }catch(_){}
+      }
     }catch(e){
       __rg_finish_sent_2048 = false;
     }

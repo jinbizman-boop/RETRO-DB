@@ -939,7 +939,27 @@
   const fmt=n=> Number(n).toLocaleString('ko-KR');
 
   /* ★ Brick Breaker 전용 키(다른 게임과 기록 분리) */
-  const LS_KEYS={plays:'plays_brick',tickets:'tickets_brick',records:'records_brick',best:'best_brick'};
+  // ✅ 유저별 localStorage prefix (A/B 유저 분리)
+  const __RG_LS_PREFIX = (() => {
+    try {
+      const token = localStorage.getItem("rg_jwt_token") || "";
+      const part = token.split(".")[1] || "";
+      if (!part) return "rg_guest_";
+      const b64 = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
+      const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      const sub = String(json.sub || "").trim();
+      return sub ? `rg_u_${sub}_` : "rg_guest_";
+    } catch (e) {
+      return "rg_guest_";
+    }
+  })();
+
+  const LS_KEYS={
+    plays: __RG_LS_PREFIX + 'plays_brick',
+    tickets: __RG_LS_PREFIX + 'tickets_brick',
+    records: __RG_LS_PREFIX + 'records_brick',
+    best: __RG_LS_PREFIX + 'best_brick'
+  };
 
   function loadJSON(k,def){
     try{

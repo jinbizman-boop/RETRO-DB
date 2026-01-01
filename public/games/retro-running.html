@@ -1155,13 +1155,28 @@
     const todayKey = () => new Date().toISOString().slice(0, 10);
 
     /* ✅ Runner 전용 스토리지 키 */
+    // ✅ 유저별 localStorage prefix (A/B 유저 분리)
+    const __RG_LS_PREFIX = (() => {
+      try {
+        const token = localStorage.getItem("rg_jwt_token") || "";
+        const part = token.split(".")[1] || "";
+        if (!part) return "rg_guest_";
+        const b64 = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
+        const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
+        const sub = String(json.sub || "").trim();
+        return sub ? `rg_u_${sub}_` : "rg_guest_";
+      } catch (e) {
+        return "rg_guest_";
+      }
+    })();
+
     const LS_KEYS = {
-      plays: 'plays_runner',
-      tickets: 'tickets_runner',
-      records: 'records_runner',
-      best: 'best_runner',
-      mission: 'daily_mission_flags',
-      missionRewarded: 'daily_mission_rewarded'
+      plays: __RG_LS_PREFIX + 'plays_runner',
+      tickets: __RG_LS_PREFIX + 'tickets_runner',
+      records: __RG_LS_PREFIX + 'records_runner',
+      best: __RG_LS_PREFIX + 'best_runner',
+      mission: __RG_LS_PREFIX + 'daily_mission_flags',
+      missionRewarded: __RG_LS_PREFIX + 'daily_mission_rewarded'
     };
 
     function loadJSON(k, def) {

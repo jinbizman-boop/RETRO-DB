@@ -898,11 +898,26 @@
     });
 
     /* Match-3 전용 키 (로컬 플레이/티켓 기록: 게임별 통계용) */
+    // ✅ 유저별 localStorage prefix (A/B 유저 분리)
+    const __RG_LS_PREFIX = (() => {
+      try {
+        const token = localStorage.getItem("rg_jwt_token") || "";
+        const part = token.split(".")[1] || "";
+        if (!part) return "rg_guest_";
+        const b64 = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
+        const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
+        const sub = String(json.sub || "").trim();
+        return sub ? `rg_u_${sub}_` : "rg_guest_";
+      } catch (e) {
+        return "rg_guest_";
+      }
+    })();
+
     const LS_KEYS = {
-      plays   : 'plays_match',
-      tickets : 'tickets_match',
-      records : 'records_match',
-      best    : 'best_match'
+      plays   : __RG_LS_PREFIX + 'plays_match',
+      tickets : __RG_LS_PREFIX + 'tickets_match',
+      records : __RG_LS_PREFIX + 'records_match',
+      best    : __RG_LS_PREFIX + 'best_match'
     };
 
     function loadJSON(k,def){

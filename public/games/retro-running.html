@@ -2269,10 +2269,8 @@
       if (__rg_finish_sent_retro_running) return;
       __rg_finish_sent_retro_running = true;
       try {
-        if (typeof window.gameFinish === 'function') {
-          const data = await window.gameFinish('retro-running', finalScore | 0);
-          try { if (typeof window.applyAccountApiResponse === 'function') window.applyAccountApiResponse(data); } catch (_) {}
-        }
+        // ✅ /api/games/finish 경로 차단
+        // ✅ 보상/지갑 반영은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트만 사용
       } catch (e) {
         __rg_finish_sent_retro_running = false;
       }

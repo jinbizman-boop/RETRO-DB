@@ -791,13 +791,28 @@
     }
   }
 
+  // ✅ 유저별 localStorage prefix (A/B 유저 분리)
+  const __RG_LS_PREFIX = (() => {
+    try {
+      const token = localStorage.getItem("rg_jwt_token") || "";
+      const part = token.split(".")[1] || "";
+      if (!part) return "rg_guest_";
+      const b64 = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
+      const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      const sub = String(json.sub || "").trim();
+      return sub ? `rg_u_${sub}_` : "rg_guest_";
+    } catch (e) {
+      return "rg_guest_";
+    }
+  })();
+
   const LS_KEYS={
-    plays:'plays2048',
-    tickets:'tickets2048',
-    records:'records2048',
-    best:'best2048',
-    mission:'daily_mission_flags',          // runner와 동일 키로 미션 플래그 공유
-    missionRewarded:'daily_mission_rewarded'
+    plays: __RG_LS_PREFIX + 'plays2048',
+    tickets: __RG_LS_PREFIX + 'tickets2048',
+    records: __RG_LS_PREFIX + 'records2048',
+    best: __RG_LS_PREFIX + 'best2048',
+    mission: __RG_LS_PREFIX + 'daily_mission_flags',          // ✅ 유저별 공유
+    missionRewarded: __RG_LS_PREFIX + 'daily_mission_rewarded'
   };
   function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
   function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}

@@ -890,8 +890,8 @@
     if(__rg_finish_sent_2048) return;
     __rg_finish_sent_2048 = true;
     try{
-      // ✅ 보상 적립은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트
-      // ✅ /api/games/finish (window.gameFinish) 중복 호출 제거
+      // ✅ 보상 적립은 applyGlobalRewardAndSyncWallet('2048', delta, meta) 단일 루트에서만 처리
+      // ✅ 중복/충돌 방지를 위해 여기서는 gameFinish/sendGameReward를 호출하지 않음
       return;
     }catch(e){
       __rg_finish_sent_2048 = false;

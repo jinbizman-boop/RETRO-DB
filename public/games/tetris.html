@@ -1778,9 +1778,8 @@
     if(__rg_finish_sent_tetris) return;
     __rg_finish_sent_tetris = true;
     try{
-      // ✅ 보상 적립은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트로 처리됨
-      // ✅ /api/games/finish (window.gameFinish) 호출은 중복/충돌 원인이므로 여기서 제거
-      return;
+      // ✅ /api/games/finish 경로 차단
+      // ✅ 보상/지갑 반영은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트만 사용
     }catch(e){
       __rg_finish_sent_tetris = false;
     }

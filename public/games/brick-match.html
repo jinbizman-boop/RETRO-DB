@@ -1892,9 +1892,10 @@
       if(__rg_finish_sent_match3) return;
       __rg_finish_sent_match3 = true;
       try{
-        // ✅ 보상 적립은 gameOver() 내부의 applyGlobalRewardAndSyncWallet('match-3', delta, meta) 단일 루트에서만 처리
-        // ✅ 중복/충돌 방지를 위해 여기서는 gameFinish/sendGameReward를 호출하지 않음
-        return;
+        // ✅ /api/games/finish 호출 제거: reward(/api/wallet/reward)만 지갑을 건드리도록 통일
+        if (typeof window.trackGameEvent === 'function'){
+          try{ await window.trackGameEvent('finish', 'match-3', { score: finalScore|0 }); }catch(_){}
+        }
       }catch(e){
         __rg_finish_sent_match3 = false;
       }

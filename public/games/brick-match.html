@@ -1892,10 +1892,8 @@
       if(__rg_finish_sent_match3) return;
       __rg_finish_sent_match3 = true;
       try{
-        // ✅ /api/games/finish 호출 제거: reward(/api/wallet/reward)만 지갑을 건드리도록 통일
-        if (typeof window.trackGameEvent === 'function'){
-          try{ await window.trackGameEvent('finish', 'match-3', { score: finalScore|0 }); }catch(_){}
-        }
+        // ✅ /api/games/finish 경로 차단
+        // ✅ 보상/지갑 반영은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트만 사용
       }catch(e){
         __rg_finish_sent_match3 = false;
       }

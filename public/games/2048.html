@@ -890,11 +890,8 @@
     if(__rg_finish_sent_2048) return;
     __rg_finish_sent_2048 = true;
     try{
-      // ✅ /api/games/finish 호출 제거: reward(/api/wallet/reward)만 지갑을 건드리도록 통일
-      // (필요 시 여기서는 분석/로그 목적만 처리)
-      if (typeof window.trackGameEvent === 'function'){
-        try{ await window.trackGameEvent('finish', '2048', { score: finalScore|0, meta: meta||null }); }catch(_){}
-      }
+      // ✅ /api/games/finish 경로 차단
+      // ✅ 보상/지갑 반영은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트만 사용
     }catch(e){
       __rg_finish_sent_2048 = false;
     }

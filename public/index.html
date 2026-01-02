@@ -300,6 +300,51 @@
     background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer
   }
   .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+    /* ✅ AdSense 최소 통과용: 크롤링 가능한 텍스트/구조 (사이트 안내) */
+    .content-guide{
+      max-width: 1080px;
+      margin: 26px auto 8px;
+      padding: 18px 18px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .content-guide h1{
+      margin: 0 0 10px;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: .2px;
+      color: #eaf2ff;
+    }
+    .content-guide h2{
+      margin: 14px 0 8px;
+      font-size: 15px;
+      color: rgba(234,242,255,.92);
+    }
+    .content-guide p, .content-guide li{
+      margin: 6px 0;
+      color: rgba(234,242,255,.78);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .content-guide ul{
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+    .content-guide .mini{
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(255,255,255,.14);
+      color: rgba(234,242,255,.70);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .content-guide a{
+      color: rgba(255,223,110,.95);
+      text-decoration: none;
+      border-bottom: 1px dotted rgba(255,223,110,.55);
+    }
   </style>
 </head>
 
@@ -359,6 +404,27 @@
           </div>
         </div>
       </main>
+    </section>
+
+    <!-- ✅ AdSense 최소 통과용: 크롤링 가능한 텍스트/구조 (홈 안내) -->
+    <section class="content-guide" aria-label="RETRO GAMES 사이트 안내">
+      <h1>RETRO GAMES – 온라인 레트로 미니게임 아케이드</h1>
+      <p>RETRO GAMES는 2048, 테트리스, 브릭 브레이커, 러너 등 짧게 즐길 수 있는 레트로 감성 미니게임을 제공하는 웹 아케이드입니다. 각 게임은 규칙/조작법/보상 안내를 포함하며, 로그인 계정 기준으로 플레이 보상(경험치·포인트·티켓)이 누적될 수 있습니다.</p>
+
+      <h2>게임 구성</h2>
+      <ul>
+        <li>2048: 같은 숫자 타일을 합쳐 높은 숫자를 만드는 퍼즐</li>
+        <li>Tetris: 블록을 회전/배치해 라인을 지우는 클래식 게임</li>
+        <li>Brick Breaker: 패들로 공을 튕겨 브릭을 제거하는 아케이드</li>
+        <li>Retro Runner: 장애물을 점프/회피하며 달리는 러닝 액션</li>
+      </ul>
+
+      <h2>계정/보상</h2>
+      <p>로그인 후 플레이하면 게임 결과에 따라 보상이 지급될 수 있으며, 누적된 자원은 <a href="/user-retro-games.html">유저 허브</a>에서 확인할 수 있습니다.</p>
+
+      <div class="mini">
+        <p>안내: <a href="/about.html">소개</a> · <a href="/help.html">도움말</a> · <a href="/legal/terms.html">이용약관</a> · <a href="/legal/privacy.html">개인정보처리방침</a></p>
+      </div>
     </section>
 
     <div class="divider"></div>

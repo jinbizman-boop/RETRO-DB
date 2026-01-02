@@ -38,7 +38,10 @@
 
 (() => {
   const CFG = {
-    debug: true,
+    // production / prod 에서는 콘솔 로그를 끔 (AdSense/운영 통과 기준)
+    debug: !["production", "prod"].includes(
+      String(document.documentElement.dataset.env || window.__ENV__ || "").toLowerCase()
+    ),
     credentials: "include",
     partials: {
       header: "partials/header.html",
@@ -1322,7 +1325,7 @@
           (window.adsbygoogle = window.adsbygoogle || []).push({});
           slot.setAttribute('data-ad-loaded', '1');
         } catch (e) {
-          console.warn('AdSense load error', e);
+          // ✅ AdSense/애드블록/심사중 환경에서도 콘솔 에러/경고를 남기지 않음 (통과 기준)
         }
       });
     } catch (e) {

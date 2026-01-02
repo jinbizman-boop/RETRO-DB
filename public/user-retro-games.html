@@ -24,6 +24,15 @@
   <script defer src="/assets/js/app.js"></script>
   <script defer src="/assets/js/analytics.js"></script>
 
+  <!-- ✅ (2️⃣) 허브: 인증 완료 전 화면 노출(섞임/깜빡임) 방지 -->
+  <style>
+    html.rg-auth-lock body{ visibility:hidden !important; }
+  </style>
+  <script>
+    // DOM/CSS 렌더보다 먼저 잠그기(깜빡임 방지)
+    (function(){ try{ document.documentElement.classList.add('rg-auth-lock'); }catch(e){} })();
+  </script>
+
   <style>
     /***********************************************************************
      *
@@ -2393,6 +2402,10 @@
     }
 
     window.ensureLoggedIn = async function ensureLoggedIn(){
+      const unlock = function(){
+        try{ document.documentElement.classList.remove('rg-auth-lock'); }catch(e){}
+      };
+
       try{
         // ✅ 허브에서는 Bearer 토큰 기반이므로 app.js(RG)의 getSession을 우선 사용
         if (window.RG && typeof window.RG.getSession === "function") {
@@ -2463,6 +2476,9 @@
         ACCOUNT_TOTALS.userId = null;
         updateUserGreeting(null);
         resetAccountTotalsAndStorage();  // ✅
+      } finally {
+        // ✅ 성공/실패/예외/return 어떤 경우든 “섞임 방지 락” 해제
+        unlock();
       }
     };
 

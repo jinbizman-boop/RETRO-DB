@@ -126,3 +126,59 @@ img, canvas, video, svg { max-width: 100%; height: auto; display: block; }
 .game-canvas.ratio-1x1{
   aspect-ratio: 1 / 1;
 }
+
+/* ============================================================
+   ✅ AdSense 최소 통과용: 크롤링 가능한 텍스트/구조 공통 스타일
+   - 게임 페이지 하단의 .content-guide 섹션을 모두 동일 품질로 보이게 함
+   ============================================================ */
+.content-guide{
+  max-width: 1080px;
+  margin: 26px auto 10px;
+  padding: 18px 18px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.28);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+
+.content-guide h1{
+  margin: 0 0 10px;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: .2px;
+  color: rgba(234,242,255,.96);
+}
+
+.content-guide h2{
+  margin: 14px 0 8px;
+  font-size: 15px;
+  color: rgba(234,242,255,.92);
+}
+
+.content-guide p,
+.content-guide li{
+  margin: 6px 0;
+  color: rgba(234,242,255,.78);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.content-guide ul{
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.content-guide .mini{
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255,255,255,.14);
+  color: rgba(234,242,255,.70);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.content-guide a{
+  color: rgba(255,223,110,.95);
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(255,223,110,.55);
+}

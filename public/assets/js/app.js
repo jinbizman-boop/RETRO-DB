@@ -631,6 +631,10 @@
     const me = await getSession();
     if (me) return true;
 
+    // ✅ 로그인 직후 /api/auth/me 가 일시 실패해도 "비로그인 처리"로 튕기지 않게
+    const token = getAuthToken();
+    if (token) return true;
+
     // 2) 로그인 후 원래 페이지로 돌아오기 위한 redirect 파라미터
     const backTo =
       location.pathname + location.search + location.hash;
@@ -652,7 +656,7 @@
 
     nav(loginUrl);
     return false;
-  };
+  }
 
   /* ───────────────────────────── 네비게이션 ───────────────────────────── */
 
@@ -682,18 +686,28 @@
    */
   const goHome = async () => {
     try {
+      // ✅ 로그인 직후 /api/auth/me 가 일시적으로 실패해도 "튕김" 방지
+      // - 토큰이 있으면 우선 허브로 보내고, 허브에서 세션 갱신을 시도하도록 한다.
+      const token = getAuthToken();
+
       const me = await getSession();
-      if (me) {
+      if (me || token) {
         // ✅ 정적 파일 실존 경로로 고정 (라우팅/리다이렉트 꼬임 방지)
         nav("user-retro-games.html");
       } else {
         nav("index.html");
       }
     } catch (e) {
+      // ✅ 토큰이 있으면 index로 떨어지지 않게 (로그인 직후 튕김 방지)
+      const token = getAuthToken();
+      if (token) {
+        nav("user-retro-games.html");
+        return;
+      }
       debugLog("[nav] goHome failed, fallback to index", e);
       nav("index.html");
     }
-  };
+  }
 
   const goLogin = () => nav("login.html");
   const goSignup = () => nav("signup.html");

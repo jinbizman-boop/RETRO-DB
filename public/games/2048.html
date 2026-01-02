@@ -417,6 +417,52 @@
       background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer
     }
     .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
+
+    /* ✅ AdSense 최소 통과용: 크롤링 가능한 텍스트/구조 (게임 안내) */
+    .content-guide{
+      max-width: 1080px;
+      margin: 26px auto 8px;
+      padding: 18px 18px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.28);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .content-guide h1{
+      margin: 0 0 10px;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: .2px;
+      color: #eaf2ff;
+    }
+    .content-guide h2{
+      margin: 14px 0 8px;
+      font-size: 15px;
+      color: rgba(234,242,255,.92);
+    }
+    .content-guide p, .content-guide li{
+      margin: 6px 0;
+      color: rgba(234,242,255,.78);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .content-guide ul{
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+    .content-guide .mini{
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(255,255,255,.14);
+      color: rgba(234,242,255,.70);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .content-guide a{
+      color: rgba(255,223,110,.95);
+      text-decoration: none;
+      border-bottom: 1px dotted rgba(255,223,110,.55);
+    }
   </style>
 </head>
 
@@ -521,6 +567,32 @@
             </div>
           </div>
         </main>
+
+        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) -->
+        <section class="content-guide" aria-label="RETRO 2048 게임 안내">
+          <h1>RETRO 2048 – 숫자 타일 퍼즐</h1>
+          <p>RETRO 2048은 같은 숫자 타일을 합쳐 더 큰 숫자를 만드는 퍼즐 게임입니다. 캔버스 기반 게임이라도, 아래 안내 텍스트는 게임 규칙/조작/보상 체계를 명확히 제공하기 위해 고정 노출됩니다.</p>
+
+          <h2>게임 규칙</h2>
+          <ul>
+            <li>상/하/좌/우로 이동하면 모든 타일이 해당 방향으로 밀립니다.</li>
+            <li>같은 숫자 타일이 만나면 하나로 합쳐지고 숫자가 2배가 됩니다.</li>
+            <li>더 이상 이동할 수 없으면 게임이 종료됩니다.</li>
+          </ul>
+
+          <h2>조작 방법</h2>
+          <ul>
+            <li>키보드: 방향키(↑↓←→)</li>
+            <li>모바일: 스와이프(상/하/좌/우)</li>
+          </ul>
+
+          <h2>보상/저장</h2>
+          <p>게임 종료 시 점수/성과에 따라 EXP·포인트·티켓 보상이 지급될 수 있으며, 보상은 로그인 계정 지갑에 저장됩니다. 보상 내역은 <a href="/user-retro-games.html">유저 허브</a>에서 확인할 수 있습니다.</p>
+
+          <div class="mini">
+            <p>관련 문서: <a href="/about.html">소개</a> · <a href="/help.html">도움말</a> · <a href="/legal/terms.html">이용약관</a> · <a href="/legal/privacy.html">개인정보처리방침</a></p>
+          </div>
+        </section>
 
         <!-- Control deck -->
         <div class="deck">

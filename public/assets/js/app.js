@@ -681,7 +681,8 @@
     try {
       const me = await getSession();
       if (me) {
-      nav("/user-retro-games");
+        // ✅ 정적 파일 실존 경로로 고정 (라우팅/리다이렉트 꼬임 방지)
+        nav("user-retro-games.html");
       } else {
         nav("index.html");
       }

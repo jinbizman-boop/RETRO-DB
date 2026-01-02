@@ -317,6 +317,40 @@
   .content-guide p,.content-guide li{margin:6px 0;color:rgba(234,242,255,.78);font-size:13px;line-height:1.55}
   .content-guide ul{margin:6px 0 0;padding-left:18px}
   .content-guide a{color:rgba(255,223,110,.95);text-decoration:none;border-bottom:1px dotted rgba(255,223,110,.55)}
+
+  /* ✅ content-guide를 "푸터 위 미니 바 + 팝업 버튼" 형태로 노출 */
+  .content-guide-mini{
+    width:var(--container);
+    max-width:var(--container);
+    margin: 18px auto 8px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.22);
+    box-shadow: 0 10px 30px rgba(0,0,0,.22);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .mini-left{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .mini-left strong{color:#eaf2ff;letter-spacing:.2px}
+  .mini-desc{color:rgba(234,242,255,.72);font-size:12px}
+  .mini-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .mini-link{
+    color:rgba(255,223,110,.95);
+    text-decoration:none;
+    border-bottom:1px dotted rgba(255,223,110,.55);
+    font-size:12px;
+  }
+  .mini-btn{
+    padding:8px 12px;border-radius:12px;border:1px solid #3e2b7b;
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);
+    font-weight:900;color:#e9f0ff;box-shadow:0 6px 12px #0006;cursor:pointer;
+    font-size:12px
+  }
+  .mini-btn:hover{filter:brightness(1.06)}
   </style>
 </head>
 
@@ -349,27 +383,27 @@
           </div>
 
           <div class="rowTop" aria-label="게임 목록 가로 스크롤">
-            <div class="card" onclick="requireAuth()">
+            <div class="card" onclick="playOrAuth('2048.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="12" y="12" width="96" height="96" rx="18" fill="#7a9cff"/><text x="60" y="78" text-anchor="middle" font-size="46" font-family="system-ui,Segoe UI" font-weight="900" fill="#0b1a3f">2048</text></svg></div>
               <h3>2048</h3><div class="meta">난이도 1–100 · 보드 4×4~6×6</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
-            <div class="card" onclick="requireAuth()">
+            <div class="card" onclick="playOrAuth('brick-breaker.html')">
               <div class="thumb"><svg width="90" height="80" viewBox="0 0 130 120"><rect x="14" y="20" width="102" height="18" rx="8" fill="#8ea3ff"/><rect x="14" y="44" width="102" height="18" rx="8" fill="#c4ceff"/><rect x="48" y="88" width="60" height="10" rx="5" fill="#70ffa8"/><circle cx="42" cy="74" r="7" fill="#ffd166"/></svg></div>
               <h3>Brick Breaker</h3><div class="meta">프리셋/특수볼/리플레이</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
-            <div class="card" onclick="requireAuth()">
+            <div class="card" onclick="playOrAuth('brick-match.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="18" y="22" width="28" height="28" rx="6" fill="#ff9aa6"/><rect x="46" y="22" width="28" height="28" rx="6" fill="#92ff9a"/><rect x="74" y="22" width="28" height="28" rx="6" fill="#7ad7ff"/></svg></div>
               <h3>Retro Match</h3><div class="meta">타임 어택 · 특수 타일</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
-            <div class="card" onclick="requireAuth()">
+            <div class="card" onclick="playOrAuth('retro-running.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="16" y="84" width="88" height="8" fill="#6ec36e"/><circle cx="52" cy="46" r="10" fill="#ffddea"/></svg></div>
               <h3>Retro Runner</h3><div class="meta">2단 점프 · 아이템 · 낮/밤</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
-            <div class="card" onclick="requireAuth()">
+            <div class="card" onclick="playOrAuth('tetris.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="18" y="60" width="24" height="24" fill="#7ad7ff"/><rect x="42" y="60" width="24" height="24" fill="#ffe17a"/><rect x="66" y="60" width="24" height="24" fill="#caa5ff"/><rect x="42" y="36" width="24" height="24" fill="#92ff9a"/></svg></div>
               <h3>Tetris</h3><div class="meta">홀드/넥스트 · 가비지 라인</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
@@ -378,10 +412,27 @@
       </main>
     </section>
 
-    <!-- ✅ AdSense 최소 통과용: ‘가치가 있는 텍스트/구조’ 섹션 (홈/허브에 반드시 존재해야 함) -->
-    <section class="content-guide" aria-label="RETRO GAMES 안내 및 정책">
-      <div class="content-guide-inner">
-        <h1>RETRO GAMES 안내</h1>
+    <!-- ✅ AdSense 최소 통과용: 내용은 유지하되, 노출은 버튼+팝업(모달)로 전환 -->
+    <section class="content-guide-mini" aria-label="RETRO GAMES 안내/정책 바로가기">
+      <div class="mini-left">
+        <strong>RETRO GAMES</strong>
+        <span class="mini-desc">안내 · 이용방법 · 정책/고객지원</span>
+      </div>
+      <div class="mini-right">
+        <a class="mini-link" href="/legal/privacy.html">개인정보</a>
+        <a class="mini-link" href="/legal/terms.html">약관</a>
+        <a class="mini-link" href="/legal/cookies.html">쿠키</a>
+        <button type="button" class="mini-btn" onclick="openInfo()">안내 보기</button>
+      </div>
+    </section>
+
+    <!-- INFO MODAL -->
+    <div id="infoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="im-title" aria-hidden="true">
+      <div class="dialog">
+        <button class="x" aria-label="닫기" onclick="closeInfo()">×</button>
+
+        <!-- ✅ content-guide 원문 내용 (DOM 안에 그대로 유지) -->
+        <h3 id="im-title">RETRO GAMES 안내</h3>
         <p>
           RETRO GAMES는 웹에서 바로 즐길 수 있는 미니게임 허브입니다.
           각 게임은 플레이 기록과 보상(경험치/포인트/티켓)을 기반으로 진행되며,
@@ -389,26 +440,26 @@
         </p>
 
         <h3>게임 이용 방법</h3>
-        <ul>
+        <ul style="text-align:left; margin:10px 0 0; padding-left:18px; color:rgba(234,242,255,.78); font-size:13px; line-height:1.55;">
           <li>회원가입/로그인 후 모든 미니게임을 이용할 수 있습니다.</li>
           <li>게임별 규칙은 각 게임 화면의 안내(상단/하단 도움말)에서 확인할 수 있습니다.</li>
           <li>비정상 종료/오류가 발생하면 브라우저 새로고침 후 다시 시도하세요.</li>
         </ul>
 
-        <h3>정책 및 고객지원</h3>
-        <ul>
+        <h3 style="margin-top:14px;">정책 및 고객지원</h3>
+        <ul style="text-align:left; margin:10px 0 0; padding-left:18px; color:rgba(234,242,255,.78); font-size:13px; line-height:1.55;">
           <li><a href="/legal/privacy.html">개인정보처리방침</a></li>
           <li><a href="/legal/terms.html">이용약관</a></li>
           <li><a href="/legal/cookies.html">쿠키/분석 안내</a></li>
           <li>광고/제휴 문의: <a href="mailto:jinbizman@gmail.com">jinbizman@gmail.com</a></li>
         </ul>
 
-        <p class="small">
+        <p style="margin-top:12px; opacity:.8; font-size:12px; line-height:1.55;">
           본 사이트의 광고는 Google AdSense를 통해 제공될 수 있으며,
           광고는 사용자 환경/지역/브라우저 정책에 따라 표시 형태가 달라질 수 있습니다.
         </p>
       </div>
-    </section>
+    </div>
 
     <div class="divider"></div>
     <footer>©2025 진비즈 매니지먼트 ┃ 광고문의 jinbizman@gmail.com ┃ RETRO GAMES · Neon UI ┃ MADE BY ONLY OPEN AI</footer>
@@ -442,7 +493,52 @@
   function requireAuth(){ modal.classList.add('show'); modal.removeAttribute('aria-hidden'); setTimeout(()=>{ modal.querySelector('.cta')?.focus(); }, 0); }
   function closeAuth(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
   modal.addEventListener('click', (e)=>{ if(e.target===modal) closeAuth(); });
-  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && modal.classList.contains('show')) closeAuth(); });
+
+  // ✅ 게임 PLAY: 로그인 상태면 게임으로 이동, 비로그인이면 팝업
+  async function playOrAuth(gameFile){
+    try{
+      // app.js(RG)가 있으면 세션으로 판별
+      if(window.RG && typeof window.RG.getSession === 'function'){
+        const me = await window.RG.getSession();
+        if(me){
+          location.href = BASE + "games/" + gameFile;
+          return;
+        }
+        requireAuth();
+        return;
+      }
+
+      // 폴백: 토큰이 있으면 로그인으로 간주 (로그인 직후 /me 지연 방어)
+      const token =
+        (window.RG && typeof window.RG.getAuthToken === 'function') ? window.RG.getAuthToken()
+        : (localStorage.getItem('rg_token') || localStorage.getItem('RG_TOKEN') || "");
+
+      if(token){
+        location.href = BASE + "games/" + gameFile;
+        return;
+      }
+
+      requireAuth();
+    }catch(e){
+      // 안전 폴백: 문제 있으면 팝업
+      requireAuth();
+    }
+  }
+
+  /* ✅ 안내/정책 모달 */
+  const infoModal = document.getElementById('infoModal');
+  function openInfo(){ if(!infoModal) return; infoModal.classList.add('show'); infoModal.removeAttribute('aria-hidden'); }
+  function closeInfo(){ if(!infoModal) return; infoModal.classList.remove('show'); infoModal.setAttribute('aria-hidden','true'); }
+  if(infoModal){
+    infoModal.addEventListener('click', (e)=>{ if(e.target===infoModal) closeInfo(); });
+  }
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.key==='Escape'){
+      if(modal.classList.contains('show')) closeAuth();
+      if(infoModal && infoModal.classList.contains('show')) closeInfo();
+    }
+  });
 
   /* 홈(index)은 게임 페이지가 아니므로 start/finish는 동작하지 않음(무해화) */
   async function startGame(){ /* no-op */ }

@@ -567,13 +567,16 @@
           else if (typeof data.accessToken === 'string') token = data.accessToken;
         }
 
-        // ② app.js 의 전역 RG 헬퍼를 통해 토큰 저장
+        // ② JWT 토큰 저장 (RG가 아직 로드되지 않아도 localStorage에 직접 저장)
         try{
-          if (token && window.RG && typeof window.RG.setAuthToken === 'function'){
-            window.RG.setAuthToken(token);
+          if (token && typeof token === 'string' && token.trim()){
+            localStorage.setItem('rg_jwt_token', token.trim());
+            if (window.RG && typeof window.RG.setAuthToken === 'function'){
+              window.RG.setAuthToken(token);
+            }
           }
         }catch(__){
-          // 토큰 설정이 실패하더라도 로그인 자체는 계속 진행
+          // 저장이 실패하더라도 로그인 자체는 계속 진행
         }
 
         // ③ 로그인 플래그 (기존 동작 유지)

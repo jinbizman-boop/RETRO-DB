@@ -567,16 +567,26 @@
           else if (typeof data.accessToken === 'string') token = data.accessToken;
         }
 
-        // ② JWT 토큰 저장 (RG가 아직 로드되지 않아도 localStorage에 직접 저장)
+        // ✅ (강제 보장) 기존 토큰이 남아있어 /api/auth/me가 꼬이는 케이스 방지
+        try{
+          localStorage.removeItem('rg_jwt_token');
+        }catch(_){}
+
+        // ② app.js 의 전역 RG 헬퍼를 통해 토큰 저장 + (추가) 직접 localStorage에도 강제 저장
         try{
           if (token && typeof token === 'string' && token.trim()){
-            localStorage.setItem('rg_jwt_token', token.trim());
+            const t = token.trim();
+
+            // 2-1) RG 헬퍼 우선
             if (window.RG && typeof window.RG.setAuthToken === 'function'){
-              window.RG.setAuthToken(token);
+              window.RG.setAuthToken(t);
             }
+
+            // 2-2) RG 로딩/예외와 무관하게 로컬스토리지에 “확실히” 저장
+            localStorage.setItem('rg_jwt_token', t);
           }
         }catch(__){
-          // 저장이 실패하더라도 로그인 자체는 계속 진행
+          // 토큰 설정이 실패하더라도 로그인 자체는 계속 진행
         }
 
         // ③ 로그인 플래그 (기존 동작 유지)
@@ -596,9 +606,25 @@
           }
         }catch(_){}
 
-        // ⑥ 로그인 후에는 Neon 홈(user-retro-games.html)으로 이동
+        // ⑥ next/redirect 파라미터가 있으면 우선, 없으면 user-retro-games.html
+        let target = BASE + 'user-retro-games.html';
+        try{
+          const qs = new URLSearchParams(location.search);
+          let next = qs.get('next') || qs.get('redirect') || '';
+
+          if (next && typeof next === 'string'){
+            try{ next = decodeURIComponent(next); }catch(_){}
+
+            // 외부 URL 차단(보안) + 내부 경로만 허용
+            if (!/^https?:\/\//i.test(next)){
+              if (next.startsWith('/')) target = next;
+              else target = BASE + next.replace(/^\/+/, '');
+            }
+          }
+        }catch(_){}
+
         setTimeout(() => {
-          location.href = BASE + 'user-retro-games.html';
+          location.href = target;
         }, 600);
       }catch(err){
         const msg = (err && (err.message || err.toString())) || '서버 오류';

@@ -620,17 +620,23 @@
         const params = new URLSearchParams(location.search);
         let nextRaw = (params.get("next") || params.get("redirect") || "").trim();
 
-        // 기본: 실배포 허브 경로(확장자 없는 경로)
-        let target = "/user-retro-games";
+        // ✅ 기본: 실배포 허브 파일로 확정(라우팅/리라이트 이슈 방지)
+        let target = "/user-retro-games.html";
 
         if (nextRaw){
           try{ nextRaw = decodeURIComponent(nextRaw); }catch(_){}
 
           if (!/^https?:\/\//i.test(nextRaw)){
-            // 정규화: user-retro-games.html / user-retro-games 둘 다 허용
-            if (nextRaw === "user-retro-games.html" || nextRaw === "/user-retro-games.html"){
-              target = "/user-retro-games";
+            // ✅ 정규화: /user-retro-games 로 들어와도 .html로 강제
+            if (
+              nextRaw === "user-retro-games" ||
+              nextRaw === "/user-retro-games" ||
+              nextRaw === "user-retro-games.html" ||
+              nextRaw === "/user-retro-games.html"
+            ){
+              target = "/user-retro-games.html";
             }else{
+              // 기타 내부 경로는 그대로 (단, 선행 슬래시 보장)
               target = nextRaw.startsWith("/") ? nextRaw : ("/" + nextRaw);
             }
           }

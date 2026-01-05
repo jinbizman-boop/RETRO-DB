@@ -13,7 +13,7 @@
   <link rel="alternate icon" href="/favicon.ico">
 
   <!-- === Common SEO/A11y (auto-inserted) === -->
-  <link rel="stylesheet" href="/assets/css/game-frame.css">
+  <link rel="stylesheet" href="../assets/css/game-frame.css">
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
   <link rel="manifest" href="/site.webmanifest">
@@ -44,7 +44,7 @@
   <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
 
   <!-- 전역 유틸 & 공통 스크립트 (정상 app.js 버전, 게임 페이지에서는 오토 인젝트 내부 조건으로 스킵) -->
-<script defer src="/assets/js/app.js"></script>
+<script defer src="../assets/js/app.js"></script>
 <script>
   // ✅ Game entry auth gate (auth first → then start game)
   // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
@@ -126,7 +126,7 @@
     }, { once: true });
   })();
 </script>
-  <script defer src="/assets/js/analytics.js"></script>
+  <script defer src="../assets/js/analytics.js"></script>
   <script src="/assets/js/games/tetris.js"></script>
 
   <style>
@@ -644,22 +644,36 @@
 <body>
   <canvas id="fx"></canvas>
 
-  <div class="shell">
-    <!-- ✅ 2048.html과 동일한 3열 레이아웃 구조 (좌/우 광고 + 중앙 캐비닛) -->
-    <div class="games-page">
-      <!-- 좌측 수직형 광고 (120×600) -->
-      <aside class="ad-rail ad-rail-left" aria-label="left vertical ad">
-        <div class="ad-rail-inner">
-          <ins class="adsbygoogle side-ad-slot"
-               style="display:block"
-               data-ad-client="ca-pub-6713974265397310"
-               data-ad-slot="4514999077"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-        </div>
-      </aside>
+  <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
+  <aside class="sideAd left" aria-label="left vertical ad">
+    <div class="sideAdInner">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-6713974265397310"
+           data-ad-slot="4514999077"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+  </aside>
 
-      <!-- 메인 아케이드 캐비닛 -->
+  <aside class="sideAd right" aria-label="right vertical ad">
+    <div class="sideAdInner">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-6713974265397310"
+           data-ad-slot="4514999077"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
+  </aside>
+
+  <div class="shell">
       <div class="game-frame">
       <section class="cabinet game-canvas" aria-label="retro arcade cabinet">
         <header class="marquee">
@@ -739,32 +753,35 @@
           </div>
         </main>
 
-        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) -->
-        <section class="content-guide" aria-label="RETRO TETRIS 게임 안내">
-          <h1>RETRO TETRIS – 라인 클리어 아케이드</h1>
-          <p>RETRO TETRIS는 블록을 회전/이동해 가로줄을 채우면 라인이 제거되는 클래식 아케이드 게임입니다. 아래 안내는 규칙/조작/보상/FAQ를 텍스트로 제공하여 누구나 동일한 정보를 확인할 수 있게 합니다.</p>
-
-          <h2>게임 규칙</h2>
-          <ul>
-            <li>블록을 좌/우로 이동하고 회전시켜 빈틈 없이 쌓습니다.</li>
-            <li>가로줄이 가득 차면 라인이 제거되며 점수가 올라갑니다.</li>
-            <li>블록이 상단까지 쌓이면 게임이 종료됩니다.</li>
-          </ul>
-
-          <h2>조작 방법</h2>
-          <ul>
-            <li>좌/우 이동: ← →</li>
-            <li>회전: ↑ 또는 지정 키(페이지 안내 기준)</li>
-            <li>드롭/가속: ↓ 또는 Space(페이지 안내 기준)</li>
-          </ul>
-
-          <h2>보상/저장</h2>
-          <p>게임 종료 후 성과에 따라 EXP·포인트·티켓 보상이 지급될 수 있으며, 보상은 로그인 계정에 누적 저장됩니다. <a href="/user-retro-games.html">유저 허브</a>에서 합산 수치와 보유 자원을 확인할 수 있습니다.</p>
-
-          <div class="mini">
-            <p>관련 문서: <a href="/about.html">소개</a> · <a href="/help.html">도움말</a> · <a href="/legal/terms.html">이용약관</a> · <a href="/legal/privacy.html">개인정보처리방침</a></p>
+        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) — 노출은 버튼+팝업(모달)로 전환 -->
+        <section class="content-guide-mini" aria-label="게임 안내/정책 바로가기">
+          <div class="mini-left">
+            <strong>게임 안내</strong>
+            <span class="mini-desc">규칙 · 조작 · 보상/저장</span>
+          </div>
+          <div class="mini-right">
+            <a class="mini-link" href="/legal/privacy.html">개인정보</a>
+            <a class="mini-link" href="/legal/terms.html">약관</a>
+            <a class="mini-link" href="/legal/cookies.html">쿠키</a>
+            <button type="button" class="mini-btn" onclick="openGuide()">안내 보기</button>
           </div>
         </section>
+
+        <!-- GUIDE MODAL -->
+        <div id="guideModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gm-title" aria-hidden="true">
+          <div class="dialog">
+            <button class="x" aria-label="닫기" onclick="closeGuide()">×</button>
+
+            <!-- ✅ 기존 content-guide 원문 내용을 여기로 “그대로” 옮겨 넣기 -->
+            <!-- (중요) h1/h2/ul/p 구조는 유지. 문구만 게임별로 다르면 그대로 두면 됨 -->
+            <h3 id="gm-title">게임 안내</h3>
+
+            <!-- ▼▼▼ 여기부터: 기존 content-guide 안의 내용을 그대로 붙여넣어 ▼▼▼ -->
+            <!-- 예) <h1>...</h1> <p>...</p> <h2>...</h2> <ul>...</ul> ... -->
+            <!-- ▲▲▲ 여기까지 ▲▲▲ -->
+
+          </div>
+        </div>
 
         <!-- Control deck -->
         <div class="deck">
@@ -789,7 +806,6 @@
           </label>
           <button class="btn" id="endBtn">게임 종료</button>
         </div>
-      </section>
 
       <!-- 우측 수직형 광고 (120×600) -->
       <aside class="ad-rail ad-rail-right" aria-label="right vertical ad">
@@ -1870,5 +1886,26 @@
     }catch(e){ /* no-op */ }
   })();
   </script>
+
+  <script>
+  const guideModal = document.getElementById('guideModal');
+
+  function openGuide(){
+    if(!guideModal) return;
+    guideModal.classList.add('show');
+    guideModal.removeAttribute('aria-hidden');
+    setTimeout(()=>{ guideModal.querySelector('.x')?.focus(); }, 0);
+  }
+
+  function closeGuide(){
+    if(!guideModal) return;
+    guideModal.classList.remove('show');
+    guideModal.setAttribute('aria-hidden','true');
+  }
+
+  guideModal?.addEventListener('click', (e)=>{ if(e.target===guideModal) closeGuide(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && guideModal?.classList.contains('show')) closeGuide(); });
+  </script>
+
 </body>
 </html>

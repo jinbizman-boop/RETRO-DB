@@ -456,8 +456,8 @@
         // 토큰이 있으면 로그인 허브로
         const t = (localStorage.getItem("rg_jwt_token") || "").trim();
         if (t){
-          // Cloudflare Pages(확장자 없는 경로) 기준
-          location.href = "/user-retro-games";
+          // ✅ 실존 파일 경로로 고정 (루프/404 방지)
+          location.href = "/user-retro-games.html";
           return;
         }
       }catch(_){}

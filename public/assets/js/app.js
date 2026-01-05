@@ -693,26 +693,26 @@
       const me = await getSession();
       if (me || token) {
         // ✅ 정적 파일 실존 경로로 고정 (라우팅/리다이렉트 꼬임 방지)
-        nav("user-retro-games.html");
+        nav("/user-retro-games.html");
       } else {
-        nav("index.html");
+        nav("/index.html");
       }
     } catch (e) {
       // ✅ 토큰이 있으면 index로 떨어지지 않게 (로그인 직후 튕김 방지)
       const token = getAuthToken();
       if (token) {
-        nav("user-retro-games.html");
+        nav("/user-retro-games.html");
         return;
       }
       debugLog("[nav] goHome failed, fallback to index", e);
-      nav("index.html");
+      nav("/index.html");
     }
   }
 
-  const goLogin = () => nav("login.html");
-  const goSignup = () => nav("signup.html");
-  const goShop = () => nav("shop.html");
-  const goUserGames = () => nav("user-retro-games.html"); // 기존 파일명 유지
+  const goLogin = () => nav("/login.html");
+  const goSignup = () => nav("/signup.html");
+  const goShop = () => nav("/shop.html");
+  const goUserGames = () => nav("/user-retro-games.html"); // 기존 파일명 유지
 
   /* ───────────────────────────── 게임/프로필 API ───────────────────────────── */
   const listGames = async () => {

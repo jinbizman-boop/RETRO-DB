@@ -452,8 +452,18 @@
     const BASE = "/";
 
     function goHomeSafe(){
-      if (window.goHome) return window.goHome();
-      location.href = BASE + "index.html";
+      try{
+        // 토큰이 있으면 로그인 허브로
+        const t = (localStorage.getItem("rg_jwt_token") || "").trim();
+        if (t){
+          // Cloudflare Pages(확장자 없는 경로) 기준
+          location.href = "/user-retro-games";
+          return;
+        }
+      }catch(_){}
+
+      // 토큰 없으면 비로그인 메인으로
+      location.href = "/";
     }
 
     function goSignupSafe(){
@@ -576,7 +586,8 @@
         // - window.RG 로딩 타이밍과 무관하게 로컬스토리지에 먼저 확실히 저장한다.
         try{
           if (token && typeof token === "string" && token.trim()){
-            localStorage.setItem("rg_jwt_token", token.trim());
+            const t = token.trim();
+            localStorage.setItem("rg_jwt_token", t);
           }
         }catch(__){}
 
@@ -593,7 +604,7 @@
         }catch(_){}
 
         // ④ 메시지 표시
-        $loginMsg.textContent = "로그인 성공! 잠시 후 게임 홈으로 이동합니다.";
+        $loginMsg.textContent = "로그인 성공! 잠시 후 이동합니다.";
         $loginMsg.className = "msg ok";
 
         // ⑤ 선택적으로 세션 정보 프리로드 (실패해도 무시)
@@ -603,22 +614,36 @@
           }
         }catch(_){}
 
-        // ⑥ 로그인 후 이동 경로 결정
-        // - /login?next=... 또는 /login?redirect=... 를 지원 (서버/미들웨어/외부 링크 대응)
+        // ⑥ 로그인 후 이동 경로 결정 (핵심)
+        // - /login?next=... 또는 /login?redirect=... 를 지원
+        // - 외부 URL 차단 + 내부 경로만 허용
         const params = new URLSearchParams(location.search);
-        const nextRaw = (params.get("next") || params.get("redirect") || "").trim();
+        let nextRaw = (params.get("next") || params.get("redirect") || "").trim();
 
-        let nextPath = "user-retro-games.html";
+        // 기본: 실배포 허브 경로(확장자 없는 경로)
+        let target = "/user-retro-games";
+
         if (nextRaw){
-          // 보안/안정: 외부 URL 차단 + 내부 경로만 허용
+          try{ nextRaw = decodeURIComponent(nextRaw); }catch(_){}
+
           if (!/^https?:\/\//i.test(nextRaw)){
-            nextPath = nextRaw.replace(/^\//, "");
+            // 정규화: user-retro-games.html / user-retro-games 둘 다 허용
+            if (nextRaw === "user-retro-games.html" || nextRaw === "/user-retro-games.html"){
+              target = "/user-retro-games";
+            }else{
+              target = nextRaw.startsWith("/") ? nextRaw : ("/" + nextRaw);
+            }
           }
         }
 
         setTimeout(() => {
-          location.href = BASE + nextPath;
-        }, 600);
+          try{
+            if (window.top && window.top !== window) window.top.location.href = target;
+            else window.location.href = target;
+          }catch(_){
+            window.location.href = target;
+          }
+        }, 350);
       }catch(err){
         const msg = (err && (err.message || err.toString())) || '서버 오류';
         loginFail('로그인 실패: ' + msg);

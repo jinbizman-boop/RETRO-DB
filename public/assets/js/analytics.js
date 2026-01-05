@@ -4,7 +4,7 @@
  *
  * 정책
  * - 자동 초기화 없음(Consent 후 외부에서 window.Analytics.init(opts) 호출)
- * - collectEndpoint 기본: '/analytics/collect'  (서버 라우트 필요)
+ * - collectEndpoint 기본: '/api/analytics/collect'  (Pages Functions 라우트)
  * - <html data-env="production"> 또는 "prod" → debug=false
  * - 전역 API: window.Analytics = {
  *     init, event, flush,
@@ -35,7 +35,7 @@
     autoPageview: true,
     autoClick: true,
     flushInterval: DEFAULT_FLUSH_MS,
-    collectEndpoint: '/analytics/collect',
+    collectEndpoint: '/api/analytics/collect',
     debug: !isProd,
     credentials: 'include',
   };
@@ -153,7 +153,8 @@
   const safeParse = (s, d) => {
     try {
       if (s === null || s === undefined || s === '') return d;
-      return JSON.parse(s);
+      const v = JSON.parse(s);
+      return (v === null || v === undefined) ? d : v;
     } catch {
       return d;
     }

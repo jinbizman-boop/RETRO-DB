@@ -2209,6 +2209,27 @@
     function applyAccountApiResponseLocal(payload){
       if(!payload) return;
 
+      // ✅ userId를 “가장 먼저” 확정 (prefix 섞임 방지)
+      const incomingUserId = (payload.userId != null)
+        ? payload.userId
+        : (payload.user_id != null ? payload.user_id : null);
+
+      if (incomingUserId != null) {
+        const newUid = String(incomingUserId);
+
+        // ✅ 다른 유저로 바뀌는 순간, 메모리 캐시를 비워서 이전 유저 값이 섞이지 않게
+        if (ACCOUNT_TOTALS.userId && ACCOUNT_TOTALS.userId !== newUid) {
+          ACCOUNT_TOTALS.coins   = null;
+          ACCOUNT_TOTALS.tickets = null;
+          ACCOUNT_TOTALS.xp      = null;
+          ACCOUNT_TOTALS.xpCap   = null;
+          ACCOUNT_TOTALS.plays   = null;
+          ACCOUNT_TOTALS.level   = null;
+        }
+
+        ACCOUNT_TOTALS.userId = newUid;
+      }
+
       const current = readTotals();
       const stats   = payload.stats  || {};
       const wallet  = payload.wallet || {};
@@ -2257,11 +2278,6 @@
       if (xpCapSrc   != null) xpCap   = NUM(xpCapSrc);
       if (levelSrc   != null) level   = NUM(levelSrc);
 
-      // userId 동기화
-      if (payload.userId != null || payload.user_id != null){
-        ACCOUNT_TOTALS.userId = String(payload.userId ?? payload.user_id);
-      }
-
       // totals 반영
       ACCOUNT_TOTALS.coins   = coins;
       ACCOUNT_TOTALS.tickets = tickets;
@@ -2270,7 +2286,7 @@
       ACCOUNT_TOTALS.plays   = plays;
       ACCOUNT_TOTALS.level   = level;
 
-      // localStorage 반영
+      // localStorage 반영 (✅ userId 확정된 prefix로 저장됨)
       writeTotalsToLocal({
         coins:   coins,
         tickets: tickets,
@@ -2381,20 +2397,34 @@
 
     async function syncWalletFromServer(){
       try{
+        const token =
+          (window.RG && typeof window.RG.getAuthToken === "function")
+            ? (window.RG.getAuthToken() || "")
+            : (
+                localStorage.getItem("rg_jwt_token") ||
+                localStorage.getItem("rg_token") ||
+                localStorage.getItem("token") ||
+                ""
+              );
+
+        const headers = {
+          "Accept": "application/json",
+          "Cache-Control": "no-store"
+        };
+        if (token) headers["Authorization"] = "Bearer " + token;
+
         const res = await fetch("/api/wallet/balance", {
           method: "GET",
           credentials: "include",
-          headers: {
-            "Accept": "application/json",
-            "Cache-Control": "no-store"
-          }
+          headers
         });
+
         if(!res.ok) return;
+
         const data = await res.json().catch(()=>null);
         if(!data) return;
 
-        // ✅ /api/wallet/balance 응답은 wallet/stats를 함께 포함하므로
-        // ✅ 그대로 공통 반영 함수에 넘기면 HUD/로컬스토리지까지 동기화됨
+        // ✅ wallet/stats 포함 응답은 그대로 공통 반영 함수로 동기화
         applyAccountApiResponseLocal(data);
       }catch(err){
         console.warn("[RG][wallet] sync from /api/wallet failed:", err);
@@ -2541,22 +2571,9 @@
         document.body.classList.add("auth-pending");
 
         try {
-          // 1) App.js 쪽에 전역 requireAuth 가 있으면 그것을 우선 사용
-          if (window.RG && typeof window.RG.requireAuth === "function") {
-            await window.RG.requireAuth();
-          }
-
-          // 2) 구버전/대체 전역 가드 (✅ 여기서 절대 return 금지)
-          if (typeof window.requireAuth === "function") {
-            try {
-              const r = window.requireAuth();
-              // Promise 반환 구현 대비
-              if (r && typeof r.then === "function") await r;
-            } catch (e) {
-              console.warn("[RG] window.requireAuth failed:", e);
-            }
-          }
-
+          // 1) / 2) 전역 requireAuth는 허브에서 호출 금지
+          //    (로그인 직후 전파 지연 시 여기서 redirect가 걸리며 튕김/루프 원인이 됨)
+          //    runGuard는 ensureLoggedIn() + 재시도 로직만 사용한다.
           // 3) fallback: /api/auth/me 검사 + 실패 시 로그인 페이지로 리다이렉트
           if (typeof window.ensureLoggedIn === "function") {
             try {

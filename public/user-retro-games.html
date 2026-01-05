@@ -2406,28 +2406,10 @@
         try{ document.documentElement.classList.remove('rg-auth-lock'); }catch(e){}
       };
 
+      // ✅ 토큰을 먼저 확보 (RG.getSession이 일시 실패해도 fallback 재시도 가능)
+      let token = "";
       try{
-        // ✅ 허브에서는 Bearer 토큰 기반이므로 app.js(RG)의 getSession을 우선 사용
-        if (window.RG && typeof window.RG.getSession === "function") {
-          const me = await window.RG.getSession({ refresh: true });
-
-          if(!me || !me.id){
-            ACCOUNT_TOTALS.userId = null;
-            updateUserGreeting(null);
-            resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
-            return;
-          }
-
-          window.__RG_CURRENT_USER__ = me;
-          updateUserGreeting(me);
-          applyAccountStatsFromUser(me);
-
-          syncWalletFromServer().catch(()=>{});
-          return;
-        }
-
-        // (fallback) RG.getSession 이 없을 때만 /api/auth/me 호출 + Bearer 보강
-        const token =
+        token =
           (window.RG && typeof window.RG.getAuthToken === "function")
             ? (window.RG.getAuthToken() || "")
             : (
@@ -2436,7 +2418,37 @@
                 localStorage.getItem("token") ||
                 ""
               );
+      }catch(_){
+        token = "";
+      }
 
+      try{
+        // ✅ 허브에서는 Bearer 토큰 기반이므로 app.js(RG)의 getSession을 우선 사용
+        if (window.RG && typeof window.RG.getSession === "function") {
+          const me = await window.RG.getSession({ refresh: true });
+
+          // ✅ 정상 세션이면 즉시 확정
+          if(me && me.id){
+            window.__RG_CURRENT_USER__ = me;
+            updateUserGreeting(me);
+            applyAccountStatsFromUser(me);
+
+            syncWalletFromServer().catch(()=>{});
+            return;
+          }
+
+          // ✅ 로그인 직후 전파 지연/일시 실패 대비:
+          // 토큰이 있으면 여기서 바로 초기화/로그인 이동하지 말고
+          // 아래 fallback(/api/auth/me + Bearer)로 한 번 더 확정 시도
+          if(!token){
+            ACCOUNT_TOTALS.userId = null;
+            updateUserGreeting(null);
+            resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
+            return;
+          }
+        }
+
+        // (fallback) /api/auth/me 호출 + Bearer 보강 (RG.getSession이 없거나/실패한 경우 포함)
         const headers = {
           "Accept": "application/json",
           "Cache-Control": "no-store"
@@ -2450,6 +2462,18 @@
         });
 
         if(!res.ok){
+          // ✅ 토큰이 있는데 401/403이면 토큰 정리(루프/튕김 방지)
+          if (token && (res.status === 401 || res.status === 403)) {
+            try{ localStorage.removeItem("rg_jwt_token"); }catch(_){}
+            try{ localStorage.removeItem("rg_token"); }catch(_){}
+            try{ localStorage.removeItem("token"); }catch(_){}
+            try{
+              if (window.RG && typeof window.RG.setAuthToken === "function") {
+                window.RG.setAuthToken("");
+              }
+            }catch(_){}
+          }
+
           ACCOUNT_TOTALS.userId = null;
           updateUserGreeting(null);
           resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
@@ -2539,12 +2563,66 @@
               // ensureLoggedIn() 내부에서 ACCOUNT_TOTALS.userId 를 세팅/초기화함
               await window.ensureLoggedIn();
 
-              // 로그인 실패(또는 게스트)라면 로그인 페이지로 강제 이동
+              // ✅ 로그인 직후 전파 지연/일시 실패로 userId가 아직 비어도
+              // 토큰이 있으면 즉시 redirect 하지 말고 짧게 재시도(루프/튕김 방지)
               if (!ACCOUNT_TOTALS.userId) {
+                const token =
+                  localStorage.getItem("rg_jwt_token") ||
+                  localStorage.getItem("rg_token") ||
+                  localStorage.getItem("token") ||
+                  "";
+
+                if (token) {
+                  let tries = 0;
+                  try{
+                    tries = parseInt(sessionStorage.getItem("rg_auth_retry") || "0", 10) || 0;
+                  }catch(_){
+                    tries = 0;
+                  }
+
+                  if (tries < 3) {
+                    try{ sessionStorage.setItem("rg_auth_retry", String(tries + 1)); }catch(_){}
+                    setTimeout(() => {
+                      try { runGuard(); } catch(_){}
+                    }, 450 * (tries + 1));
+                    return;
+                  }
+
+                  try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
+                }
+
                 redirectToLogin();
+              } else {
+                try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
               }
             } catch (e) {
               console.error("ensureLoggedIn failed:", e);
+
+              const token =
+                localStorage.getItem("rg_jwt_token") ||
+                localStorage.getItem("rg_token") ||
+                localStorage.getItem("token") ||
+                "";
+
+              if (token) {
+                let tries = 0;
+                try{
+                  tries = parseInt(sessionStorage.getItem("rg_auth_retry") || "0", 10) || 0;
+                }catch(_){
+                  tries = 0;
+                }
+
+                if (tries < 3) {
+                  try{ sessionStorage.setItem("rg_auth_retry", String(tries + 1)); }catch(_){}
+                  setTimeout(() => {
+                    try { runGuard(); } catch(_){}
+                  }, 450 * (tries + 1));
+                  return;
+                }
+
+                try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
+              }
+
               redirectToLogin();
             }
           } else {

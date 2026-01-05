@@ -11,7 +11,7 @@
   <link rel="alternate icon" href="/favicon.ico">
 
   <!-- === Common SEO/A11y (auto-inserted) === -->
-  <link rel="stylesheet" href="/assets/css/game-frame.css">
+  <link rel="stylesheet" href="../assets/css/game-frame.css">
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
   <link rel="manifest" href="/site.webmanifest">
@@ -44,7 +44,7 @@
   <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
 
   <!-- 전역 유틸 -->
-<script defer src="/assets/js/app.js"></script>
+<script defer src="../assets/js/app.js"></script>
 <script>
   // ✅ Game entry auth gate (auth first → then start game)
   // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
@@ -985,31 +985,35 @@
           </div>
         </main>
 
-        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) -->
-        <section class="content-guide" aria-label="RETRO RUNNER 게임 안내">
-          <h1>RETRO RUNNER – 러닝 액션</h1>
-          <p>RETRO RUNNER는 장애물을 점프/회피하며 가능한 오래 달리는 러닝 액션 게임입니다. 아래 안내는 플레이 규칙, 조작, 보상/저장 방식을 명확히 제공하기 위한 텍스트 영역입니다.</p>
-
-          <h2>게임 규칙</h2>
-          <ul>
-            <li>장애물을 피하며 달린 시간이 늘어날수록 점수가 상승합니다.</li>
-            <li>충돌하거나 실패 조건을 만족하면 게임이 종료됩니다.</li>
-            <li>아이템이 존재할 경우 일시적 강화/보조 효과가 적용될 수 있습니다.</li>
-          </ul>
-
-          <h2>조작 방법</h2>
-          <ul>
-            <li>점프/행동: Space 또는 지정 키(페이지 안내 기준)</li>
-            <li>웅크리기/회피: ↓ 또는 지정 키(페이지 안내 기준)</li>
-          </ul>
-
-          <h2>보상/저장</h2>
-          <p>플레이 결과에 따라 EXP·포인트·티켓 보상이 지급될 수 있으며, 지급된 자원은 로그인 계정에 저장됩니다. 누적 자원은 <a href="/user-retro-games.html">유저 허브</a>에서 확인 가능합니다.</p>
-
-          <div class="mini">
-            <p>관련 문서: <a href="/about.html">소개</a> · <a href="/help.html">도움말</a> · <a href="/legal/terms.html">이용약관</a> · <a href="/legal/privacy.html">개인정보처리방침</a></p>
+        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) — 노출은 버튼+팝업(모달)로 전환 -->
+        <section class="content-guide-mini" aria-label="게임 안내/정책 바로가기">
+          <div class="mini-left">
+            <strong>게임 안내</strong>
+            <span class="mini-desc">규칙 · 조작 · 보상/저장</span>
+          </div>
+          <div class="mini-right">
+            <a class="mini-link" href="/legal/privacy.html">개인정보</a>
+            <a class="mini-link" href="/legal/terms.html">약관</a>
+            <a class="mini-link" href="/legal/cookies.html">쿠키</a>
+            <button type="button" class="mini-btn" onclick="openGuide()">안내 보기</button>
           </div>
         </section>
+
+        <!-- GUIDE MODAL -->
+        <div id="guideModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gm-title" aria-hidden="true">
+          <div class="dialog">
+            <button class="x" aria-label="닫기" onclick="closeGuide()">×</button>
+
+            <!-- ✅ 기존 content-guide 원문 내용을 여기로 “그대로” 옮겨 넣기 -->
+            <!-- (중요) h1/h2/ul/p 구조는 유지. 문구만 게임별로 다르면 그대로 두면 됨 -->
+            <h3 id="gm-title">게임 안내</h3>
+
+            <!-- ▼▼▼ 여기부터: 기존 content-guide 안의 내용을 그대로 붙여넣어 ▼▼▼ -->
+            <!-- 예) <h1>...</h1> <p>...</p> <h2>...</h2> <ul>...</ul> ... -->
+            <!-- ▲▲▲ 여기까지 ▲▲▲ -->
+
+          </div>
+        </div>
 
         <!-- Control deck -->
         <div class="deck">
@@ -1046,10 +1050,9 @@
           </label>
           <button class="btn" id="endBtn">게임 종료</button>
         </div>
-      </section>
 
-      <!-- 우측 세로 광고 배너 -->
-      <aside class="sideAd sideAd-right" aria-label="right vertical ad">
+      <!-- 우측 세로형 광고 배너 -->
+      <aside class="sideAd sideAd-right" aria-label="오른쪽 광고 영역">
         <div class="sideAdInner">
           <!-- 좌우측 사이드 수직형 광고 -->
           <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
@@ -2419,6 +2422,25 @@
       } catch (e) { /* no-op */ }
     })();
   </script>
+
+  <script>
+  const guideModal = document.getElementById('guideModal');
+  function openGuide(){
+    if(!guideModal) return;
+    guideModal.classList.add('show');
+    guideModal.removeAttribute('aria-hidden');
+    setTimeout(()=>{ guideModal.querySelector('.x')?.focus(); }, 0);
+  }
+
+  function closeGuide(){
+    if(!guideModal) return;
+    guideModal.classList.remove('show');
+    guideModal.setAttribute('aria-hidden','true');
+  }
+
+  guideModal?.addEventListener('click', (e)=>{ if(e.target===guideModal) closeGuide(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && guideModal?.classList.contains('show')) closeGuide(); });
+</script>
 
   <!--
     ────────────────────────────────────────────────────────────────

@@ -199,7 +199,10 @@
   };
 
   /** ── 로컬 큐 ──────────────────────────────────────────────────────── */
-  const loadQueue = () => safeParse(localStorage.getItem(STORAGE_KEY), []);
+  const loadQueue = () => {
+    const q = safeParse(localStorage.getItem(STORAGE_KEY), []);
+    return Array.isArray(q) ? q : [];
+  };
   const saveQueue = (q) => localStorage.setItem(STORAGE_KEY, JSON.stringify(q.slice(-MAX_QUEUE)));
 
   /** ── enqueue ─────────────────────────────────────────────────────── */

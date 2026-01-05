@@ -572,59 +572,52 @@
           localStorage.removeItem('rg_jwt_token');
         }catch(_){}
 
-        // ② app.js 의 전역 RG 헬퍼를 통해 토큰 저장 + (추가) 직접 localStorage에도 강제 저장
+        // ② JWT 토큰 저장 "강제 보장"
+        // - window.RG 로딩 타이밍과 무관하게 로컬스토리지에 먼저 확실히 저장한다.
         try{
-          if (token && typeof token === 'string' && token.trim()){
-            const t = token.trim();
-
-            // 2-1) RG 헬퍼 우선
-            if (window.RG && typeof window.RG.setAuthToken === 'function'){
-              window.RG.setAuthToken(t);
-            }
-
-            // 2-2) RG 로딩/예외와 무관하게 로컬스토리지에 “확실히” 저장
-            localStorage.setItem('rg_jwt_token', t);
+          if (token && typeof token === "string" && token.trim()){
+            localStorage.setItem("rg_jwt_token", token.trim());
           }
-        }catch(__){
-          // 토큰 설정이 실패하더라도 로그인 자체는 계속 진행
-        }
+        }catch(__){}
+
+        // - RG(app.js)가 준비되어 있으면 추가로 공식 헬퍼에도 반영(중복 OK)
+        try{
+          if (token && window.RG && typeof window.RG.setAuthToken === "function"){
+            window.RG.setAuthToken(token);
+          }
+        }catch(__){}
 
         // ③ 로그인 플래그 (기존 동작 유지)
         try{
-          // user-retro-games.html에서 로그인 여부를 빠르게 감지할 수 있도록 로컬 플래그
-          localStorage.setItem('rg_logged_in', '1');
+          localStorage.setItem("rg_logged_in", "1");
         }catch(_){}
 
         // ④ 메시지 표시
-        $loginMsg.textContent = '로그인 성공! 잠시 후 게임 홈으로 이동합니다.';
-        $loginMsg.className = 'msg ok';
+        $loginMsg.textContent = "로그인 성공! 잠시 후 게임 홈으로 이동합니다.";
+        $loginMsg.className = "msg ok";
 
         // ⑤ 선택적으로 세션 정보 프리로드 (실패해도 무시)
         try{
-          if (window.RG && typeof window.RG.getSession === 'function'){
+          if (window.RG && typeof window.RG.getSession === "function"){
             window.RG.getSession({ refresh:true });
           }
         }catch(_){}
 
-        // ⑥ next/redirect 파라미터가 있으면 우선, 없으면 user-retro-games.html
-        let target = BASE + 'user-retro-games.html';
-        try{
-          const qs = new URLSearchParams(location.search);
-          let next = qs.get('next') || qs.get('redirect') || '';
+        // ⑥ 로그인 후 이동 경로 결정
+        // - /login?next=... 또는 /login?redirect=... 를 지원 (서버/미들웨어/외부 링크 대응)
+        const params = new URLSearchParams(location.search);
+        const nextRaw = (params.get("next") || params.get("redirect") || "").trim();
 
-          if (next && typeof next === 'string'){
-            try{ next = decodeURIComponent(next); }catch(_){}
-
-            // 외부 URL 차단(보안) + 내부 경로만 허용
-            if (!/^https?:\/\//i.test(next)){
-              if (next.startsWith('/')) target = next;
-              else target = BASE + next.replace(/^\/+/, '');
-            }
+        let nextPath = "user-retro-games.html";
+        if (nextRaw){
+          // 보안/안정: 외부 URL 차단 + 내부 경로만 허용
+          if (!/^https?:\/\//i.test(nextRaw)){
+            nextPath = nextRaw.replace(/^\//, "");
           }
-        }catch(_){}
+        }
 
         setTimeout(() => {
-          location.href = target;
+          location.href = BASE + nextPath;
         }, 600);
       }catch(err){
         const msg = (err && (err.message || err.toString())) || '서버 오류';

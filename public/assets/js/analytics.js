@@ -150,7 +150,14 @@
     }
   };
 
-  const safeParse = (s, d) => { try { return JSON.parse(s); } catch { return d; } };
+  const safeParse = (s, d) => {
+    try {
+      if (s === null || s === undefined || s === '') return d;
+      return JSON.parse(s);
+    } catch {
+      return d;
+    }
+  };
 
   const getDevice = () => ({
     ua: navigator.userAgent,

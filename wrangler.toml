@@ -26,5 +26,5 @@ pages_build_output_dir = "public"
 # ──────────────────────────────────────────────────────────────
 [vars]
 JWT_ISSUER   = "retro-games"
-JWT_AUDIENCE = "retro-games-client"
+JWT_AUD = "retro-games-client"
 JWT_EXPIRY   = "7d"

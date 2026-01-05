@@ -18,7 +18,7 @@
     // Run only if analytics.js exists and exposes init()
     try {
       if (window.Analytics && typeof window.Analytics.init === 'function') {
-        window.Analytics.init({ collectEndpoint: '/analytics/collect' });
+        window.Analytics.init({ collectEndpoint: '/api/analytics/collect' });
       }
     } catch (_e) { /* noop */ }
   }

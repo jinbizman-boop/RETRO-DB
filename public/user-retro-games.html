@@ -2639,10 +2639,18 @@
 
       // ⚠ defer 스크립트(app.js)가 먼저 실행된 뒤에 가드를 태우기 위해
       //    DOMContentLoaded 시점에 runGuard 실행
+      function __rgWaitForRGAndRun(){
+        if (window.RG && typeof window.RG.getSession === "function") {
+          runGuard();
+          return;
+        }
+        setTimeout(__rgWaitForRGAndRun, 50);
+      }
+
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", runGuard);
+        document.addEventListener("DOMContentLoaded", __rgWaitForRGAndRun);
       } else {
-        runGuard();
+        __rgWaitForRGAndRun();
       }
     })();
 

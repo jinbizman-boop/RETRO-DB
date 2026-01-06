@@ -2210,9 +2210,17 @@
       if(!payload) return;
 
       // ✅ userId를 “가장 먼저” 확정 (prefix 섞임 방지)
-      const incomingUserId = (payload.userId != null)
-        ? payload.userId
-        : (payload.user_id != null ? payload.user_id : null);
+      // - app.js 위임 payload는 { kind, payload, user } 형태일 수 있으므로
+      //   payload.user.id / payload.payload.user.id 까지 모두 흡수해야 유저 섞임이 안 난다.
+      const incomingUserId =
+        (payload && payload.userId != null) ? payload.userId :
+        (payload && payload.user_id != null) ? payload.user_id :
+        (payload && payload.user && payload.user.id != null) ? payload.user.id :
+        (payload && payload.user && payload.user.userId != null) ? payload.user.userId :
+        (payload && payload.payload && payload.payload.userId != null) ? payload.payload.userId :
+        (payload && payload.payload && payload.payload.user_id != null) ? payload.payload.user_id :
+        (payload && payload.payload && payload.payload.user && payload.payload.user.id != null) ? payload.payload.user.id :
+        null;
 
       if (incomingUserId != null) {
         const newUid = String(incomingUserId);
@@ -3127,8 +3135,12 @@
 
     function logoutFromSettings(){
       try{
-        if(window.RG && typeof window.RG.logout === "function"){
-          window.RG.logout().catch(function(){});
+        if(window.RG){
+          if (typeof window.RG.logout === "function") {
+            window.RG.logout().catch(function(){});
+          } else if (typeof window.RG.signout === "function") {
+            window.RG.signout().catch(function(){});
+          }
         }
       }catch(e){}
 

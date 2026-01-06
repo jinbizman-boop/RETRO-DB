@@ -3134,7 +3134,12 @@
     }
 
     function logoutFromSettings(){
+      // ✅ logout.html (존재하지 않음)로 이동 금지 → 로그아웃/유저전환 꼬임 원인
+      // ✅ app.js(RG.signout/logout)가 내부에서 토큰 정리 + goHome(/index.html) 이동까지 처리함
       try{
+        // (루프 방지용) 허브 auth 재시도 카운터도 제거
+        try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
+
         if(window.RG){
           if (typeof window.RG.logout === "function") {
             window.RG.logout().catch(function(){});
@@ -3144,7 +3149,7 @@
         }
       }catch(e){}
 
-      // ✅ HUD + 로컬스토리지도 같이 초기화
+      // ✅ HUD + 로컬스토리지도 같이 초기화 (즉시 화면 반영)
       try{
         ACCOUNT_TOTALS.userId = null;
         resetAccountTotalsAndStorage();
@@ -3152,9 +3157,7 @@
         console.warn("[RG] logout reset error:", e);
       }
 
-      try{
-        window.location.href = BASE + "logout.html";
-      }catch(e){}
+      // ✅ 여기서 별도 location 이동하지 않는다 (RG.logout/signout가 이동 처리)
     }
 
     window.openSettingsModal = openSettingsModal;

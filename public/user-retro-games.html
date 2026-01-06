@@ -2544,25 +2544,40 @@
       }
     };
 
-    (function consumeQueryReward(){
-      const p = new URLSearchParams(location.search);
-      const c = NUM(p.get('coins'));
-      const tk = NUM(p.get('tickets'));
-      const x = NUM(p.get('xp'));
-      if (c || tk || x){
-        addReward({coins:c,tickets:tk,xp:x});
-        history.replaceState({}, "", location.pathname);
-      }
-    })();
+    (function consumeRewardsSafely(){
+      function run(){
+        // ✅ userId 확정 전에는 rg_guest 로 적립될 수 있으므로 대기
+        if (!ACCOUNT_TOTALS.userId) {
+          setTimeout(run, 100);
+          return;
+        }
 
-    (function consumeQueuedReward(){
-      const raw = localStorage.getItem('rg_reward');
-      if(!raw) return;
-      try{
-        const r = JSON.parse(raw)||{};
-        if (r && (r.coins||r.tickets||r.xp)) addReward(r);
-      }catch(e){}
-      localStorage.removeItem('rg_reward');
+        // query reward
+        try{
+          const p = new URLSearchParams(location.search);
+          const c = NUM(p.get('coins'));
+          const tk = NUM(p.get('tickets'));
+          const x = NUM(p.get('xp'));
+          if (c || tk || x){
+            addReward({coins:c,tickets:tk,xp:x});
+            history.replaceState({}, "", location.pathname);
+          }
+        }catch(e){}
+
+        // queued reward
+        try{
+          const raw = localStorage.getItem('rg_reward');
+          if(raw){
+            try{
+              const r = JSON.parse(raw)||{};
+              if (r && (r.coins||r.tickets||r.xp)) addReward(r);
+            }catch(e){}
+            localStorage.removeItem('rg_reward');
+          }
+        }catch(e){}
+      }
+
+      run();
     })();
 
     (function(){

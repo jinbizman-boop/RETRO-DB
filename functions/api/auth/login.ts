@@ -647,6 +647,17 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
           공통으로 env.JWT_SECRET 기반 HS256 서명 사용
         - _middleware.ts 에서 jwtVerify 로 일관되게 검증
     ───────────────────────────────────────────────────────── */
+    const secret = env.JWT_SECRET;
+    if (!secret || typeof secret !== "string" || secret.length < 16) {
+      return withCORS(
+        json(
+          { ok: false, error: "JWT_SECRET not set (or too short)" },
+          { status: 500, headers: { "Cache-Control": "no-store" } }
+        ),
+        env.CORS_ORIGIN
+      );
+    }
+
     const token = await jwtSign(
       {
         sub: uid,
@@ -654,7 +665,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
         aud: env.JWT_AUD || "retro-games-web",
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12, // 12h
       },
-      env.JWT_SECRET || "dev-only-secret"
+      secret
     );
 
     const took = Math.round(performance.now() - started);

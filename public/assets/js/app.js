@@ -639,7 +639,7 @@
     const backTo =
       location.pathname + location.search + location.hash;
     const loginUrl =
-      "login.html?redirect=" + encodeURIComponent(backTo);
+      "login.html?next=" + encodeURIComponent(backTo);
 
     // 3) 게임 페이지면 무조건 리다이렉트(모달 금지)
     if (isGamePage()) {
@@ -1356,6 +1356,7 @@
     requireAuth,
     isAuthed,
     signout,
+    logout: signout,
     listGames,
     purchase,
     luckySpin,

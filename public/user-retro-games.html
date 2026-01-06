@@ -2362,8 +2362,8 @@
 
     function redirectToLogin(){
       try{
-        const next = encodeURIComponent(location.pathname + location.search);
-        window.location.href = BASE + "login.html?next=" + next;
+        const redirect = encodeURIComponent(location.pathname + location.search + location.hash);
+        window.location.href = BASE + "login.html?redirect=" + redirect;
       }catch(e){
         window.location.href = BASE + "login.html";
       }

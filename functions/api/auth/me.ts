@@ -631,11 +631,28 @@ export const onRequest: PagesFunction<Env> = async ({
       env.CORS_ORIGIN
     );
   } catch (e: any) {
-    // 인증 실패나 기타 오류는 401 유지
+    const msg = String(e?.message || e || "");
+    const m = msg.toLowerCase();
+
+    // ✅ "인증 실패"로 볼 수 있는 케이스만 401 유지
+    const isAuthError =
+      m.includes("missing bearer") ||
+      m.includes("missing token") ||
+      m.includes("invalid token") ||
+      m.includes("invalid signature") ||
+      m.includes("token expired") ||
+      m.includes("expired") ||
+      m.includes("issuer") ||
+      m.includes("audience") ||
+      m.includes("require") ||
+      m.includes("uuid");
+
+    const status = isAuthError ? 401 : 500;
+
     return withCORS(
       json(
-        { error: String(e?.message || e) },
-        { status: 401, headers: { "Cache-Control": "no-store" } }
+        { error: msg },
+        { status, headers: { "Cache-Control": "no-store" } }
       ),
       env.CORS_ORIGIN
     );

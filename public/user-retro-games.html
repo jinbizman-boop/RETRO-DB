@@ -2500,8 +2500,27 @@
         });
 
         if(!res.ok){
-          // ✅ 토큰이 있는데 401/403이면 토큰 정리(루프/튕김 방지)
-          if (token && (res.status === 401 || res.status === 403)) {
+          // ✅ 401/403이라도 “진짜 토큰 문제”일 때만 토큰 삭제
+          let errText = "";
+          try{
+            const ct = (res.headers.get("content-type") || "").toLowerCase();
+            if (ct.includes("application/json")) {
+              const j = await res.json().catch(()=>null);
+              errText = String(j?.error || j?.message || "");
+            }
+          }catch(_){}
+
+          const em = (errText || "").toLowerCase();
+          const isRealTokenError =
+            em.includes("invalid token") ||
+            em.includes("invalid signature") ||
+            em.includes("expired") ||
+            em.includes("missing bearer") ||
+            em.includes("missing token") ||
+            em.includes("issuer") ||
+            em.includes("audience");
+
+          if (token && (res.status === 401 || res.status === 403) && isRealTokenError) {
             try{ localStorage.removeItem("rg_jwt_token"); }catch(_){}
             try{ localStorage.removeItem("rg_token"); }catch(_){}
             try{ localStorage.removeItem("token"); }catch(_){}

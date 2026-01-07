@@ -644,8 +644,8 @@ export const onRequest: PagesFunction<Env> = async ({
       m.includes("expired") ||
       m.includes("issuer") ||
       m.includes("audience") ||
-      m.includes("require") ||
-      m.includes("uuid");
+      m.includes("jwt_secret") ||
+      m.includes("jwt secret");
 
     const status = isAuthError ? 401 : 500;
 

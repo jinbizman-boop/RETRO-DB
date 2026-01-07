@@ -2620,17 +2620,22 @@
                     tries = 0;
                   }
 
-                  if (tries < 3) {
+                  // ✅ 로그인 직후 전파 지연/서버 웜업을 고려해 재시도 폭 확장
+                  if (tries < 12) {
                     try{ sessionStorage.setItem("rg_auth_retry", String(tries + 1)); }catch(_){}
                     setTimeout(() => {
                       try { runGuard(); } catch(_){}
-                    }, 450 * (tries + 1));
+                    }, 700 * (tries + 1));
                     return;
                   }
 
+                  // ✅ 토큰은 있는데 /me가 계속 실패하면 "로그인으로 튕기기"보다
+                  // ✅ 허브에 그대로 머무르게 해서 루프/튕김을 차단
                   try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
+                  return;
                 }
 
+                // 토큰이 아예 없을 때만 로그인으로 이동
                 redirectToLogin();
               } else {
                 try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}

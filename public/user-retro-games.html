@@ -2648,8 +2648,8 @@
                     return;
                   }
 
-                  // ✅ 토큰은 있는데 /me가 계속 실패하면 "로그인으로 튕기기"보다
-                  // ✅ 허브에 그대로 머무르게 해서 루프/튕김을 차단
+                  // ✅ 토큰이 있는데도 me 확정이 안 되면 "로그인으로 튕김"이 아니라
+                  // ✅ 허브에 머무르게 해서 루프/튕김을 차단
                   try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
                   return;
                 }
@@ -2676,15 +2676,17 @@
                   tries = 0;
                 }
 
-                if (tries < 3) {
+                if (tries < 12) {
                   try{ sessionStorage.setItem("rg_auth_retry", String(tries + 1)); }catch(_){}
                   setTimeout(() => {
                     try { runGuard(); } catch(_){}
-                  }, 450 * (tries + 1));
+                  }, 700 * (tries + 1));
                   return;
                 }
 
+                // ✅ 토큰이 있는데도 계속 실패하면 로그인으로 튕기지 않고 허브에 유지
                 try{ sessionStorage.removeItem("rg_auth_retry"); }catch(_){}
+                return;
               }
 
               redirectToLogin();

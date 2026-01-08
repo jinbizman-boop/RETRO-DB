@@ -631,19 +631,23 @@
     const me = await getSession();
     if (me) return true;
 
-    // ✅ 로그인 직후 /api/auth/me 가 일시 실패해도 "비로그인 처리"로 튕기지 않게
+    // ✅ 토큰만 있고 /me가 실패하는 “불안정 상태”는
+    //    게임/허브 진입 전에 로그인 페이지로 재확인시키는 쪽이 안전하다.
+    //    (현재 프로젝트의 “로그인 튕김/루프”는 여기서 시작되는 경우가 많음)
     const token = getAuthToken();
-    if (token) return true;
+    if (token) {
+      // 토큰은 있는데 세션이 안 잡히면, 일단 허브로 보내지 말고 로그인에서 재검증
+      nav("/login?redirect=" + encodeURIComponent("/user-retro-games"));
+      return false;
+    }
 
-    // 2) 로그인 후 원래 페이지로 돌아오기 위한 redirect 파라미터
-    const backTo =
-      location.pathname + location.search + location.hash;
+    // 2) 로그인 성공 후에는 항상 "유저 허브"로 보낸다 (요구사항 5번)
     const loginUrl =
-      "login.html?next=" + encodeURIComponent(backTo);
+      "/login?redirect=" + encodeURIComponent("/user-retro-games");
 
     // 3) 게임 페이지면 무조건 리다이렉트(모달 금지)
     if (isGamePage()) {
-      nav(loginUrl); // iframe 안이면 top으로 올려서 이동
+      nav(loginUrl);
       return false;
     }
 
@@ -686,33 +690,22 @@
    */
   const goHome = async () => {
     try {
-      // ✅ 로그인 직후 /api/auth/me 가 일시적으로 실패해도 "튕김" 방지
-      // - 토큰이 있으면 우선 허브로 보내고, 허브에서 세션 갱신을 시도하도록 한다.
-      const token = getAuthToken();
-
       const me = await getSession();
-      if (me || token) {
-        // ✅ 정적 파일 실존 경로로 고정 (라우팅/리다이렉트 꼬임 방지)
-        nav("/user-retro-games.html");
-      } else {
-        nav("/index.html");
-      }
-    } catch (e) {
-      // ✅ 토큰이 있으면 index로 떨어지지 않게 (로그인 직후 튕김 방지)
-      const token = getAuthToken();
-      if (token) {
-        nav("/user-retro-games.html");
+      if (me) {
+        nav("/user-retro-games");
         return;
       }
-      debugLog("[nav] goHome failed, fallback to index", e);
-      nav("/index.html");
+      nav("/"); // 비로그인 메인
+    } catch (e) {
+      debugLog("[nav] goHome failed, fallback to /", e);
+      nav("/");
     }
   }
 
-  const goLogin = () => nav("/login.html");
-  const goSignup = () => nav("/signup.html");
-  const goShop = () => nav("/shop.html");
-  const goUserGames = () => nav("/user-retro-games.html"); // 기존 파일명 유지
+  const goLogin = () => nav("/login");
+  const goSignup = () => nav("/signup");
+  const goShop = () => nav("/shop");
+  const goUserGames = () => nav("/user-retro-games");
 
   /* ───────────────────────────── 게임/프로필 API ───────────────────────────── */
   const listGames = async () => {

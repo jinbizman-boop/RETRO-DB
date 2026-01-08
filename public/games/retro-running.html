@@ -46,83 +46,41 @@
   <!-- 전역 유틸 -->
 <script defer src="../assets/js/app.js"></script>
 <script>
-  // ✅ Game entry auth gate (auth first → then start game)
-  // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
-  // - 이유: 게임 스크립트가 window.load / DOMReady 타이밍에 의존해도 안전하게 초기화됨
+  // ✅ Game page hard auth gate
+  // - 목적: "비로그인 상태에서 직접 URL 접근"을 100% 차단 (모달 허용 X)
+  // - 동작: 세션 없으면 즉시 /login?redirect=<현재경로> 로 이동
   (function () {
-    const PARAM = 'rg_authed';
-    const KEY = 'rg_authed_once:' + location.pathname;
-
-    function hasAuthedParam() {
-      try {
-        return new URLSearchParams(location.search).get(PARAM) === '1';
-      } catch {
-        return false;
-      }
+    function buildRedirectUrl() {
+      const path = location.pathname + location.search + location.hash;
+      return '/login?redirect=' + encodeURIComponent(path);
     }
 
-    function hasSessionFlag() {
+    async function hardGate() {
       try {
-        return sessionStorage.getItem(KEY) === '1';
-      } catch {
-        return false;
-      }
-    }
+        const getSession =
+          (window.RG && typeof window.RG.getSession === 'function')
+            ? window.RG.getSession
+            : (typeof window.getSession === 'function' ? window.getSession : null);
 
-    function setSessionFlag() {
-      try {
-        sessionStorage.setItem(KEY, '1');
-      } catch {}
-    }
+        // app.js가 로드되기 전이면 실행 불가 → load 이후 다시 시도
+        if (!getSession) return;
 
-    function cleanUrlParam() {
-      try {
-        const clean = new URL(location.href);
-        clean.searchParams.delete(PARAM);
-        history.replaceState({}, document.title, clean.toString());
-      } catch {}
-    }
+        const s = await getSession();
 
-    async function ensureAuthThenReloadOnce() {
-      try {
-        const fn =
-          (window.RG && typeof window.RG.requireAuth === 'function')
-            ? window.RG.requireAuth
-            : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
-
-        // app.js가 아직 로드되지 않았으면 그냥 통과(다만 보통 load 시점엔 로드됨)
-        if (!fn) return;
-
-        const ok = await fn(); // 비로그인이면 requireAuth 내부에서 모달/리다이렉트 처리
-        if (ok === false) return;
-
-        // 로그인 확인 완료 → 이 페이지에서 1회만 리로드하도록 플래그
-        setSessionFlag();
-
-        // param이 없으면 param을 붙여 리로드(게임을 "지금부터" 시작)
-        if (!hasAuthedParam()) {
-          const url = new URL(location.href);
-          url.searchParams.set(PARAM, '1');
-          location.replace(url.toString());
+        // token/accessToken 둘 중 하나라도 없으면 비로그인으로 간주하고 강제 이동
+        const token = s && (s.token || s.accessToken);
+        if (!token) {
+          location.replace(buildRedirectUrl());
           return;
         }
-
-        // param이 이미 있으면(리로드 후) URL만 정리
-        cleanUrlParam();
       } catch (e) {
-        console.warn('[RG][auth] requireAuth gate error:', e);
+        // 예외가 나도 안전하게 로그인으로 보냄(게임 실행 방지)
+        location.replace(buildRedirectUrl());
       }
     }
 
-    // 이미 인증 리로드를 한 상태면(세션 플래그 or param) 그냥 진행 + param 정리
-    if (hasAuthedParam() || hasSessionFlag()) {
-      if (hasAuthedParam()) cleanUrlParam();
-      return;
-    }
-
-    // app.js가 defer라서, 안전하게 load 이후 requireAuth 실행
     window.addEventListener('load', function () {
-      void ensureAuthThenReloadOnce();
+      void hardGate();
     }, { once: true });
   })();
 </script>
@@ -883,7 +841,7 @@
   <div class="shell">
     <div class="gameLayout">
       <!-- 좌측 세로 광고 배너 -->
-      <aside class="sideAd sideAd-left" aria-label="left vertical ad">
+      <aside class="sideAd left" aria-label="left vertical ad">
         <div class="sideAdInner">
           <!-- 좌우측 사이드 수직형 광고 -->
           <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"
@@ -1047,7 +1005,7 @@
         </div>
 
       <!-- 우측 세로형 광고 배너 -->
-      <aside class="sideAd sideAd-right" aria-label="오른쪽 광고 영역">
+      <aside class="sideAd right" aria-label="오른쪽 광고 영역">
         <div class="sideAdInner">
           <!-- 좌우측 사이드 수직형 광고 -->
           <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6713974265397310"

@@ -470,7 +470,7 @@
     <div class="dialog">
       <button class="x" aria-label="닫기" onclick="closeAuth()">×</button>
       <h3 id="am-title">우리의 동료가 되어주세요!</h3>
-      <p>로그인 후 모든 미니게임과 행운 뽑기를 즐길 수 있어요.</p>
+      <p>로그인 후 이용 가능합니다.</p>
       <div class="actions">
         <button class="cta" onclick="goLogin()">로그인하기</button>
         <button class="cta alt" onclick="goSignup()">회원가입</button>
@@ -484,9 +484,9 @@
   /* 로컬 파일 경로(디자인 유지용) */
   const BASE = "/";
 
-  /* 이동 함수: app.js 전역이 있으면 그것을 사용, 없으면 폴백 */
-  function goLogin(){ if (window.goLogin) return window.goLogin(); location.href = "/login"; }
-  function goSignup(){ if (window.goSignup) return window.goSignup(); location.href = "/signup"; }
+  /* 이동 함수: index에서는 "항상" 정확한 라우트로 이동(재귀/충돌 방지) */
+  function goLogin(){ location.href = "/login?redirect=%2Fuser-retro-games"; }
+  function goSignup(){ location.href = "/signup?redirect=%2Fuser-retro-games"; }
 
   /* 인증 요구(모달) — 기존 UX 유지 */
   const modal = document.getElementById('authModal');
@@ -500,15 +500,37 @@
       // ✅ app.js(RG)가 있으면 "세션(/api/auth/me)" 기준으로만 판단
       if(window.RG && typeof window.RG.getSession === 'function'){
         const me = await window.RG.getSession({ refresh: true });
-        if(me){
-          location.href = BASE + "games/" + gameFile;
+
+        // ✅ "로그인" 판정 강화 (null/guest 방지)
+        const uid =
+          me?.userId ||
+          me?.id ||
+          me?.user?.id ||
+          me?.user?.userId ||
+          me?.profile?.id;
+
+        // ✅ 게스트/익명/비인증 세션 오판 방지(플래그가 있으면 반드시 반영)
+        const isGuest =
+          !!(me?.guest || me?.isGuest || me?.anonymous || me?.isAnonymous);
+
+        const isAuthedFlag =
+          (me?.isAuthenticated ?? me?.authenticated);
+
+        const isAuthed =
+          !!uid && !isGuest && (isAuthedFlag === undefined ? true : !!isAuthedFlag);
+
+        if(isAuthed){
+          // ✅ /games/2048 처럼 "확장자 없는 경로"로 통일
+          const route = String(gameFile || '').replace(/\.html?$/i, '');
+          location.href = BASE + "games/" + route;
           return;
         }
+
         requireAuth();
         return;
       }
 
-      // ✅ 폴백: 토큰만으로는 로그인으로 간주하지 않는다(요구 UX: 비로그인 팝업)
+      // ✅ RG가 없으면 무조건 비로그인 UX(팝업)
       requireAuth();
     }catch(e){
       requireAuth();

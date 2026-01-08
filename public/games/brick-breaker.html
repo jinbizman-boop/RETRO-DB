@@ -11,7 +11,7 @@
   <link rel="alternate icon" href="/favicon.ico">
 
   <!-- === Common SEO/A11y (auto-inserted) === -->
-  <link rel="stylesheet" href="../assets/css/game-frame.css">
+  <link rel="stylesheet" href="/assets/css/game-frame.css">
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
   <link rel="manifest" href="/site.webmanifest">
@@ -124,7 +124,7 @@
     }, { once: true });
   })();
 </script>
-  <script defer src="../assets/js/analytics.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
   <!-- ✅ 레거시 개별 게임 스크립트 제거 (통합 app.js 구조 사용) -->
   <!-- <script src="/assets/js/games/brick-breaker.js"></script> -->
 
@@ -547,8 +547,8 @@
         padding-bottom:calc(12px + env(safe-area-inset-bottom,0));
       }
       .cabinet{
-        width:100vw;
-        border-radius:0;
+        width:min(1200px,96vw);
+        border-radius:18px;
       }
       .marquee{
         padding:12px;
@@ -742,11 +742,7 @@
           <div class="screen">
             <div class="bezel">
               <div class="canvasWrap" id="canvasWrap">
-                <div class="game-frame">
-                  <div class="game-canvas">
-                    <canvas id="game"></canvas>
-                  </div>
-                </div>
+                <canvas id="game"></canvas>
               </div>
               <div id="gameOver" class="overlay" aria-live="polite" role="alert">
                 <div>

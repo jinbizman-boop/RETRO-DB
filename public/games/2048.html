@@ -11,7 +11,7 @@
   <link rel="alternate icon" href="/favicon.ico">
 
   <!-- === Common SEO/A11y (auto-inserted) === -->
-  <link rel="stylesheet" href="../assets/css/game-frame.css">
+  <link rel="stylesheet" href="/assets/css/game-frame.css">
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
   <link rel="manifest" href="/site.webmanifest">
@@ -45,7 +45,7 @@
   <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
 
   <!-- 전역 유틸 (정상 app.js 버전 사용) -->
-<script defer src="../assets/js/app.js"></script>
+<script defer src="/assets/js/app.js"></script>
 <script>
   // ✅ Game entry auth gate (auth first → then start game)
   // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
@@ -127,7 +127,7 @@
     }, { once: true });
   })();
 </script>
-<script defer src="../assets/js/analytics.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
   <!-- 레거시 게임 스크립트 의존 제거: /assets/js/games/2048.js는 더 이상 로드하지 않음 -->
   
   <style>
@@ -440,37 +440,36 @@
 
   <!-- 2048 전용 배경 음악 (loop, volume 30%) -->
   <audio id="bgm2048" src="/assets/music/2048-background.mp3" loop preload="auto"></audio>
-
-  <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
-  <aside class="sideAd left" aria-label="left vertical ad">
-    <div class="sideAdInner">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot="4514999077"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
-  </aside>
-
-  <aside class="sideAd right" aria-label="right vertical ad">
-    <div class="sideAdInner">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot="4514999077"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
-  </aside>
-
   <div class="shell">
+      <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
+      <aside class="sideAd left" aria-label="left vertical ad">
+        <div class="sideAdInner">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot="4514999077"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
+        </div>
+      </aside>
+
+      <aside class="sideAd right" aria-label="right vertical ad">
+        <div class="sideAdInner">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot="4514999077"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
+        </div>
+      </aside>
+
       <!-- 아케이드 캐비닛 -->
       <div class="game-frame">
       <section class="cabinet game-canvas" aria-label="retro arcade cabinet">
@@ -1365,23 +1364,35 @@
     }
   })();
 
-  window.addEventListener('load', async () => {
+window.addEventListener('load', async () => {
   try{
-    const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
-    if (typeof ra === 'function') await ra();
+    const ra =
+      (window.RG && typeof window.RG.requireAuth === 'function')
+        ? window.RG.requireAuth
+        : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
+
+    // app.js 로드/전역 함수가 없으면 안전하게 중단
+    if(!ra) return;
+
+    // ✅ 비로그인: requireAuth가 모달/리다이렉트 처리 후 false 반환 → 여기서 종료
+    const ok = await ra();
+    if (ok === false) return;
   }catch(e){
     return;
   }
 
-  // ✅ 인증 완료 → 세션 시작(runId 확보)
-  notifyStart();
+  // ✅ 인증된 경우에만 게임 생성/실행
+  const game = new G2048(document.getElementById('game'));
 
-  const game=new G2048(document.getElementById('game'));
   (function(){
-    const tier=$('#tier'), lvl=$('#lvlRange');
-    const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; game.setLevel(lv); };
+    const tier = $('#tier'), lvl = $('#lvlRange');
+    const applyTier = t => {
+      let lv = {beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t] || 1;
+      lvl.value = lv;
+      game.setLevel(lv);
+    };
     applyTier(tier.value);
-    lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
+    lvl.addEventListener('input', () => game.setLevel(+lvl.value));
     updateTicketUI();
 
     // ✅ 통합 HUD: app.js에 refreshWalletHUD가 있다면 우선 사용

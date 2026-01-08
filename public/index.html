@@ -485,8 +485,8 @@
   const BASE = "/";
 
   /* 이동 함수: app.js 전역이 있으면 그것을 사용, 없으면 폴백 */
-  function goLogin(){ if (window.goLogin) return window.goLogin(); location.href = BASE + "login.html"; }
-  function goSignup(){ if (window.goSignup) return window.goSignup(); location.href = BASE + "signup.html"; }
+  function goLogin(){ if (window.goLogin) return window.goLogin(); location.href = "/login"; }
+  function goSignup(){ if (window.goSignup) return window.goSignup(); location.href = "/signup"; }
 
   /* 인증 요구(모달) — 기존 UX 유지 */
   const modal = document.getElementById('authModal');
@@ -497,9 +497,9 @@
   // ✅ 게임 PLAY: 로그인 상태면 게임으로 이동, 비로그인이면 팝업
   async function playOrAuth(gameFile){
     try{
-      // app.js(RG)가 있으면 세션으로 판별
+      // ✅ app.js(RG)가 있으면 "세션(/api/auth/me)" 기준으로만 판단
       if(window.RG && typeof window.RG.getSession === 'function'){
-        const me = await window.RG.getSession();
+        const me = await window.RG.getSession({ refresh: true });
         if(me){
           location.href = BASE + "games/" + gameFile;
           return;
@@ -508,19 +508,9 @@
         return;
       }
 
-      // 폴백: 토큰이 있으면 로그인으로 간주 (로그인 직후 /me 지연 방어)
-      const token =
-        (window.RG && typeof window.RG.getAuthToken === 'function') ? window.RG.getAuthToken()
-        : (localStorage.getItem('rg_token') || localStorage.getItem('RG_TOKEN') || "");
-
-      if(token){
-        location.href = BASE + "games/" + gameFile;
-        return;
-      }
-
+      // ✅ 폴백: 토큰만으로는 로그인으로 간주하지 않는다(요구 UX: 비로그인 팝업)
       requireAuth();
     }catch(e){
-      // 안전 폴백: 문제 있으면 팝업
       requireAuth();
     }
   }

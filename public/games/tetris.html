@@ -46,84 +46,97 @@
   <!-- 전역 유틸 & 공통 스크립트 (정상 app.js 버전, 게임 페이지에서는 오토 인젝트 내부 조건으로 스킵) -->
 <script defer src="../assets/js/app.js"></script>
 <script>
-  // ✅ Game entry auth gate (auth first → then start game)
-  // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
-  // - 이유: 게임 스크립트가 window.load / DOMReady 타이밍에 의존해도 안전하게 초기화됨
+  // ✅ HARD Game entry auth gate (비로그인 직접 진입 차단)
+  // - 목표: tetris.html을 "반드시 로그인 후"에만 플레이 가능하게 강제
+  // - 방식:
+  //   1) 즉시 토큰 부재 시 /login.html로 리다이렉트
+  //   2) app.js 로드 후 RG.requireAuth가 준비되면 재검증(정확한 세션 확인)
+  //   3) 인증 완료 전까지는 화면을 잠그고(깜빡임/진입 실패 방지) game init을 늦춤
   (function () {
-    const PARAM = 'rg_authed';
-    const KEY = 'rg_authed_once:' + location.pathname;
+    var NEXT = encodeURIComponent(location.pathname + location.search + location.hash);
+    var LOGIN_URL = '/login.html?next=' + NEXT;
 
-    function hasAuthedParam() {
+    function hasToken() {
       try {
-        return new URLSearchParams(location.search).get(PARAM) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function hasSessionFlag() {
-      try {
-        return sessionStorage.getItem(KEY) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function setSessionFlag() {
-      try {
-        sessionStorage.setItem(KEY, '1');
-      } catch {}
-    }
-
-    function cleanUrlParam() {
-      try {
-        const clean = new URL(location.href);
-        clean.searchParams.delete(PARAM);
-        history.replaceState({}, document.title, clean.toString());
-      } catch {}
-    }
-
-    async function ensureAuthThenReloadOnce() {
-      try {
-        const fn =
-          (window.RG && typeof window.RG.requireAuth === 'function')
-            ? window.RG.requireAuth
-            : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
-
-        // app.js가 아직 로드되지 않았으면 그냥 통과(다만 보통 load 시점엔 로드됨)
-        if (!fn) return;
-
-        const ok = await fn(); // 비로그인이면 requireAuth 내부에서 모달/리다이렉트 처리
-        if (ok === false) return;
-
-        // 로그인 확인 완료 → 이 페이지에서 1회만 리로드하도록 플래그
-        setSessionFlag();
-
-        // param이 없으면 param을 붙여 리로드(게임을 "지금부터" 시작)
-        if (!hasAuthedParam()) {
-          const url = new URL(location.href);
-          url.searchParams.set(PARAM, '1');
-          location.replace(url.toString());
-          return;
-        }
-
-        // param이 이미 있으면(리로드 후) URL만 정리
-        cleanUrlParam();
+        // 프로젝트 공통 토큰 키(기존 흐름 기준)
+        var t = localStorage.getItem('rg_jwt_token');
+        return !!(t && String(t).trim());
       } catch (e) {
-        console.warn('[RG][auth] requireAuth gate error:', e);
+        return false;
       }
     }
 
-    // 이미 인증 리로드를 한 상태면(세션 플래그 or param) 그냥 진행 + param 정리
-    if (hasAuthedParam() || hasSessionFlag()) {
-      if (hasAuthedParam()) cleanUrlParam();
+    function lockUI() {
+      try { document.documentElement.classList.add('rg-auth-pending'); } catch (e) {}
+    }
+
+    function unlockUI() {
+      try { document.documentElement.classList.remove('rg-auth-pending'); } catch (e) {}
+    }
+
+    function hardRedirectToLogin() {
+      try { location.replace(LOGIN_URL); } catch (e) { location.href = LOGIN_URL; }
+    }
+
+    // 1) "즉시" 토큰 없으면 차단 (비로그인 직접 진입 1차 방어)
+    if (!hasToken()) {
+      lockUI();
+      hardRedirectToLogin();
       return;
     }
 
-    // app.js가 defer라서, 안전하게 load 이후 requireAuth 실행
-    window.addEventListener('load', function () {
-      void ensureAuthThenReloadOnce();
-    }, { once: true });
+    // 2) app.js의 requireAuth가 준비되면 "정식 인증"으로 2차 검증
+    lockUI();
+
+    function getRequireAuthFn() {
+      try {
+        if (window.RG && typeof window.RG.requireAuth === 'function') return window.RG.requireAuth;
+        if (typeof window.requireAuth === 'function') return window.requireAuth;
+      } catch (e) {}
+      return null;
+    }
+
+    function emitAuthed() {
+      try { window.dispatchEvent(new CustomEvent('rg:authed')); } catch (e) {}
+    }
+
+    function waitForRequireAuthThenCheck() {
+      var maxFrames = 240; // 약 4초(60fps) 내 준비되면 즉시 진행
+      (function tick() {
+        var fn = getRequireAuthFn();
+        if (fn) {
+          Promise.resolve()
+            .then(function () { return fn(); })
+            .then(function (ok) {
+              // requireAuth가 false를 반환하거나 내부에서 리다이렉트/모달 처리 시 여기서 종료
+              if (ok === false) { hardRedirectToLogin(); return; }
+              unlockUI();
+              emitAuthed();
+            })
+            .catch(function () {
+              // 예외면 보수적으로 로그인으로 보냄
+              hardRedirectToLogin();
+            });
+          return;
+        }
+
+        maxFrames--;
+        if (maxFrames <= 0) {
+          // requireAuth를 못 구했으면 토큰 기반으로만 통과(이미 1차 통과 상태)
+          unlockUI();
+          emitAuthed();
+          return;
+        }
+        requestAnimationFrame(tick);
+      })();
+    }
+
+    // defer(app.js) 보장 위해 DOMContentLoaded 이후 실행
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForRequireAuthThenCheck, { once: true });
+    } else {
+      waitForRequireAuthThenCheck();
+    }
   })();
 </script>
   <script defer src="../assets/js/analytics.js"></script>
@@ -643,37 +656,36 @@
 
 <body>
   <canvas id="fx"></canvas>
-
-  <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
-  <aside class="sideAd left" aria-label="left vertical ad">
-    <div class="sideAdInner">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot="4514999077"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
-  </aside>
-
-  <aside class="sideAd right" aria-label="right vertical ad">
-    <div class="sideAdInner">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot="4514999077"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
-  </aside>
-
   <div class="shell">
+      <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
+      <aside class="sideAd left" aria-label="left vertical ad">
+        <div class="sideAdInner">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot="4514999077"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
+        </div>
+      </aside>
+
+      <aside class="sideAd right" aria-label="right vertical ad">
+        <div class="sideAdInner">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-6713974265397310"
+               data-ad-slot="4514999077"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
+        </div>
+      </aside>
+
       <div class="game-frame">
       <section class="cabinet game-canvas" aria-label="retro arcade cabinet">
         <header class="marquee">
@@ -1211,18 +1223,34 @@
   function resumeBgm(){ try{ if(_bgm && _bgm.paused) _bgm.play().catch(()=>{}); }catch(e){} }
 
   /***** Canvas Tetris (게임 로직) *****/
-  window.addEventListener('load', async () => {
-    try{
-      const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
-      if (typeof ra === 'function') await ra();
-    }catch(e){
-      return;
+  // ✅ 게임 시작은 반드시 rg:authed 이후에만
+  // - HEAD auth gate가 성공하면 rg:authed를 dispatch함
+  // - 혹시 HEAD gate가 emit을 못했더라도, 토큰은 있으니 fallback으로 1회 실행
+  (function(){
+    var started = false;
+    var game = null;
+
+    function startGameOnce(){
+      if(started) return;
+      started = true;
+
+      // ✅ 인증 완료 → 세션 시작(runId 확보)
+      notifyStart();
+
+      // ✅ 실제 인스턴스 생성은 인증 이후에만
+      game = new Tetris(document.getElementById('game'));
+      updateTicketUI();
+      RG_syncWalletHUD();
     }
 
-    // ✅ 인증 완료 → 세션 시작(runId 확보)
-    notifyStart();
+    window.addEventListener('rg:authed', startGameOnce, { once:true });
 
-    (function(){
+    // fallback: authed 이벤트가 안 와도(load 이후) 1회 시작
+    window.addEventListener('load', function(){
+      setTimeout(startGameOnce, 0);
+    }, { once:true });
+  })();
+
     const COLS=10, ROWS=22, VISIBLE_ROWS=20;
     const COLORS = {
       I:'#7ad7ff', O:'#ffe17a', T:'#caa5ff', S:'#92ff9a',
@@ -1790,12 +1818,6 @@
         ctx.fillRect(px+5,py+5,cell-10,cell-10);
       }
     }
-
-    const game=new Tetris(document.getElementById('game'));
-    updateTicketUI();
-    RG_syncWalletHUD();
-  })();
-  }, { once:true });
 
   /***** Cabinet fit (debounced) *****/
   function fitCabinet(){

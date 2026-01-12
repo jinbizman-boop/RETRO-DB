@@ -632,13 +632,15 @@
     if (me) return true;
 
     // ✅ 토큰만 있고 /me가 실패하는 “불안정 상태”는
-    //    게임/허브 진입 전에 로그인 페이지로 재확인시키는 쪽이 안전하다.
-    //    (현재 프로젝트의 “로그인 튕김/루프”는 여기서 시작되는 경우가 많음)
+    //    (토큰 만료/깨짐/서버 비정상 응답 등) 루프를 만들 수 있으므로
+    //    토큰을 제거하고 로그인 화면에서 재인증만 유도한다.
     const token = getAuthToken();
     if (token) {
-      // 토큰은 있는데 세션이 안 잡히면, 일단 허브로 보내지 말고 로그인에서 재검증
-      nav("/login?redirect=" + encodeURIComponent("/user-retro-games.html"));
-      return false;
+      // 토큰이 깨졌을 가능성이 높으므로 제거
+      clearAuthToken();
+
+      // 이미 로그인 페이지(/login)라면 다시 /login 으로 보내지 말고 그대로 중단(루프 방지)
+      if (location.pathname.toLowerCase().startsWith("/login")) return false;
     }
 
     // 2) 로그인 성공 후에는 항상 "유저 허브"로 보낸다 (요구사항 5번)

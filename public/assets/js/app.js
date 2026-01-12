@@ -277,8 +277,32 @@
   /* ───────────────────── JWT 토큰 저장/조회 헬퍼 ───────────────────── */
   const getAuthToken = () => {
     try {
-      const v = localStorage.getItem(CFG.authStorageKey);
-      return v || "";
+      // 1) 정식 키(현재 표준)
+      const primary = localStorage.getItem(CFG.authStorageKey);
+      if (primary && typeof primary === "string" && primary.trim()) {
+        return primary.trim();
+      }
+
+      // 2) 레거시 키(과거/혼재 버전 대비) → 발견 시 정식 키로 마이그레이션
+      const legacyKeys = [
+        "rg_auth_token",
+        "rg_token",
+        "RG_AUTH_TOKEN",
+        "retro_jwt_token",
+      ];
+
+      for (const k of legacyKeys) {
+        const v = localStorage.getItem(k);
+        if (v && typeof v === "string" && v.trim()) {
+          const t = v.trim();
+          try {
+            localStorage.setItem(CFG.authStorageKey, t);
+          } catch (_) {}
+          return t;
+        }
+      }
+
+      return "";
     } catch {
       return "";
     }
@@ -286,10 +310,35 @@
 
   const setAuthToken = (token) => {
     try {
+      const legacyKeys = [
+        "rg_auth_token",
+        "rg_token",
+        "RG_AUTH_TOKEN",
+        "retro_jwt_token",
+      ];
+
       if (token && typeof token === "string" && token.trim()) {
-        localStorage.setItem(CFG.authStorageKey, token.trim());
+        const t = token.trim();
+
+        // 정식 키 저장
+        localStorage.setItem(CFG.authStorageKey, t);
+
+        // 레거시 키에도 같이 저장(혼재 버전 페이지 호환)
+        for (const k of legacyKeys) {
+          try {
+            localStorage.setItem(k, t);
+          } catch (_) {}
+        }
       } else {
+        // 정식 키 제거
         localStorage.removeItem(CFG.authStorageKey);
+
+        // 레거시 키도 같이 제거(꼬임 방지)
+        for (const k of legacyKeys) {
+          try {
+            localStorage.removeItem(k);
+          } catch (_) {}
+        }
       }
     } catch {
       /* 일부 브라우저/프라이빗 모드에서 실패 가능 → 조용히 무시 */

@@ -2609,6 +2609,28 @@
 
       // 메인 인증 가드
       async function runGuard() {
+        // ✅ localStorage 토큰이 비어있으면 Cookie(rg_jwt_token)에서 복구
+        (function hydrateTokenFromCookie(){
+          try{
+            const has =
+              localStorage.getItem("rg_jwt_token") ||
+              localStorage.getItem("rg_token") ||
+              localStorage.getItem("token") ||
+              "";
+            if (has) return;
+
+            const m = document.cookie.match(/(?:^|;\s*)rg_jwt_token=([^;]+)/);
+            if (m && m[1]) {
+              const t = decodeURIComponent(m[1] || "");
+              if (t) {
+                localStorage.setItem("rg_jwt_token", t);
+                localStorage.setItem("rg_token", t);
+                localStorage.setItem("token", t);
+              }
+            }
+          }catch(_){}
+        })();
+
         // 세션 확인 시작
         document.body.classList.add("auth-pending");
 

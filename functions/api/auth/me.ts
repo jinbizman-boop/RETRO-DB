@@ -505,7 +505,33 @@ export const onRequest: PagesFunction<Env> = async ({
 
   try {
     // ── 1) 인증 토큰 검사(필수: sub = users.id UUID) ─────────────────
-    const payload = await requireUser(request, env);
+    // ✅ Bearer 가 없으면 Cookie(rg_jwt_token)에서 보강 (로그인 튕김/리다이렉트 루프 방지)
+    let reqForAuth = request;
+    const hasAuthHeader = !!(
+      request.headers.get("Authorization") ||
+      request.headers.get("authorization")
+    );
+
+    if (!hasAuthHeader) {
+      const cookie =
+        request.headers.get("Cookie") ||
+        request.headers.get("cookie") ||
+        "";
+      const m = cookie.match(/(?:^|;\s*)rg_jwt_token=([^;]+)/);
+
+      if (m && m[1]) {
+        try {
+          const tokenFromCookie = decodeURIComponent(m[1]);
+          if (tokenFromCookie) {
+            const h = new Headers(request.headers);
+            h.set("Authorization", "Bearer " + tokenFromCookie);
+            reqForAuth = new Request(request, { headers: h });
+          }
+        } catch (_e) {}
+      }
+    }
+
+    const payload = await requireUser(reqForAuth, env);
     // payload.sub 는 users.id 와 동일한 uuid 문자열이라고 가정
 
     const sql = getSql(env);

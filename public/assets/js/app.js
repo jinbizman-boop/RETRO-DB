@@ -637,13 +637,13 @@
     const token = getAuthToken();
     if (token) {
       // 토큰은 있는데 세션이 안 잡히면, 일단 허브로 보내지 말고 로그인에서 재검증
-      nav("/login?redirect=" + encodeURIComponent("/user-retro-games"));
+      nav("/login?redirect=" + encodeURIComponent("/user-retro-games.html"));
       return false;
     }
 
     // 2) 로그인 성공 후에는 항상 "유저 허브"로 보낸다 (요구사항 5번)
     const loginUrl =
-      "/login?redirect=" + encodeURIComponent("/user-retro-games");
+      "/login?redirect=" + encodeURIComponent("/user-retro-games.html");
 
     // 3) 게임 페이지면 무조건 리다이렉트(모달 금지)
     if (isGamePage()) {
@@ -692,7 +692,7 @@
     try {
       const me = await getSession();
       if (me) {
-        nav("/user-retro-games");
+        nav("/user-retro-games.html");
         return;
       }
       nav("/"); // 비로그인 메인
@@ -705,7 +705,7 @@
   const goLogin = () => nav("/login");
   const goSignup = () => nav("/signup");
   const goShop = () => nav("/shop");
-  const goUserGames = () => nav("/user-retro-games");
+  const goUserGames = () => nav("/user-retro-games.html");
 
   /* ───────────────────────────── 게임/프로필 API ───────────────────────────── */
   const listGames = async () => {

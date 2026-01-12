@@ -677,6 +677,10 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
           headers: {
             "Cache-Control": "no-store",
             "X-Login-Took-ms": String(took),
+
+            // ✅ 로그인 튕김/루프 방지: 토큰을 Cookie에도 저장(허브에서 Bearer가 비어도 복구 가능)
+            // - 12시간(43200s) 유지, Secure/Lax
+            "Set-Cookie": `rg_jwt_token=${encodeURIComponent(token)}; Path=/; Max-Age=43200; Secure; SameSite=Lax`,
           },
         }
       ),

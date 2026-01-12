@@ -59,7 +59,22 @@ export const onRequest: PagesFunction<Env> = async (
   try {
     if (!env.JWT_SECRET) throw new Error("JWT_SECRET not set");
 
-    const token = parseBearer(request);
+    let token = parseBearer(request);
+
+    // ✅ Bearer 가 없으면 Cookie(rg_jwt_token)에서 보강
+    if (!token) {
+      const cookie =
+        request.headers.get("Cookie") ||
+        request.headers.get("cookie") ||
+        "";
+      const m = cookie.match(/(?:^|;\s*)rg_jwt_token=([^;]+)/);
+      if (m && m[1]) {
+        try {
+          token = decodeURIComponent(m[1]);
+        } catch (_e) {}
+      }
+    }
+
     if (!token) throw new Error("Missing token");
 
     // 발급 시와 동일한 정책으로 엄격 검증(iss/aud/sub)
@@ -98,6 +113,9 @@ export const onRequest: PagesFunction<Env> = async (
           headers: {
             "Cache-Control": "no-store",
             "X-Refresh-Took-ms": String(took),
+
+            // ✅ refresh로 재발급된 토큰도 Cookie 갱신
+            "Set-Cookie": `rg_jwt_token=${encodeURIComponent(fresh)}; Path=/; Max-Age=43200; Secure; SameSite=Lax`,
           },
         }
       ),

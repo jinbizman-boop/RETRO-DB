@@ -457,7 +457,7 @@
         const t = (localStorage.getItem("rg_jwt_token") || "").trim();
         if (t){
           // ✅ 실존 파일 경로로 고정 (루프/404 방지)
-          location.href = "/user-retro-games.html";
+          location.href = "/user-retro-games";
           return;
         }
       }catch(_){}
@@ -587,6 +587,7 @@
         try{
           if (token && typeof token === "string" && token.trim()){
             const t = token.trim();
+            localStorage.setItem("rg_auth_token", t);
             localStorage.setItem("rg_jwt_token", t);
           }
         }catch(__){}
@@ -621,27 +622,26 @@
         let nextRaw = (params.get("next") || params.get("redirect") || "").trim();
 
         // ✅ 기본: 실배포 허브 파일로 확정(라우팅/리라이트 이슈 방지)
-        let target = "/user-retro-games.html";
+        let target = "/user-retro-games";
 
         if (nextRaw){
           try{ nextRaw = decodeURIComponent(nextRaw); }catch(_){}
 
           if (!/^https?:\/\//i.test(nextRaw)){
-            // ✅ 정규화: /user-retro-games 로 들어와도 .html로 강제
+            // ✅ 정규화: /user-retro-games / user-retro-games.html 어떤 값이 와도 "클린 URL"로 통일
             if (
               nextRaw === "user-retro-games" ||
               nextRaw === "/user-retro-games" ||
               nextRaw === "user-retro-games.html" ||
               nextRaw === "/user-retro-games.html"
             ){
-              target = "/user-retro-games.html";
+              target = "/user-retro-games";
             }else{
               // 기타 내부 경로는 그대로 (단, 선행 슬래시 보장)
               target = nextRaw.startsWith("/") ? nextRaw : ("/" + nextRaw);
             }
           }
         }
-
         setTimeout(() => {
           try{
             if (window.top && window.top !== window) window.top.location.href = target;

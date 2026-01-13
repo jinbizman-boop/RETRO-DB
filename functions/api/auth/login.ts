@@ -672,7 +672,15 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
 
     return withCORS(
       json(
-        { ok: true, token, userId: uid },
+        {
+          ok: true,
+          success: true,
+          token,
+          accessToken: token,
+          jwt: token,
+          userId: uid,
+          user: { id: uid },
+        },
         {
           headers: {
             "Cache-Control": "no-store",
@@ -686,7 +694,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
       ),
       env.CORS_ORIGIN
     );
-  } catch (err: any) {
+    } catch (err: any) {
     // 파싱/검증 에러 포함 모든 예외 → 400
     return withCORS(
       json(

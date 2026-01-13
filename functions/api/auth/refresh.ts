@@ -108,7 +108,13 @@ export const onRequest: PagesFunction<Env> = async (
 
     return withCORS(
       json(
-        { ok: true, token: fresh },
+        {
+          ok: true,
+          success: true,
+          token: fresh,
+          accessToken: fresh,
+          jwt: fresh,
+        },
         {
           headers: {
             "Cache-Control": "no-store",
@@ -120,7 +126,7 @@ export const onRequest: PagesFunction<Env> = async (
         }
       ),
       env.CORS_ORIGIN
-    );
+    );  
   } catch (e: any) {
     const msg = String(e?.message || e);
     const status = isAuthErrorMessage(msg) ? 401 : 400;

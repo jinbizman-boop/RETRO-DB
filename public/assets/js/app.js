@@ -289,6 +289,7 @@
         "rg_token",
         "RG_AUTH_TOKEN",
         "retro_jwt_token",
+        "rg_jwt_token",
       ];
 
       for (const k of legacyKeys) {
@@ -315,6 +316,7 @@
         "rg_token",
         "RG_AUTH_TOKEN",
         "retro_jwt_token",
+        "rg_jwt_token",
       ];
 
       if (token && typeof token === "string" && token.trim()) {

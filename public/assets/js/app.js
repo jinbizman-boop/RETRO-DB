@@ -676,33 +676,34 @@
    *   모달이 없으면 로그인 페이지로 이동한다.
    */
   const requireAuth = async () => {
-    // 1) 세션 확인(캐시가 있으면 그대로 사용 / 없으면 /api/auth/me 조회)
+    const path = location.pathname.toLowerCase();
+
+    // ✅ [교체 1-핵심] 로그인 페이지에서는 절대 requireAuth가 개입하지 않는다
+    if (path.startsWith("/login") || path.includes("/login")) {
+      return false;
+    }
+
+    // 1) 세션 확인
     const me = await getSession();
     if (me) return true;
 
-    // ✅ 토큰만 있고 /me가 실패하는 “불안정 상태”는
-    //    (토큰 만료/깨짐/서버 비정상 응답 등) 루프를 만들 수 있으므로
-    //    토큰을 제거하고 로그인 화면에서 재인증만 유도한다.
+    // 2) 깨진 토큰 정리 (루프 방지)
     const token = getAuthToken();
     if (token) {
-      // 토큰이 깨졌을 가능성이 높으므로 제거
       clearAuthToken();
-
-      // 이미 로그인 페이지(/login)라면 다시 /login 으로 보내지 말고 그대로 중단(루프 방지)
-      if (location.pathname.toLowerCase().startsWith("/login")) return false;
     }
 
-    // 2) 로그인 성공 후에는 항상 "유저 허브"로 보낸다 (요구사항 5번)
+    // 3) 로그인 성공 후 복귀 지점은 "허브"로 고정
     const loginUrl =
-      "/login?redirect=" + encodeURIComponent("/user-retro-games.html");
+      "/login?redirect=" + encodeURIComponent("/user-retro-games");
 
-    // 3) 게임 페이지면 무조건 리다이렉트(모달 금지)
+    // 4) 게임 페이지 → 무조건 리다이렉트
     if (isGamePage()) {
       nav(loginUrl);
       return false;
     }
 
-    // 4) 일반 페이지: 모달이 있으면 모달, 없으면 리다이렉트
+    // 5) 일반 페이지 → 모달 우선, 없으면 리다이렉트
     const modal = qs("#authModal");
     if (modal) {
       openAuthModal();
@@ -711,7 +712,7 @@
 
     nav(loginUrl);
     return false;
-  }
+  };
 
   /* ───────────────────────────── 네비게이션 ───────────────────────────── */
 
@@ -743,7 +744,7 @@
     try {
       const me = await getSession();
       if (me) {
-        nav("/user-retro-games.html");
+        nav("/user-retro-games");
         return;
       }
       nav("/"); // 비로그인 메인
@@ -756,7 +757,7 @@
   const goLogin = () => nav("/login");
   const goSignup = () => nav("/signup");
   const goShop = () => nav("/shop");
-  const goUserGames = () => nav("/user-retro-games.html");
+  const goUserGames = () => nav("/user-retro-games");
 
   /* ───────────────────────────── 게임/프로필 API ───────────────────────────── */
   const listGames = async () => {

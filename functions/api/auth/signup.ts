@@ -562,9 +562,15 @@ export const onRequest: PagesFunction<Env> = async ({
       const tookMs = Math.round(performance.now() - t0);
       const payloadResponse: Record<string, any> = {
         ok: true,
+        success: true,
         userId,
+        user: { id: userId },
       };
-      if (token) payloadResponse.token = token;
+      if (token) {
+        payloadResponse.token = token;
+        payloadResponse.accessToken = token;
+        payloadResponse.jwt = token;
+      }
 
       return withCORS(
         json(payloadResponse, {

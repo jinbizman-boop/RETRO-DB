@@ -681,7 +681,8 @@
     const path = location.pathname.toLowerCase();
 
     // ✅ [교체 1-핵심] 로그인 페이지에서는 절대 requireAuth가 개입하지 않는다
-    if (path.startsWith("/login") || path.includes("/login")) {
+    // - location.pathname 기준이라 쿼리(?redirect=...)는 pathname에 포함되지 않음
+    if (path === "/login" || path === "/login.html") {
       return false;
     }
 
@@ -697,7 +698,7 @@
 
     // 3) 로그인 성공 후 복귀 지점은 "허브"로 고정
     const loginUrl =
-      "/login?redirect=" + encodeURIComponent("/user-retro-games");
+      "/login?redirect=" + encodeURIComponent("/user-retro-games.html");
 
     // 4) 게임 페이지 → 무조건 리다이렉트
     if (isGamePage()) {
@@ -746,7 +747,7 @@
     try {
       const me = await getSession();
       if (me) {
-        nav("/user-retro-games");
+        nav("/user-retro-games.html");
         return;
       }
       nav("/"); // 비로그인 메인
@@ -759,7 +760,7 @@
   const goLogin = () => nav("/login");
   const goSignup = () => nav("/signup");
   const goShop = () => nav("/shop");
-  const goUserGames = () => nav("/user-retro-games");
+  const goUserGames = () => nav("/user-retro-games.html");
 
   /* ───────────────────────────── 게임/프로필 API ───────────────────────────── */
   const listGames = async () => {

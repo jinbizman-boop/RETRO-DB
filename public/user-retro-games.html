@@ -2067,20 +2067,30 @@
       level:   null,   // ✅ HUD 공통 DOM용 계정 레벨
     };
 
-    // ✅ 유저별/게스트별 로컬스토리지 prefix
+    // ✅ [MASTER ENGINE] 유저 데이터 샌드박스 (데이터 섞임 원천 차단)
     function getStoragePrefix(){
+      // 1. 로그인된 유저 ID가 없으면 절대 개인 데이터를 로드하지 않음 (게스트 격리)
       const uid = ACCOUNT_TOTALS.userId;
-      if (!uid) return "rg_guest";
+      if (!uid || uid === "null" || uid === "undefined") return "rg_guest_sandbox";
+      
+      // 2. 유저 ID 기반 고유 네임스페이스 생성
       return "rg_u_" + String(uid);
     }
 
     function readTotalsFromLocal(){
       const prefix = getStoragePrefix();
+      
+      // 3. 데이터 무결성 검사 (Dirty Check): NaN이나 깨진 값이면 0으로 초기화
+      const safeNum = (key, def) => {
+        const val = localStorage.getItem(prefix + key);
+        return (val !== null && Number.isFinite(+val)) ? +val : def;
+      };
+
       return {
-        coins:   NUM(localStorage.getItem(prefix + '_coins')   || 0),
-        tickets: NUM(localStorage.getItem(prefix + '_tickets') || 0),
-        xp:      NUM(localStorage.getItem(prefix + '_xp')      || 0),
-        xpCap:   NUM(localStorage.getItem(prefix + '_xp_cap')  || 20000)
+        coins:   safeNum('_coins', 0),
+        tickets: safeNum('_tickets', 0),
+        xp:      safeNum('_xp', 0),
+        xpCap:   safeNum('_xp_cap', 20000)
       };
     }
 
@@ -2439,130 +2449,68 @@
       }
     }
 
+    // ✅ [MASTER ENGINE] 스마트 인증 가드 (로그인 튕김 및 루프 방지)
     window.ensureLoggedIn = async function ensureLoggedIn(){
       const unlock = function(){
-        try{ document.documentElement.classList.remove('rg-auth-lock'); }catch(e){}
+        try{ 
+          document.documentElement.classList.remove('rg-auth-lock');
+          document.body.classList.remove('auth-pending');
+          const ov = document.getElementById('authPendingOverlay');
+          if(ov) ov.style.display = 'none';
+        }catch(e){}
       };
 
-      // ✅ 토큰을 먼저 확보 (RG.getSession이 일시 실패해도 fallback 재시도 가능)
-      let token = "";
-      try{
-        token =
-          (window.RG && typeof window.RG.getAuthToken === "function")
-            ? (window.RG.getAuthToken() || "")
-            : (
-                localStorage.getItem("rg_jwt_token") ||
-                localStorage.getItem("rg_token") ||
-                localStorage.getItem("token") ||
-                ""
-              );
-      }catch(_){
-        token = "";
-      }
+      // 1. 토큰 확보 (로컬 스토리지 및 쿠키 교차 검증)
+      let token = (window.RG && typeof window.RG.getAuthToken === "function" && window.RG.getAuthToken()) || 
+                  localStorage.getItem("rg_jwt_token") || 
+                  localStorage.getItem("rg_token") || "";
 
-      try{
-        // ✅ 허브에서는 Bearer 토큰 기반이므로 app.js(RG)의 getSession을 우선 사용
+      try {
+        // 2. 고속 세션 검증 (RG App.js 우선)
         if (window.RG && typeof window.RG.getSession === "function") {
           const me = await window.RG.getSession({ refresh: true });
-
-          // ✅ 정상 세션이면 즉시 확정
           if(me && me.id){
+            // 로그인 성공: 유저 식별 확정
             window.__RG_CURRENT_USER__ = me;
             updateUserGreeting(me);
             applyAccountStatsFromUser(me);
-
-            syncWalletFromServer().catch(()=>{});
-            return;
-          }
-
-          // ✅ 로그인 직후 전파 지연/일시 실패 대비:
-          // 토큰이 있으면 여기서 바로 초기화/로그인 이동하지 말고
-          // 아래 fallback(/api/auth/me + Bearer)로 한 번 더 확정 시도
-          if(!token){
-            ACCOUNT_TOTALS.userId = null;
-            updateUserGreeting(null);
-            resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
+            syncWalletFromServer().catch(()=>{}); // 지갑 백그라운드 동기화
+            unlock();
             return;
           }
         }
 
-        // (fallback) /api/auth/me 호출 + Bearer 보강 (RG.getSession이 없거나/실패한 경우 포함)
-        const headers = {
-          "Accept": "application/json",
-          "Cache-Control": "no-store"
-        };
-        if (token) headers["Authorization"] = "Bearer " + token;
+        // 3. Fallback: API 직접 호출 (토큰은 있는데 세션이 없는 경우)
+        if(token) {
+          const headers = { "Accept": "application/json", "Authorization": "Bearer " + token };
+          const res = await fetch(AUTH_API_BASE + "/me", { method: "GET", headers });
 
-        const res = await fetch(AUTH_API_BASE + "/me", {
-          method: "GET",
-          credentials: "include",
-          headers
-        });
-
-        if(!res.ok){
-          // ✅ 401/403이라도 “진짜 토큰 문제”일 때만 토큰 삭제
-          let errText = "";
-          try{
-            const ct = (res.headers.get("content-type") || "").toLowerCase();
-            if (ct.includes("application/json")) {
-              const j = await res.json().catch(()=>null);
-              errText = String(j?.error || j?.message || "");
+          if(res.ok) {
+            const data = await res.json();
+            if(data && data.user) {
+              window.__RG_CURRENT_USER__ = data.user;
+              updateUserGreeting(data.user);
+              applyAccountStatsFromUser(data.user);
+              unlock();
+              return;
             }
-          }catch(_){}
-
-          const em = (errText || "").toLowerCase();
-          const isRealTokenError =
-            em.includes("invalid token") ||
-            em.includes("invalid signature") ||
-            em.includes("expired") ||
-            em.includes("missing bearer") ||
-            em.includes("missing token") ||
-            em.includes("issuer") ||
-            em.includes("audience");
-
-          if (token && (res.status === 401 || res.status === 403) && isRealTokenError) {
-            try{ localStorage.removeItem("rg_jwt_token"); }catch(_){}
-            try{ localStorage.removeItem("rg_token"); }catch(_){}
-            try{ localStorage.removeItem("token"); }catch(_){}
-            try{
-              if (window.RG && typeof window.RG.setAuthToken === "function") {
-                window.RG.setAuthToken("");
-              }
-            }catch(_){}
           }
-
-          ACCOUNT_TOTALS.userId = null;
-          updateUserGreeting(null);
-          resetAccountTotalsAndStorage();  // ✅ HUD+storage 초기화
-          return;
         }
 
-        let data = null;
-        try{ data = await res.json(); }catch(_){ }
-
-        if(!data || !data.ok || !data.user){
-          ACCOUNT_TOTALS.userId = null;
-          updateUserGreeting(null);
-          resetAccountTotalsAndStorage();  // ✅
-          return;
-        }
-
-        window.__RG_CURRENT_USER__ = data.user;
-        updateUserGreeting(data.user);
-        applyAccountStatsFromUser(data.user);
-
-        syncWalletFromServer().catch(()=>{});
-      }catch(err){
-        console.error("auth check error", err);
+        // 4. 최후의 보루: 토큰도 없고 세션도 없으면 비회원 처리 (튕기지 않음)
+        // 핵심: 무조건 로그인으로 튕기면 무한 루프에 빠짐. 허브에서는 비로그인 상태 유지.
+        console.warn("[RG] 비로그인 상태로 허브 진입");
         ACCOUNT_TOTALS.userId = null;
         updateUserGreeting(null);
-        resetAccountTotalsAndStorage();  // ✅
+        resetAccountTotalsAndStorage();
+        
+      } catch(err) {
+        console.error("[RG] Auth Guard Error:", err);
       } finally {
-        // ✅ 성공/실패/예외/return 어떤 경우든 “섞임 방지 락” 해제
-        unlock();
+        unlock(); // 무조건 잠금 해제하여 화면 표시
       }
     };
-
+    
     (function consumeRewardsSafely(){
       function run(){
         // ✅ userId 확정 전에는 rg_guest 로 적립될 수 있으므로 대기

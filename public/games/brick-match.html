@@ -39,7 +39,9 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
+  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+    crossorigin="anonymous"></script>
 
   <!-- 전역 유틸 (정상 app.js 버전: header/footer 자동 주입, 단 game 페이지는 data-rg-page="game"으로 skip) -->
 <script defer src="../assets/js/app.js"></script>
@@ -1192,9 +1194,9 @@
             showAdThen(()=> this.gameOver(true))
           );
 
-          // HOME: 광고 후 허브로 이동 (로그인 허브로만 이동, 이 페이지 자체는 순수 게임화면)
+          // HOME: 광고 후 index.html로 이동
           document.getElementById('homeBtn').addEventListener('click',()=>
-            showAdThen(()=>{ window.location.href = '/user-retro-games.html'; })
+            showAdThen(()=>{ window.location.href = '/index.html'; })
           );
 
           const tier=$('#tier'), lvl=$('#lvlRange');
@@ -1828,9 +1830,9 @@
         updateTicketUI();
 
         // 🔁 광고 노출 주기: 3회 플레이마다 1회 팝업
-        if(plays % 3 === 0){
-          showInterstitialAd();
-        }
+                // if(plays % 3 === 0){
+        //   showInterstitialAd();
+        // } // ✅ 3회당 광고 노출 제거
       }
 
       function addRecord(score, points){

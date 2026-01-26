@@ -42,7 +42,9 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
+  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+    crossorigin="anonymous"></script>
 
   <!-- 전역 유틸 (정상 app.js 버전 사용) -->
 <script defer src="/assets/js/app.js"></script>
@@ -158,10 +160,22 @@
       padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
     }
 
-    /* === 좌우 세로형 광고 배너 ===
-       ✅ 공통(game-frame.css)의 .sideAd(left/right) fixed 레일을 사용한다.
-       ⚠ 이 파일 안에서 .sideAd 를 다시 정의(덮어쓰기)하지 말 것.
-    */
+/* === 좌우 세로형 광고 배너 (강제 고정 스타일) === */
+    .sideAd {
+      position: fixed !important;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 160px;
+      height: 600px;
+      z-index: 100;
+      display: block !important;
+    }
+    .sideAd.left { left: 10px; }
+    .sideAd.right { right: 10px; }
+    .sideAdInner { width: 100%; height: 100%; display: flex; justify-content: center; }
+    
+    /* 화면이 좁아지면(모바일/태블릿) 광고 숨김 (게임 화면 확보) */
+    @media (max-width: 1400px) { .sideAd { display: none !important; } }
 
     /* Cabinet */
     .cabinet{
@@ -874,7 +888,7 @@
     localStorage.setItem(LS_KEYS.plays, String(plays));
     localStorage.setItem(LS_KEYS.tickets, String(tickets));
     updateTicketUI();
-    if(plays % 3 === 0){ showInterstitialAd(); }
+    // if(plays % 3 === 0){ showInterstitialAd(); } // ✅ 3회당 광고 노출 제거
   }
   function addRecord(score, points){
     const recs=loadJSON(LS_KEYS.records,[]);
@@ -1003,7 +1017,7 @@
 
     bind(){
       $('#homeBtn').onclick = () => showAdThen(()=> {
-        window.location.href = '/user-retro-games.html';
+        window.location.href = '/index.html';
       });
 
       $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd(true));
@@ -1168,66 +1182,70 @@
       }
     }
 
+// [MASTER ENGINE] 표준화된 종료 및 보상 지급 로직 (Single / Clean)
     manualEnd(isManual){
-      if(this._ended) return;
-      this._ended=true;
-      const maxT = this.maxTile();
-      const finalScore = this.score|0;
+      if (this._ended) return;
+      this._ended = true;
 
+      const maxT = this.maxTile();
+      const finalScore = this.score | 0;
+
+      // 1) 게임 내부 정리
       this._snapshotBonusAtEnd(maxT);
       this.syncHUD();
-      addRecord(finalScore, this.points||0);
-      addPlay();
 
-      // ✅ 세트 미션 플래그 업데이트 (analytics 구조 통일)
+      // 2) 로컬 기록 저장
+      addRecord(finalScore, this.points || 0);
+      addPlay();
       tryDailyMissionBonus2048();
 
-      // HUD 동기화용 메타 기본 값 계산 (플레이 타임 등 확장 여지)
-      const tierVal = ($('#tier') && $('#tier').value) || 'beginner';
-      const boardSize = this.size;
-      const playsLocal = +localStorage.getItem(LS_KEYS.plays)||0;
-      const ticketsLocal = +localStorage.getItem(LS_KEYS.tickets)||0;
+      if (this.testMode) return;
 
-      if(this.testMode) return;
-
-      // ✅ 통합 보상 흐름: retro-running 과 동일 구조의 applyGlobalRewardAndSyncWallet 사용
-      let delta = { xp:0, tickets:0, coins:0 };
-      try{
-        delta = calcReward(finalScore, this.points||0, maxT, this.level||1) || delta;
-      }catch(e){
-        console.error('calcReward error', e);
+      // 3) 보상(XP, 티켓, 코인) 계산
+      let delta = { xp: 0, tickets: 0, coins: 0 };
+      try {
+        delta = calcReward(finalScore, this.points || 0, maxT, this.level || 1) || delta;
+      } catch (e) {
+        console.error(e);
       }
 
-      const walletPoints = delta.coins | 0; // 서버 지갑 포인트
-
-      // 🔎 meta 필드 확장: analytics/허브에서 공통으로 쓰일 수 있도록 모든 상태를 정리
+      // 4) 메타 데이터 구성
       const meta = {
         gameId: '2048',
-        score:   finalScore,
-        points:  walletPoints,
-        level:   this.level || 1,
+        score: finalScore,
+        points: delta.coins,
+        level: this.level || 1,
         maxTile: maxT,
-        moves:   this.moves | 0,
-        boardSize,
-        boardType: `${boardSize}x${boardSize}`,
-        tier: tierVal,
-        // 로컬(브라우저) 기록
-        localPlays: playsLocal,
-        localTickets: ticketsLocal,
-        localPointsInGame: this.points||0,
-        // 종료 정보
-        endedAt: new Date().toISOString(),
+        tier: ($('#tier') && $('#tier').value) || 'beginner',
         endedBy: isManual ? 'manual' : 'gameover'
       };
 
-      try{
-        applyGlobalRewardAndSyncWallet('2048', delta, meta);
-      }catch(e){
-        console.error('reward sync error', e);
+      // 5) 보상 큐 저장 + 즉시 동기화 시도
+      try {
+        const rewardPayload = {
+          coins: delta.coins,
+          xp: delta.xp,
+          tickets: delta.tickets,
+          meta: meta
+        };
+
+        if (window.RG_queueReward) {
+          window.RG_queueReward(rewardPayload);
+        } else {
+          localStorage.setItem("rg_reward", JSON.stringify(rewardPayload));
+        }
+
+        if (typeof applyGlobalRewardAndSyncWallet === 'function') {
+          applyGlobalRewardAndSyncWallet('2048', delta, meta);
+        }
+      } catch (e) {
+        console.error("Reward Queue Error", e);
       }
 
-      // ✅ 세션 종료 알림 (analytics 구조 통일: meta 같이 전달)
+      // 6) 종료 알림/UI
       notifyFinish(finalScore, meta);
+      const ov = document.getElementById('gameOver');
+      if (ov) ov.style.display = 'flex';
 
       this.flash('Game Over');
     }
@@ -1336,18 +1354,47 @@
     }
   }
 
+/***** [MASTER ENGINE] Cabinet Universal Fit (16:9 강제 고정 + 광고 공간 확보) *****/
   function fitCabinet(){
-    const cab = document.querySelector('.cabinet'); if(!cab) return;
-    const margin = 16; cab.style.transform='none'; const w=cab.offsetWidth, h=cab.offsetHeight;
-    const vw=window.innerWidth, vh=window.innerHeight;
-    const needScale = (w > vw - margin*2) || (h > vh - margin*2);
-    const scale = needScale ? Math.min(1, (vw - margin*2)/w, (vh - margin*2)/h) : 1;
-    cab.style.transform = `scale(${scale})`;
-  }
-  window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-  window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-  setTimeout(fitCabinet, 0);
+    const cab = document.querySelector('.cabinet'); 
+    if(!cab) return;
+    
+    // 1. 초기화
+    cab.style.transform = 'none';
+    cab.style.transformOrigin = 'top center';
+    
+    // 2. 가용 화면 크기 계산 (기본 여백)
+    const margin = 20;
+    let availableW = window.innerWidth - (margin * 2);
+    const availableH = window.innerHeight - (margin * 2);
 
+    // 3. 화면이 넓어서 광고가 보일 때는, 광고 공간(360px)만큼 게임기를 축소시킴
+    // (1번 CSS에서 1400px 이상일 때 광고가 나온다고 설정했으므로 그에 맞춤)
+    if(window.innerWidth > 1400) {
+      availableW -= 360; // 좌우 광고 배너(160*2 + 여백) 공간 확보
+    }
+    
+    // 4. 게임기 본체 목표 해상도 (16:9 비율)
+    const w = 1200; 
+    const h = 675;  
+    
+    // 5. 최적 스케일 계산 (Contain 방식 - 화면 밖으로 절대 안 나감)
+    const scale = Math.min(1, availableW / w, availableH / h);
+    
+    // 6. 적용
+    cab.style.width = w + 'px';
+    cab.style.height = h + 'px';
+    cab.style.transform = 'scale(' + scale + ')';
+    
+    // 7. 모바일 높이 보정
+    document.body.style.height = window.innerHeight + 'px';
+  }
+
+  // 리사이즈 이벤트
+  window.addEventListener('resize', function(){ requestAnimationFrame(fitCabinet); });
+  window.addEventListener('orientationchange', function(){ setTimeout(fitCabinet, 100); });
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fitCabinet);
+  else fitCabinet();
   (function runTests(){
     try{
       const c=document.createElement('canvas');
@@ -1365,41 +1412,23 @@
   })();
 
 window.addEventListener('load', async () => {
-  try{
-    const ra =
-      (window.RG && typeof window.RG.requireAuth === 'function')
-        ? window.RG.requireAuth
-        : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
+  const ra =
+    (window.RG && typeof window.RG.requireAuth === 'function')
+      ? window.RG.requireAuth
+      : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
 
-    // app.js 로드/전역 함수가 없으면 안전하게 중단
-    if(!ra) return;
+  if (!ra) return;
 
-    // ✅ 비로그인: requireAuth가 모달/리다이렉트 처리 후 false 반환 → 여기서 종료
-    const ok = await ra();
-    if (ok === false) return;
-  }catch(e){
-    return;
-  }
+  const ok = await ra();
+  if (ok === false) return;
 
-  // ✅ 인증된 경우에만 게임 생성/실행
+  // ✅ 인증된 경우에만 게임 시작
   const game = new G2048(document.getElementById('game'));
 
-  (function(){
-    const tier = $('#tier'), lvl = $('#lvlRange');
-    const applyTier = t => {
-      let lv = {beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t] || 1;
-      lvl.value = lv;
-      game.setLevel(lv);
-    };
-    applyTier(tier.value);
-    lvl.addEventListener('input', () => game.setLevel(+lvl.value));
-    updateTicketUI();
-
-    // ✅ 통합 HUD: app.js에 refreshWalletHUD가 있다면 우선 사용
-    if (typeof window.refreshWalletHUD === 'function') {
-      window.refreshWalletHUD();
-    }
-  })();
+  // HUD / 기타 초기화
+  if (typeof window.refreshWalletHUD === 'function') {
+    window.refreshWalletHUD();
+  }
 }, { once:true });
 
   // 2048 전용 BGM 초기화 (사용자 첫 상호작용 시 재생, 볼륨 30%)

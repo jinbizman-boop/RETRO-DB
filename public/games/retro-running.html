@@ -41,7 +41,9 @@
     window.__RG_SKIP_PARTIALS__ = true;
   </script>
 
-  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
+  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+    crossorigin="anonymous"></script>
 
   <!-- 전역 유틸 -->
 <script defer src="../assets/js/app.js"></script>
@@ -1192,7 +1194,7 @@
       localStorage.setItem(LS_KEYS.tickets, String(tickets));
       updateTicketUI();
       // 🔁 3회 플레이마다 인터스티셜 광고
-      if (plays % 3 === 0) { showInterstitialAd(); }
+      // if (plays % 3 === 0) { showInterstitialAd(); } // ✅ 3회당 광고 노출 제거
     }
 
     /***** Toast *****/
@@ -1463,9 +1465,9 @@
           });
           $('#endBtn').addEventListener('click', () => showAdThen(() => this.doGameOver(true)));
 
-          // ✅ HOME: 광고 후, 로그인 허브(user-retro-games.html)로 이동
+          // ✅ HOME: 광고 후, index.html로 이동
           $('#homeBtn').addEventListener('click', () =>
-            showAdThen(() => window.location.href = '/user-retro-games.html')
+            showAdThen(() => window.location.href = '/index.html')
           );
 
           const tier = $('#tier'), lvl = $('#lvlRange');

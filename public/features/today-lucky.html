@@ -37,91 +37,15 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
+  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+    crossorigin="anonymous"></script>
 
   <!-- ✅ 프로젝트 공통 스크립트 (정상 app.js 버전 / 오토 인젝트는 app.js 내부 조건으로 게임 페이지에서 스킵) -->
   <script defer src="/assets/js/app.js"></script>
   <script>
-  // ✅ Game entry auth gate (auth first → then start game)
-  // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
-  // - 이유: 게임 스크립트가 window.load / DOMReady 타이밍에 의존해도 안전하게 초기화됨
-  (function () {
-    const PARAM = 'rg_authed';
-    const KEY = 'rg_authed_once:' + location.pathname;
-
-    function hasAuthedParam() {
-      try {
-        return new URLSearchParams(location.search).get(PARAM) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function hasSessionFlag() {
-      try {
-        return sessionStorage.getItem(KEY) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function setSessionFlag() {
-      try {
-        sessionStorage.setItem(KEY, '1');
-      } catch {}
-    }
-
-    function cleanUrlParam() {
-      try {
-        const clean = new URL(location.href);
-        clean.searchParams.delete(PARAM);
-        history.replaceState({}, document.title, clean.toString());
-      } catch {}
-    }
-
-    async function ensureAuthThenReloadOnce() {
-      try {
-        const fn =
-          (window.RG && typeof window.RG.requireAuth === 'function')
-            ? window.RG.requireAuth
-            : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
-
-        // app.js가 아직 로드되지 않았으면 그냥 통과(다만 보통 load 시점엔 로드됨)
-        if (!fn) return;
-
-        const ok = await fn(); // 비로그인이면 requireAuth 내부에서 모달/리다이렉트 처리
-        if (ok === false) return;
-
-        // 로그인 확인 완료 → 이 페이지에서 1회만 리로드하도록 플래그
-        setSessionFlag();
-
-        // param이 없으면 param을 붙여 리로드(게임을 "지금부터" 시작)
-        if (!hasAuthedParam()) {
-          const url = new URL(location.href);
-          url.searchParams.set(PARAM, '1');
-          location.replace(url.toString());
-          return;
-        }
-
-        // param이 이미 있으면(리로드 후) URL만 정리
-        cleanUrlParam();
-      } catch (e) {
-        console.warn('[RG][auth] requireAuth gate error:', e);
-      }
-    }
-
-    // 이미 인증 리로드를 한 상태면(세션 플래그 or param) 그냥 진행 + param 정리
-    if (hasAuthedParam() || hasSessionFlag()) {
-      if (hasAuthedParam()) cleanUrlParam();
-      return;
-    }
-
-    // app.js가 defer라서, 안전하게 load 이후 requireAuth 실행
-    window.addEventListener('load', function () {
-      void ensureAuthThenReloadOnce();
-    }, { once: true });
-  })();
-</script>
+  // ✅ today-lucky: 누구나 참여(로그인/requireAuth 게이트 제거)
+  </script>
   <script defer src="/assets/js/analytics.js"></script>
 
   <style>
@@ -368,7 +292,7 @@
   -->
 
   <div class="page-wrap">
-    <!-- ✅ 좌우측 사이드 수직형 광고 (120×600) -->
+    <!-- ✅ 좌측 사이드 수직형 광고 (120×600) -->
     <aside class="side-ad" aria-label="좌측 사이드 수직형 광고">
       <div class="side-ad-inner">
         <!-- Google AdSense: 좌측 세로형 광고 단위 -->
@@ -412,6 +336,22 @@
         <button id="stopBtn">행운 확인하기</button>
       </div>
     </div>
+
+    <!-- ✅ 우측 사이드 수직형 광고 (120×600) -->
+    <aside class="side-ad" aria-label="우측 사이드 수직형 광고">
+      <div class="side-ad-inner">
+        <!-- Google AdSense: 우측 세로형 광고 단위 -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6713974265397310"
+             data-ad-slot="4514999077"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
+    </aside>
   </div>
 
   <!-- 인터스티셜 광고 모달 -->
@@ -427,8 +367,6 @@
           <div style="font-size:12px;opacity:.8">개발/테스트 환경에서는 플레이스홀더가 보입니다</div>
         </div>
       </div>
-    </div>
-  </div>
 
   <script>
   /* ------------------------------------------------------------------
@@ -634,7 +572,7 @@
    *  - user-retro-games.html과 동일 티켓 풀을 공유하기 위해 기존 키 사용
    * ------------------------------------------------------------------ */
   const TICKET_KEY = 'tickets2048';
-  const TICKETS_PER_ENTRY = 5;
+  const TICKETS_PER_ENTRY = 0; // ✅ 티켓 없이 누구나 참여
   const getTickets = ()=> +(localStorage.getItem(TICKET_KEY)||0);
   const setTickets = n => localStorage.setItem(TICKET_KEY, String(Math.max(0, n|0)));
 
@@ -678,100 +616,8 @@
    * }
    */
   async function sendGameReward(gameId, payload){
-    const safePayload = payload || {};
-    const game = gameId || "today-lucky";
-
-    // 서버가 idempotency를 지원하면 runId까지 보내는 게 100% 완성도에 유리
-    // (지원 안 해도 무해: 무시되면 그만)
-    const kind  = (safePayload.meta && safePayload.meta.kind) ? String(safePayload.meta.kind) : "reward";
-    const runId = safePayload.runId || (game + ":" + kind + ":" + Date.now() + ":" + Math.random().toString(16).slice(2));
-
-    // 1) /api/wallet POST – 서버 지갑/기록 반영
-    try{
-      const body = {
-        game: game,
-        action: 'reward',
-        runId: runId,
-
-        score:          safePayload.score         || 0,
-        pointsEarned:   safePayload.pointsEarned  || 0,
-        ticketsEarned:  safePayload.ticketsEarned || 0,
-        expEarned:      safePayload.expEarned     || safePayload.xpEarned || 0,
-        playsIncrement: safePayload.playsIncrement|| 0,
-        meta:           safePayload.meta || {}
-      };
-
-      const res = await fetch('/api/wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json().catch(()=>null);
-
-      // ✅ 하루 1회 제한 UX: 서버가 명시적으로 알려주면 여기서 종료(보상 큐로 빠지지 않게)
-      if(!res.ok){
-        if (data && data.error === "ALREADY_SPUN_TODAY") {
-          alert('이미 오늘의 행운을 사용했습니다. 내일 다시 시도해 주세요!');
-          return data;
-        }
-        throw new Error('HTTP '+res.status);
-      }
-
-      // 2) ✅ 공통 갱신 연결 (today-lucky도 허브와 동일 규칙 적용)
-      try{
-        const hasWalletLike =
-          !!(data && (data.wallet || data.stats || data.progress || data.snapshot ||
-              typeof data.points !== "undefined" ||
-              typeof data.coins  !== "undefined" ||
-              typeof data.tickets!== "undefined" ||
-              typeof data.xp     !== "undefined"));
-
-        if (hasWalletLike && typeof window.applyAccountApiResponse === "function") {
-          // snapshot이 있으면 snapshot 우선 (games/finish 패턴 대응)
-          window.applyAccountApiResponse(data.snapshot ? data.snapshot : data);
-
-        } else if (typeof window.RG_queueReward === "function") {
-          // 응답에 지갑/스탯이 없거나 공통 함수가 없을 때 최소 fallback
-          window.RG_queueReward({
-            coins:   safePayload.pointsEarned  || 0,
-            tickets: safePayload.ticketsEarned || 0,
-            xp:      safePayload.expEarned || safePayload.xpEarned || 0,
-          });
-
-        } else if (typeof window.RG_addReward === "function") {
-          // 최후의 fallback (구형 훅만 남아있는 경우)
-          window.RG_addReward(game, {
-            score:          safePayload.score         || 0,
-            pointsEarned:   safePayload.pointsEarned  || 0,
-            ticketsEarned:  safePayload.ticketsEarned || 0,
-            playsIncrement: safePayload.playsIncrement|| 0,
-            meta:           safePayload.meta || {}
-          });
-        }
-      }catch(e){
-        console.warn('[RG][today-lucky] applyAccountApiResponse/queue fallback error:', e);
-      }
-
-      console.log('[RG][wallet] today-lucky synced:', data);
-      return data;
-
-    }catch(err){
-      // 서버 반영 실패 시에도 최소한 “허브에서 먹을 보상 큐”라도 남겨서 손실 방지
-      try{
-        if (typeof window.RG_queueReward === "function") {
-          window.RG_queueReward({
-            coins:   safePayload.pointsEarned  || 0,
-            tickets: safePayload.ticketsEarned || 0,
-            xp:      safePayload.expEarned || safePayload.xpEarned || 0,
-          });
-        }
-      }catch(e){}
-
-      console.warn('[RG][wallet] today-lucky sync failed:', err);
-      return null;
-    }
+    // ✅ today-lucky: 비로그인 누구나 참여 모드에서는 서버 지갑(/api/wallet) 연동을 사용하지 않음
+    return null;
   }
 
   /* ------------------------------------------------------------------
@@ -1139,69 +985,20 @@
   spinBtn.onclick = () => startSpin();
   stopBtn.onclick = () => stopSpin();
 
-  // ✅ HOME 버튼: 유저 계정 인식 후 메인 허브로 이동
-  async function goRetroHome(){
-    try{
-      const res = await fetch(AUTH_API_BASE + "/me", {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "Accept": "application/json",
-          "Cache-Control": "no-store"
-        }
-      });
-      if(res.ok){
-        let data = null;
-        try{ data = await res.json(); }catch(_){}
-        if(data && data.ok && data.user){
-          // 로그인 세션 존재 → 곧바로 메인 허브로
-          window.location.href = BASE + "user-retro-games.html";
-          return;
-        }
-      }
-    }catch(e){
-      console.warn("[RG][today-lucky] auth check failed on HOME:", e);
-    }
-    // 세션 없음/오류 → 로그인 후 메인 허브로 복귀
-    try{
-      const next = encodeURIComponent(BASE + "user-retro-games.html");
-      window.location.href = BASE + "login.html?next=" + next;
-    }catch(e){
-      window.location.href = BASE + "login.html";
-    }
+  // ✅ HOME 버튼: index.html로 즉시 이동 (로그인/세션 로직 제거)
+  function goRetroHome(){
+    window.location.href = '/index.html';
   }
   homeBtn.onclick = () => { goRetroHome(); };
 
-  // "참여하기" = 티켓 5장 결제 (라운드당 1회)
+  // "참여하기" = 누구나 참여 (티켓/결제/서버반영 제거)
   betBtn.onclick = () => {
     if(paidForThisRound){
       alert('이미 이번 라운드 참여가 완료되었습니다. "행운의 룰렛"을 눌러주세요!');
       return;
     }
-    const beforeTickets = getTickets();
-    if(beforeTickets < TICKETS_PER_ENTRY){
-      alert(`티켓이 부족합니다.\n필요: ${TICKETS_PER_ENTRY}장, 보유: ${beforeTickets}장`);
-      return;
-    }
-    const afterTickets = beforeTickets - TICKETS_PER_ENTRY;
-    setTickets(afterTickets);
     paidForThisRound = true;
-    alert(`참여 완료! 티켓 ${TICKETS_PER_ENTRY}장을 사용했습니다.\n남은 티켓: ${afterTickets}장\n이제 "행운의 룰렛"을 눌러주세요.`);
-
-    // 💰 티켓 소비 이벤트를 지갑 서버에 반영
-    sendGameReward('today-lucky', {
-      score:          0,
-      pointsEarned:   0,
-      ticketsEarned: -TICKETS_PER_ENTRY,
-      playsIncrement: 0,
-      meta: {
-        kind:          'entry',
-        bankBefore:    bank,
-        bankAfter:     bank,
-        ticketsBefore: beforeTickets,
-        ticketsAfter:  afterTickets
-      }
-    });
+    alert('참여 완료! 이제 "행운의 룰렛"을 눌러주세요.');
   };
 
   // 접근성: 키보드 단축

@@ -39,7 +39,9 @@
   </script>
   <!-- === /Common SEO/A11y === -->
 
-  <!-- AdSense loader is centralized (partials/head-seo.html + app.js) -->
+  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+    crossorigin="anonymous"></script>
 
   <!-- 전역 유틸 -->
 <script defer src="/assets/js/app.js"></script>
@@ -996,9 +998,9 @@
     localStorage.setItem(LS_KEYS.plays, String(plays));
     localStorage.setItem(LS_KEYS.tickets, String(tickets));
     updateTicketUI();
-    if(plays % 3 === 0){
-      showInterstitialAd();
-    }
+        // if(plays % 3 === 0){
+    //   showInterstitialAd();
+    // } // ✅ 3회당 광고 노출 제거
   }
   function addRecord(score, points){
     const recs=loadJSON(LS_KEYS.records,[]);
@@ -1237,7 +1239,7 @@
 
       if(homeBtn){
         homeBtn.addEventListener('click',()=>
-          showAdThen(()=> window.location.href = '/user-retro-games.html')
+          showAdThen(()=> window.location.href = '/index.html')
         );
       }
 

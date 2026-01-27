@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RETRO MATCH-3 – Arcade Cabinet (Fixed)</title>
+<title>RETRO MATCH – Arcade Cabinet</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
@@ -486,7 +486,7 @@ function difficultyMult(){
       // Deck / Keys
       document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
       document.getElementById('undoBtn').addEventListener('click',()=>{ if(this.state!=='over') this.paused=!this.paused; });
-      document.getElementById('endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver(true)));
+      document.getElementById('endBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
       document.getElementById('homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
 
       const tier=$('#tier'), lvl=$('#lvlRange');

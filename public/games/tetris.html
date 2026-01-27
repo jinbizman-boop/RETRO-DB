@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RETRO 2048 → Canvas Tetris – Arcade Cabinet</title>
+<title>RETRO TETRIS – Arcade Cabinet</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
@@ -507,7 +507,10 @@ function difficultyMult(){
     bindDeck(){
       $('#newBtn').addEventListener('click',()=>{ this.running=true; this.paused=false; this.reset(); });
       $('#undoBtn').addEventListener('click',()=>{ if(this.running) this.paused=!this.paused; });
-      $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver()));
+      $('#endBtn').addEventListener('click',()=> showAdThen(()=>{
+        this.gameOver();
+        window.location.href = '/index.html';
+      }));
 
       /* HOME: 광고 후 메인 이동 */
       $('#homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));

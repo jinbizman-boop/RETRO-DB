@@ -499,7 +499,7 @@ class BrickBreaker{
       showAdThen(()=> window.location.href = '/index.html')
     );
 
-    $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.manualEnd()));
+    $('#endBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
 
     // 포인터 매핑
     const mapX = (clientX)=>{ const r=this.c.getBoundingClientRect(); const scaleX = this.c.width / r.width; return (clientX - r.left) * scaleX; };

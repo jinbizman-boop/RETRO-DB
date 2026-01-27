@@ -459,7 +459,11 @@ class G2048{
       window.location.href = '/index.html';
     });
 
-    $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
+          $('#endBtn').addEventListener('click',()=> showAdThen(()=>{
+        this.gameOver();
+        window.location.href = '/index.html';
+      }));
+
     $('#newBtn').onclick=()=>{ if(this.moves>0){ addRecord(this.score,this.points||0);} this.reset(this.level); };
     $('#undoBtn').onclick=()=> this.undo();
     const tier=$('#tier'); const lvl=$('#lvlRange'); const sizeSel=$('#sizeSel');

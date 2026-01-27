@@ -1,765 +1,285 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <!-- Google AdSense 소유권 확인 메타 태그 -->
-  <meta name="google-adsense-account" content="ca-pub-6713974265397310">
-  <title>RETRO MATCH – Arcade Cabinet (Fixed)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>RETRO MATCH-3 – Arcade Cabinet (Fixed)</title>
 
-  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-
-  <!-- === Common SEO/A11y (auto-inserted) === -->
-  <link rel="stylesheet" href="../assets/css/game-frame.css">
-  <link rel="icon" href="/assets/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-  <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#0e1b34">
-  <meta name="description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-  <meta name="robots" content="index,follow">
-  <meta property="og:site_name" content="RETRO GAMES">
-  <meta property="og:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
-  <meta property="og:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="/assets/og/retro-games-card.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
-  <meta name="twitter:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
-
-  <script>
-    // fixed environment flags for analytics/runtime
-    (function (d) {
-      d.documentElement.dataset.env = 'production';
-      d.documentElement.dataset.analytics = 'on';
-      window.__ENV__ = 'production';
-      window.__ANALYTICS_ON__ = true;
-    })(document);
-  </script>
-  <!-- === /Common SEO/A11y === -->
-
-  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-    crossorigin="anonymous"></script>
-
-  <!-- 전역 유틸 (정상 app.js 버전: header/footer 자동 주입, 단 game 페이지는 data-rg-page="game"으로 skip) -->
-<script defer src="../assets/js/app.js"></script>
+<!-- === Common SEO/A11y (auto-inserted) === -->
+<link rel="icon" href="/assets/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1b34">
+<meta name="description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="robots" content="index,follow">
+<meta property="og:site_name" content="RETRO GAMES">
+<meta property="og:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
+<meta property="og:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/assets/og/retro-games-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
+<meta name="twitter:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="twitter:image" content="/assets/og/retro-games-card.png">
 <script>
-  // ✅ Game entry auth gate (auth first → then start game)
-  // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
-  // - 이유: 게임 스크립트가 window.load / DOMReady 타이밍에 의존해도 안전하게 초기화됨
-  (function () {
-    const PARAM = 'rg_authed';
-    const KEY = 'rg_authed_once:' + location.pathname;
-
-    function hasAuthedParam() {
-      try {
-        return new URLSearchParams(location.search).get(PARAM) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function hasSessionFlag() {
-      try {
-        return sessionStorage.getItem(KEY) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function setSessionFlag() {
-      try {
-        sessionStorage.setItem(KEY, '1');
-      } catch {}
-    }
-
-    function cleanUrlParam() {
-      try {
-        const clean = new URL(location.href);
-        clean.searchParams.delete(PARAM);
-        history.replaceState({}, document.title, clean.toString());
-      } catch {}
-    }
-
-    async function ensureAuthThenReloadOnce() {
-      try {
-        const fn =
-          (window.RG && typeof window.RG.requireAuth === 'function')
-            ? window.RG.requireAuth
-            : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
-
-        // app.js가 아직 로드되지 않았으면 그냥 통과(다만 보통 load 시점엔 로드됨)
-        if (!fn) return;
-
-        const ok = await fn(); // 비로그인이면 requireAuth 내부에서 모달/리다이렉트 처리
-        if (ok === false) return;
-
-        // 로그인 확인 완료 → 이 페이지에서 1회만 리로드하도록 플래그
-        setSessionFlag();
-
-        // param이 없으면 param을 붙여 리로드(게임을 "지금부터" 시작)
-        if (!hasAuthedParam()) {
-          const url = new URL(location.href);
-          url.searchParams.set(PARAM, '1');
-          location.replace(url.toString());
-          return;
-        }
-
-        // param이 이미 있으면(리로드 후) URL만 정리
-        cleanUrlParam();
-      } catch (e) {
-        console.warn('[RG][auth] requireAuth gate error:', e);
-      }
-    }
-
-    // 이미 인증 리로드를 한 상태면(세션 플래그 or param) 그냥 진행 + param 정리
-    if (hasAuthedParam() || hasSessionFlag()) {
-      if (hasAuthedParam()) cleanUrlParam();
-      return;
-    }
-
-    // app.js가 defer라서, 안전하게 load 이후 requireAuth 실행
-    window.addEventListener('load', function () {
-      void ensureAuthThenReloadOnce();
-    }, { once: true });
-  })();
+  // fixed environment flags for analytics/runtime
+  (function(d){
+    d.documentElement.dataset.env = 'production';
+    d.documentElement.dataset.analytics = 'on';
+    window.__ENV__ = 'production';
+    window.__ANALYTICS_ON__ = true;
+  })(document);
 </script>
-  <script defer src="../assets/js/analytics.js"></script>
+<!-- === /Common SEO/A11y === -->
 
-  <style>
-    :root{
-      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
-      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
-      --board:#121a2f; --tile0:#e9eef6; --ink:#111;
-      --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
-      --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
-    }
-    *{box-sizing:border-box}
-    html,body{
-      height:100%;
-      margin:0;
-      color:#fff;
-      font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
-      overflow:hidden;
-      background:#0b001e radial-gradient(circle at 40% -10%, #320076, #0b001e 70%) no-repeat;
-      background-size:cover;
-    }
+<!-- AdSense 스니펫: 요청값 그대로 -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310" crossorigin="anonymous"></script>
 
-    /* ✅ user-retro-games.html 의 .wrap 오버레이가 게임 위로 뜨는 것 차단 */
-    .wrap{display:none !important;}
+<style>
+  :root{
+    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+    --board:#121a2f; --tile0:#e9eef6; --ink:#111;
+    --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
+    --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;margin:0;color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";overflow:hidden;
+    background:#0b001e radial-gradient(circle at 40% -10%, #320076, #0b001e 70%) no-repeat;background-size:cover;
+  }
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
+  .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
+  .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
+  .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;filter:drop-shadow(0 0 12px rgba(255,190,0,.55));background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00)}
+  .cabinet:before{left:12px;border-radius:9px}
+  .cabinet:after{right:12px;border-radius:9px}
+  .marquee{padding:18px;border-radius:18px 18px 0 0;border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);background:linear-gradient(180deg,#173763,#0b2548)}
+  .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
+  .subtitle{opacity:.75;letter-spacing:.2em;text-align:center;font-size:clamp(10px,2.7vw,12px)}
+  .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
+  .chip,.pill,.hud .btnMini{position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%)}
+  .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+  .pill{min-width:260px;gap:12px}
+  .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)}
+  .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
+  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;box-shadow:0 0 10px #8ad7ff;background:linear-gradient(90deg,#b86cff,#6af0ff)}
+  .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
+  .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
+  .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
+  .play{position:relative;margin:10px 18px;border-radius:16px;box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);background:linear-gradient(180deg,#0a1530,#031125)}
+  .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
+  .bezel{width:100%;height:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;position:relative;overflow:hidden;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)}
+  .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
+  canvas#game{display:block;max-width:100%;max-height:100%;width:100%;height:100%;background:#000;border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,0,20,.55);backdrop-filter:blur(2px);z-index:5}
+  .overlay .msg{font-weight:900;letter-spacing:.2em;text-align:center;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));font-size:clamp(28px,5vw,68px);color:#ffe166;text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)}
+  .overlay .sub{margin-top:10px;font-size:clamp(12px,2.2vw,16px);opacity:.9;color:#dfe9ff;text-align:center}
+  .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
+  .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;background:linear-gradient(180deg,#1b3a7a,#102a66)}
+  .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
+  .deck label{display:flex;align-items:center;gap:8px}
+  .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
+  #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
+  #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
+  #adBox{width:min(680px,92vw);min-height:280px;border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)}
+  #adHead{display:flex;justify-content:space-between;align-items:center}
+  #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
+  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;border:1px dashed #3952c3;background:linear-gradient(135deg,#18224a,#0e1636)}
+  @media (max-width: 980px){
+    .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
+    .cabinet{width:100vw;border-radius:0}
+    .marquee{padding:12px;border-radius:0}
+    .play{margin:8px 12px}
+    .screen{padding:10px}
+    .hud{gap:8px;padding:10px}
+    .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
+    .pill{min-width:220px}
+    .deck{gap:8px;padding:10px 12px 16px}
+    .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
+  }
+  @media (max-width: 640px){
+    .chip,.pill,.hud .btnMini{height:40px}
+    .points .bar,.tickets .bar{width:96px}
+    .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
+    .deck>*{flex:0 0 auto}
+  }
 
-    #fx{
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      z-index:0;
-      opacity:.75
-    }
-    .shell{
-      min-height:100vh;
-      display:grid;
-      place-items:center;
-      padding:20px;
-      position:relative;
-      z-index:1;
-      padding-bottom:calc(20px + env(safe-area-inset-bottom,0))
-    }
+  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
+    display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+    border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
+    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+    z-index:10000;font-size:12px}
+  .cookie-banner .spacer{flex:1}
+  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
+  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
 
-    /* === 좌/우 세로형 광고 ===
-       ✅ 공통(game-frame.css)의 .sideAd(left/right) fixed 레일을 사용한다.
-       (cabinet-row / side-ad 레이아웃은 제거)
-    */
-
-    .cabinet{
-      position:relative;
-      width:min(1200px,96vw);
-      background:#0e1b34;
-      border-radius:18px;
-      box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
-      transform-origin:top center
-    }
-    .cabinet:before,.cabinet:after{
-      content:"";
-      position:absolute;
-      top:12px;
-      bottom:12px;
-      width:18px;
-      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
-      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00)
-    }
-    .cabinet:before{
-      left:12px;
-      border-radius:9px
-    }
-    .cabinet:after{
-      right:12px;
-      border-radius:9px
-    }
-    .marquee{
-      padding:18px;
-      border-radius:18px 18px 0 0;
-      border-bottom:1px solid #0c2b59;
-      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
-      background:linear-gradient(180deg,#173763,#0b2548)
-    }
-    .title{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-      flex-wrap:wrap
-    }
-    .title h1{
-      margin:0;
-      font-weight:900;
-      letter-spacing:2px;
-      color:#eaf3ff;
-      text-shadow:0 0 12px rgba(62,142,255,.55);
-      font-size:clamp(18px,4.4vw,28px)
-    }
-    .subtitle{
-      opacity:.75;
-      letter-spacing:.2em;
-      text-align:center;
-      font-size:clamp(10px,2.7vw,12px)
-    }
-    .hud{
-      display:flex;
-      gap:12px;
-      padding:12px;
-      justify-content:center;
-      flex-wrap:wrap
-    }
-    .chip,.pill,.hud .btnMini{
-      position:relative;
-      min-width:128px;
-      height:46px;
-      padding:0 16px;
-      border-radius:14px;
-      border:1px solid #1e63ff;
-      color:#fff;
-      font-weight:900;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      letter-spacing:.3px;
-      box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
-      background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%)
-    }
-    .chip b{
-      color:#fff;
-      font-weight:900;
-      padding-left:6px;
-      text-shadow:0 1px 0 rgba(0,0,0,.25)
-    }
-    .pill{
-      min-width:260px;
-      gap:12px
-    }
-    .pill .icon{
-      width:28px;
-      height:28px;
-      display:grid;
-      place-items:center;
-      border-radius:50%;
-      color:#0b2a57;
-      box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);
-      background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)
-    }
-    .points .bar,.tickets .bar{
-      height:8px;
-      border-radius:999px;
-      background:#1a2548;
-      overflow:hidden;
-      border:1px solid #2b3f8f;
-      width:120px
-    }
-    .points .bar>span,.tickets .bar>span{
-      display:block;
-      height:100%;
-      width:0%;
-      box-shadow:0 0 10px #8ad7ff;
-      background:linear-gradient(90deg,#b86cff,#6af0ff)
-    }
-    .points .nums,.tickets .nums{
-      display:flex;
-      align-items:baseline;
-      gap:8px;
-      font-weight:900
-    }
-    .points .nums .big,.tickets .nums .big{
-      font-size:18px;
-      color:#ffe9a3;
-      text-shadow:0 0 8px #ffd86a
-    }
-    .points .nums .cap,.tickets .nums .cap{
-      opacity:.8;
-      font-size:12px
-    }
-    .play{
-      position:relative;
-      margin:10px 18px;
-      border-radius:16px;
-      box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);
-      background:linear-gradient(180deg,#0a1530,#031125)
-    }
-    .screen{
-      aspect-ratio:16/9;
-      display:grid;
-      place-items:center;
-      padding:18px
-    }
-    .bezel{
-      width:100%;
-      height:100%;
-      border-radius:14px;
-      box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
-      display:grid;
-      place-items:center;
-      position:relative;
-      overflow:hidden;
-      background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)
-    }
-    .canvasWrap{
-      width:min(92%,980px);
-      max-height:85%;
-      display:grid;
-      place-items:center
-    }
-    canvas#game{
-      display:block;
-      max-width:100%;
-      max-height:100%;
-      width:100%;
-      height:100%;
-      background:#000;
-      border-radius:18px;
-      border:1px solid #1b2b45;
-      box-shadow:inset 0 0 40px rgba(0,0,0,.25)
-    }
-    .overlay{
-      position:absolute;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      background:rgba(5,0,20,.55);
-      backdrop-filter:blur(2px);
-      z-index:5
-    }
-    .overlay .msg{
-      font-weight:900;
-      letter-spacing:.2em;
-      text-align:center;
-      filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));
-      font-size:clamp(28px,5vw,68px);
-      color:#ffe166;
-      text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)
-    }
-    .overlay .sub{
-      margin-top:10px;
-      font-size:clamp(12px,2.2vw,16px);
-      opacity:.9;
-      color:#dfe9ff;
-      text-align:center
-    }
-    .deck{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      justify-content:center;
-      padding:14px 18px 22px;
-      border-top:1px solid #0a2b57;
-      background:linear-gradient(180deg,#0b1f40,#0a1730)
-    }
-    .deck .btn,.deck select,.deck input[type=range]{
-      font-weight:900;
-      color:#dff1ff;
-      border:1px solid #224aa8;
-      border-radius:12px;
-      padding:10px 14px;
-      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-      cursor:pointer;
-      background:linear-gradient(180deg,#1b3a7a,#102a66)
-    }
-    .deck .btn:hover,.deck select:hover{
-      filter:brightness(1.06)
-    }
-    .deck label{
-      display:flex;
-      align-items:center;
-      gap:8px
-    }
-    .deck input[type=range]{
-      width:140px;
-      height:12px;
-      accent-color:#5fb0ff
-    }
-    #recModal{
-      display:none;
-      position:fixed;
-      inset:0;
-      background:rgba(5,0,20,.55);
-      backdrop-filter:blur(4px);
-      align-items:center;
-      justify-content:center;
-      z-index:999
-    }
-    #adModal{
-      display:none;
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.65);
-      backdrop-filter:blur(2px);
-      align-items:center;
-      justify-content:center;
-      z-index:1000
-    }
-    #adBox{
-      width:min(680px,92vw);
-      min-height:280px;
-      border:2px solid #3e2b7b;
-      border-radius:20px;
-      box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
-      padding:18px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)
-    }
-    #adHead{
-      display:flex;
-      justify-content:space-between;
-      align-items:center
-    }
-    #adClose{
-      border:0;
-      background:#1b2b7a;
-      color:#fff;
-      border-radius:10px;
-      padding:6px 10px;
-      cursor:pointer
-    }
-    .adPlaceholder{
-      display:grid;
-      place-items:center;
-      height:220px;
-      border-radius:14px;
-      border:1px dashed #3952c3;
-      background:linear-gradient(135deg,#18224a,#0e1636)
-    }
-
-    @media (max-width: 980px){
-      .shell{
-        padding:12px;
-        padding-bottom:calc(12px + env(safe-area-inset-bottom,0))
-      }
-      .cabinet{
-        width:100vw;
-        border-radius:0
-      }
-      .marquee{
-        padding:12px;
-        border-radius:0
-      }
-      .play{
-        margin:8px 12px
-      }
-      .screen{
-        padding:10px
-      }
-      .hud{
-        gap:8px;
-        padding:10px
-      }
-      .chip,.pill,.hud .btnMini{
-        min-width:112px;
-        height:42px;
-        padding:0 12px
-      }
-      .pill{
-        min-width:220px
-      }
-      .deck{
-        gap:8px;
-        padding:10px 12px 16px
-      }
-      .deck .btn,.deck select,.deck input[type=range]{
-        padding:10px 12px
-      }
-
-      /* 모바일에서는 세로형 사이드배너 숨김 (기존 게임 레이아웃 유지) */
-      .cabinet-row{
-        flex-direction:column;
-        align-items:center;
-      }
-      .side-ad{
-        display:none;
-      }
-    }
-
-    @media (max-width: 640px){
-      .chip,.pill,.hud .btnMini{
-        height:40px
-      }
-      .points .bar,.tickets .bar{
-        width:96px
-      }
-      .deck{
-        justify-content:flex-start;
-        overflow:auto;
-        -webkit-overflow-scrolling:touch
-      }
-      .deck>*{
-        flex:0 0 auto
-      }
-    }
-
-    .cookie-banner{
-      position:fixed;
-      left:12px;
-      right:12px;
-      bottom:12px;
-      display:none;
-      align-items:center;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid #2b3f8f;
-      background:linear-gradient(180deg,#0b1f40,#0a1730);
-      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-      z-index:10000;
-      font-size:12px
-    }
-    .cookie-banner .spacer{
-      flex:1
-    }
-    .cookie-banner button{
-      padding:8px 12px;
-      border-radius:10px;
-      border:1px solid #2d3690;
-      background:linear-gradient(180deg,#1a2b7a,#0a1a64);
-      font-weight:800;
-      color:#e9f0ff;
-      cursor:pointer
-    }
-    .cookie-banner .agree{
-      background:linear-gradient(180deg,#ffdf6e,#ffb84d);
-      color:#3a2400;
-      border-color:#7a5600
-    }
-  </style>
+  /* ==============================
+     ✅ AdSense 좌/우 배너 (캐비닛 좌우에 딱 붙게)
+     - 게임 UI/UX(캐비닛/캔버스/덱)에는 영향 0
+     - 화면에 fixed overlay로만 배치
+  ============================== */
+  :root{
+    --rg-cabW: min(1200px,96vw); /* .cabinet width와 동일 */
+    --rg-adW: 160px;
+    --rg-adGap: 16px;
+  }
+  .sideAd{
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--rg-adW);
+    min-height: 600px;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+  .sideAd.left{
+    left: calc(50% - (var(--rg-cabW) * 0.5) - var(--rg-adW) - var(--rg-adGap));
+  }
+  .sideAd.right{
+    right: calc(50% - (var(--rg-cabW) * 0.5) - var(--rg-adW) - var(--rg-adGap));
+  }
+  .sideAdInner{
+    width: 100%;
+    min-height: 600px;
+    border-radius: 16px;
+    border: 1px solid #2b3f8f;
+    background: linear-gradient(180deg,#0b1f40,#050814);
+    box-shadow: 0 10px 24px rgba(0,0,0,.65), inset 0 0 18px rgba(62,142,255,.35);
+    overflow: hidden;
+  }
+  .sideAd ins.adsbygoogle{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* 모바일/좁은 화면에서는 게임 화면 보호 (UI/UX 유지) */
+  @media (max-width: 1100px){
+    .sideAd{ display:none; }
+  }
+</style>
 </head>
 
-<body data-rg-page="game">
-  <!-- ✅ header/footer include / partial 절대 금지. app.js에서 data-rg-page="game"을 보고 자동 인젝트 skip -->
+<script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
+
+<body>
+  <div id="site-header"></div>
   <canvas id="fx"></canvas>
 
-  <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
-  <aside class="sideAd left" aria-label="왼쪽 세로형 광고">
+  <!-- ✅ 좌/우 AdSense 배너: 캐비닛(게임기) 좌우 고정 (UI/UX/플레이 로직 무손상) -->
+  <aside class="sideAd left" aria-label="left ad">
     <div class="sideAdInner">
       <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot="4514999077"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
+        data-ad-client="ca-pub-6713974265397310"
+        data-ad-slot="4514999077"
+        data-ad-format="auto"
+        data-full-width-responsive="true"></ins>
     </div>
   </aside>
 
-  <aside class="sideAd right" aria-label="오른쪽 세로형 광고">
+  <aside class="sideAd right" aria-label="right ad">
     <div class="sideAdInner">
       <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-6713974265397310"
-           data-ad-slot="4514999077"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
+        data-ad-client="ca-pub-6713974265397310"
+        data-ad-slot="4514999077"
+        data-ad-format="auto"
+        data-full-width-responsive="true"></ins>
     </div>
   </aside>
+
+  <script>
+    // ✅ 배너 광고 초기화 (로더는 head에서 async 로드됨)
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+  </script>
 
   <div class="shell">
-      <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
-      <aside class="sideAd left" aria-label="left vertical ad">
-        <div class="sideAdInner">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-6713974265397310"
-               data-ad-slot="4514999077"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          </script>
+    <section class="cabinet" aria-label="retro arcade cabinet">
+      <header class="marquee">
+        <div class="title">
+          <h1>RETRO MATCH-3</h1>
+          <div class="subtitle">SWIPE · ARROWS · WASD</div>
         </div>
-      </aside>
+      </header>
 
-      <aside class="sideAd right" aria-label="right vertical ad">
-        <div class="sideAdInner">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-6713974265397310"
-               data-ad-slot="4514999077"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          </script>
-        </div>
-      </aside>
+      <!-- HUD -->
+      <div class="hud">
+        <div class="chip">점수 <b id="score">0</b></div>
+        <div class="chip">최고 <b id="best">0</b></div>
+        <div class="chip">이동 <b id="moves">0</b></div>
 
-      <div class="game-frame">
-      <section class="cabinet game-canvas" aria-label="retro arcade cabinet">
-        <header class="marquee">
-          <div class="title">
-            <h1>RETRO MATCH-3</h1>
-            <div class="subtitle">SWIPE · ARROWS · WASD</div>
+        <div class="pill points" aria-label="사용자 포인트">
+          <div class="icon">🏅</div>
+          <div>
+            <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
+            <div class="bar"><span id="pointsBar"></span></div>
           </div>
-        </header>
-
-        <!-- ✅ 3-2. HUD 렌더링 로직 단일화 – 공통 HUD DOM (이미지 스펙 그대로) -->
-        <!--
-          이 블록은 /partials/hud.html 에 들어가는 것과 완전히 같은 구조로,
-          app.js 의 전역 HUD 렌더러가 data-hud 속성을 기준으로 숫자를 넣는다.
-          - id="rg-hud" 는 페이지당 한 번만 등장해야 함
-          - data-hud 키: level / exp / coins / tickets / gamesPlayed
-        -->
-        <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD">
-          <span class="hud-item hud-level">
-            LV. <span data-hud="level"></span>
-          </span>
-          <span class="hud-item hud-exp">
-            EXP <span data-hud="exp"></span>
-          </span>
-          <span class="hud-item hud-coins">
-            Coins <span data-hud="coins"></span>
-          </span>
-          <span class="hud-item hud-tickets">
-            Tickets <span data-hud="tickets"></span>
-          </span>
-          <span class="hud-item hud-games">
-            Plays <span data-hud="gamesPlayed"></span>
-          </span>
         </div>
 
-        <!-- (기존 인게임 HUD – 구성/디자인 그대로 유지) -->
-        <div class="hud">
-          <div class="chip">점수 <b id="score">0</b></div>
-          <div class="chip">최고 <b id="best">0</b></div>
-          <div class="chip">이동 <b id="moves">0</b></div>
+        <div class="pill tickets" aria-label="티켓 진행">
+          <div class="icon">🎟️</div>
+          <div>
+            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+            <div class="bar"><span id="ticketsBar"></span></div>
+          </div>
+          <div class="playCount" id="ticketsCap">0 / 10</div>
+        </div>
 
-          <div class="pill points" aria-label="사용자 포인트">
-            <div class="icon">🏅</div>
-            <div>
-              <div class="nums">
-                <span class="big" id="pointsAmt">0</span>
-                <span class="cap">/ <span id="pointsCap">5,000</span></span>
-              </div>
-              <div class="bar"><span id="pointsBar"></span></div>
+        <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+      </div>
+
+      <main class="play">
+        <div class="screen">
+          <div class="bezel">
+            <div class="canvasWrap" id="canvasWrap">
+              <canvas id="game"></canvas>
             </div>
-          </div>
-
-          <div class="pill tickets" aria-label="티켓 진행">
-            <div class="icon">🎟️</div>
-            <div>
-              <div class="nums">
-                <span class="big" id="ticketsAmt">0</span>
-                <span class="cap">티켓</span>
-              </div>
-              <div class="bar"><span id="ticketsBar"></span></div>
-            </div>
-            <div class="playCount" id="ticketsCap">0 / 10</div>
-          </div>
-
-          <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
-        </div>
-        <main class="play">
-          <div class="screen">
-            <div class="bezel">
-              <div class="canvasWrap" id="canvasWrap">
-                <canvas id="game"></canvas>
-              </div>
-              <div id="gameOver" class="overlay" aria-live="polite" role="alert">
-                <div>
-                  <div class="msg">GAME OVER</div>
-                  <div class="sub">N/Enter: 새 게임 · Space/U: 일시정지/재개</div>
-                </div>
+            <div id="gameOver" class="overlay" aria-live="polite" role="alert">
+              <div>
+                <div class="msg">GAME OVER</div>
+                <div class="sub">N/Enter: 새 게임 · Space/U: 일시정지/재개</div>
               </div>
             </div>
           </div>
-        </main>
-
-        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) — 노출은 버튼+팝업(모달)로 전환 -->
-        <section class="content-guide-mini" aria-label="게임 안내/정책 바로가기">
-          <div class="mini-left">
-            <strong>게임 안내</strong>
-            <span class="mini-desc">규칙 · 조작 · 보상/저장</span>
-          </div>
-          <div class="mini-right">
-            <a class="mini-link" href="/legal/privacy.html">개인정보</a>
-            <a class="mini-link" href="/legal/terms.html">약관</a>
-            <a class="mini-link" href="/legal/cookies.html">쿠키</a>
-            <button type="button" class="mini-btn" onclick="openGuide()">안내 보기</button>
-          </div>
-        </section>
-
-        <!-- GUIDE MODAL -->
-        <div id="guideModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gm-title" aria-hidden="true">
-          <div class="dialog">
-            <button class="x" aria-label="닫기" onclick="closeGuide()">×</button>
-
-            <!-- ✅ 기존 content-guide 원문 내용을 여기로 “그대로” 옮겨 넣기 -->
-            <!-- (중요) h1/h2/ul/p 구조는 유지. 문구만 게임별로 다르면 그대로 두면 됨 -->
-            <h3 id="gm-title">게임 안내</h3>
-
-            <!-- ▼▼▼ 여기부터: 기존 content-guide 안의 내용을 그대로 붙여넣어 ▼▼▼ -->
-            <!-- 예) <h1>...</h1> <p>...</p> <h2>...</h2> <ul>...</ul> ... -->
-            <!-- ▲▲▲ 여기까지 ▲▲▲ -->
-
-          </div>
         </div>
+      </main>
 
-        <!-- Control deck -->
-        <div class="deck">
-          <button class="btn" id="homeBtn">HOME</button>
-          <button class="btn" id="newBtn">새 게임 (N)</button>
-          <button class="btn" id="undoBtn">일시정지/재개 (U / Space)</button>
-          <label>모드
-            <select id="tier">
-              <option value="beginner">초급 (1–10)</option>
-              <option value="intermediate">중급 (11–20)</option>
-              <option value="advanced">고급 (21–30)</option>
-              <option value="hell">지옥 (40)</option>
-              <option value="doom">파멸 (50)</option>
-              <option value="insane">극악무도 (100)</option>
-            </select>
-          </label>
-          <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
-          <label>보드
-            <select id="sizeSel" disabled>
-              <option value="12" selected>고정</option>
-            </select>
-          </label>
-          <button class="btn" id="endBtn">게임 종료</button>
-        </div>
-    </div>
+      <!-- Control deck -->
+      <div class="deck">
+        <button class="btn" id="homeBtn">HOME</button>
+        <button class="btn" id="newBtn">새 게임 (N)</button>
+        <button class="btn" id="undoBtn">일시정지/재개 (U / Space)</button>
+        <label>모드
+          <select id="tier">
+            <option value="beginner">초급 (1–10)</option>
+            <option value="intermediate">중급 (11–20)</option>
+            <option value="advanced">고급 (21–30)</option>
+            <option value="hell">지옥 (40)</option>
+            <option value="doom">파멸 (50)</option>
+            <option value="insane">극악무도 (100)</option>
+          </select>
+        </label>
+        <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
+        <label>보드
+          <select id="sizeSel" disabled>
+            <option value="12" selected>고정</option>
+          </select>
+        </label>
+        <button class="btn" id="endBtn">게임 종료</button>
+      </div>
+    </section>
   </div>
 
   <!-- Records Modal -->
   <div id="recModal">
     <div style="width:min(640px,94vw);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3>
-        <button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button>
-      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3><button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button></div>
       <div id="recBody" style="max-height:60vh;overflow:auto;border:1px solid #2a3a89;border-radius:12px;padding:8px"></div>
     </div>
   </div>
@@ -771,1175 +291,562 @@
         <h3 id="adTitle" style="margin:0;color:#ffdf6e">광고</h3>
         <button id="adClose">닫기</button>
       </div>
-
-      <!-- 홈버튼 사각형 디스플레이 광고 (slot: 7668007538) -->
       <div id="adContainer" class="adPlaceholder">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-6713974265397310"
-             data-ad-slot="7668007538"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
+        <div style="text-align:center;opacity:.9">
+          <div style="font-weight:900;margin-bottom:6px">여기에 광고가 표시됩니다</div>
+          <div style="font-size:12px;opacity:.8">개발/테스트 환경에서는 플레이스홀더가 보입니다</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- 홈버튼 사각형 디스플레이 광고 초기화 -->
-  <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-  </script>
+<script>
+/***** Ad 연동 *****/
+const AD_CLIENT = 'ca-pub-6713974265397310';
+const AD_SLOT   = '';
+function fallbackAdHTML(){
+  return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
+}
+function showInterstitialAd(){
+  const box=document.getElementById('adContainer'); box.innerHTML='';
+  const ins=document.createElement('ins');
+  ins.className='adsbygoogle'; ins.style.display='block';
+  ins.setAttribute('data-ad-client', AD_CLIENT);
+  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
+  ins.setAttribute('data-ad-format','auto');
+  ins.setAttribute('data-full-width-responsive','true');
+  box.appendChild(ins);
+  try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }
+  catch(e){ console.warn(e); box.innerHTML=fallbackAdHTML(); }
+  document.getElementById('adModal').style.display='flex';
+}
+let _afterAd=null;
+function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
+document.getElementById('adClose').addEventListener('click',()=>{
+  document.getElementById('adModal').style.display='none';
+  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e);} 
+});
 
-  <script>
-    /***** Ad 모달 연동 (실제 광고는 위에서 1회 초기화, 여기서는 열기/닫기만 담당) *****/
-    function fallbackAdHTML(){
-      return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
+/***** Neon FX (background stars) *****/
+(function(){
+  const c=document.getElementById('fx'); if(!c) return;
+  const g=c.getContext('2d');
+  function fit(){ const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0); }
+  fit(); addEventListener('resize',fit,{passive:true});
+  const N=80;
+  const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
+  function loop(t){
+    g.clearRect(0,0,c.width,c.height);
+    for(const p of pts){
+      g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2);
+      const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle='rgba(43,123,255,'+a+')'; g.fill();
+      p.y+=p.s; if(p.y>innerHeight){ p.y=-10; p.x=Math.random()*innerWidth; }
     }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
 
-    function showInterstitialAd(){
-      const box = document.getElementById('adContainer');
-      if(!box) return;
-      // 광고 ins가 없는 예외 상황에서만 폴백
-      if(!box.querySelector('ins.adsbygoogle')){
-        box.innerHTML = fallbackAdHTML();
-      }
-      const modal = document.getElementById('adModal');
-      if(modal) modal.style.display = 'flex';
-    }
+/***** Helpers & Storage *****/
+const $=sel=>document.querySelector(sel);
+const DPR=()=>Math.min(2, window.devicePixelRatio||1);
+const clamp=(n,a,b)=>Math.max(a, Math.min(b,n));
+const fmt=n=>n.toLocaleString('ko-KR');
 
-    let _afterAd = null;
-    function showAdThen(fn){
-      _afterAd = (typeof fn === 'function') ? fn : null;
-      showInterstitialAd();
-    }
+/* Match-3 전용 키 */
+const LS_KEYS={plays:'plays_match',tickets:'tickets_match',records:'records_match',best:'best_match'};
 
-    document.getElementById('adClose').addEventListener('click', () => {
-      document.getElementById('adModal').style.display='none';
-      const f = _afterAd;
-      _afterAd = null;
-      if(f){
-        try{ f(); }catch(e){ console.error(e); }
-      }
-    });
+function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch(e){ return def; }}
+function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
+function updateTicketUI(){
+  const plays= +localStorage.getItem(LS_KEYS.plays)||0;
+  const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
+  $('#ticketsAmt').textContent=tickets;
+  $('#ticketsCap').textContent=(plays%10)+' / 10';
+  $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
+}
+function addPlay(){
+  let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
+  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
+  if(plays%10===0) tickets++;
+  localStorage.setItem(LS_KEYS.plays, String(plays));
+  localStorage.setItem(LS_KEYS.tickets, String(tickets));
+  updateTicketUI();
+  if(plays % 8 === 0){ showInterstitialAd(); }
+}
+function addRecord(score, points){
+  const recs=loadJSON(LS_KEYS.records,[]); const now=new Date();
+  recs.unshift({ts:now.toISOString(), score, points});
+  saveJSON(LS_KEYS.records,recs.slice(0,200));
+}
+function showRecords(){
+  const recs=loadJSON(LS_KEYS.records,[]);
+  const rows = recs.map(r=>{
+    const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
+      <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
+      <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
+    </tr>`;
+  }).join('');
+  $('#recBody').innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  $('#recModal').style.display='flex';
+}
+document.getElementById('recordsBtn').addEventListener('click',showRecords);
+document.getElementById('recClose').addEventListener('click',()=>$('#recModal').style.display='none');
+document.getElementById('recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
 
-    /***** Neon FX (background stars) *****/
-    (function(){
-      const c=document.getElementById('fx'); if(!c) return;
-      const g=c.getContext('2d');
-      function fit(){
-        const d=window.devicePixelRatio||1;
-        c.width = innerWidth*d;
-        c.height= innerHeight*d;
-        g.setTransform(d,0,0,d,0,0);
-      }
-      fit();
-      addEventListener('resize',fit,{passive:true});
+/***** 난이도 배율 *****/
+function difficultyMult(){
+  const v=$('#tier')?.value||'beginner';
+  return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
+}
 
-      const N=80;
-      const pts=new Array(N).fill(0).map(()=>({
-        x:Math.random()*innerWidth,
-        y:Math.random()*innerHeight*0.9,
-        r:Math.random()*2+0.5,
-        s:Math.random()*0.6+0.2,
-        ph:Math.random()*6.283
-      }));
+/***** Match-3 Game (원본 유지 + 좌표 매핑 픽스) *****/
+(function(){
+  const EMPTY=0, NORMAL=1, ROCK=2, ICE=3, STRIPE_H=4, STRIPE_V=5, BOMB=6, RAINBOW=7;
 
-      function loop(t){
-        g.clearRect(0,0,c.width,c.height);
-        for(const p of pts){
-          g.beginPath();
-          g.arc(p.x,p.y,p.r,0,Math.PI*2);
-          const a=0.3+Math.sin(t*0.002+p.ph)*0.25;
-          g.fillStyle='rgba(43,123,255,'+a+')';
-          g.fill();
-          p.y+=p.s;
-          if(p.y>innerHeight){
-            p.y=-10;
-            p.x=Math.random()*innerWidth;
-          }
-        }
-        requestAnimationFrame(loop);
-      }
-      requestAnimationFrame(loop);
-    })();
+  function paramsForLevel(lv){
+    const colors = lv<8?5: lv<15?6: lv<25?7: lv<40?7: lv<50?8: 8;
+    const timeLimit = lv<10? 70: lv<20? 60: lv<30? 55: lv<40? 45: lv<50? 40: lv<80?35: 28;
+    const rockRate = lv>=20? (lv<40?0.03: lv<50?0.05: lv<80?0.07: 0.10): 0;
+    const iceRate = lv>=15? (lv<40?0.05: lv<50?0.08: lv<80?0.10: 0.12): 0;
+    const bombRate = lv>=40? (lv<50?0.04: lv<80?0.06: 0.08): 0;
+    const goalScore = 800 + lv*25;
+    return { colors, timeLimit, rockRate, iceRate, bombRate, goalScore, shuffleOnStall:true };
+  }
 
-    /***** Helpers & Storage *****/
-    const $ = sel => document.querySelector(sel);
-    const DPR = () => Math.min(2, window.devicePixelRatio||1);
-    const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
-    const fmt = n => n.toLocaleString('ko-KR');
+  class Match3{
+    constructor(canvas){
+      this.c=canvas; this.ctx=canvas.getContext('2d');
+      this.N=8; this.level=1; this.params=paramsForLevel(1);
+      this.state='idle'; this.score=0; this.best= +(localStorage.getItem(LS_KEYS.best)||0);
+      this.timeLeft=60; this.grid=[]; this.sel=null; this.paused=false;
+      this.combo=1; this.points=0; this.chainLv=0; this.goalAwarded=false;
+      this.swapAnim=null; this.fx=[]; this.last=0; this.ox=0; this.oy=0; this.step=0;
 
-    /* ================= Background Music (brick-match) =================
-       - Source : /assets/music/brick-match-background.mp3
-       - Volume: 30%
-       - Loop   : true
-       - Start  : first user interaction(pointer / key)
-       - Auto-pause on tab hidden
-    ================================================================ */
-    const BGM_SRC = '/assets/music/brick-match-background.mp3';
-    let bgmAudio = null;
-    let bgmStarted = false;
-
-    function ensureBgm(){
-      if(bgmAudio) return bgmAudio;
-      try{
-        const a = new Audio(BGM_SRC);
-        a.loop = true;
-        a.volume = 0.3; // 30% volume
-        bgmAudio = a;
-        return a;
-      }catch(e){
-        console.warn('bgm init failed', e);
-        return null;
-      }
-    }
-
-    function requestBgmStart(){
-      if(bgmStarted) return;
-      const a = ensureBgm();
-      if(!a) return;
-      bgmStarted = true;
-      a.play().catch(err=>{
-        console.warn('bgm play blocked', err);
-        bgmStarted = false;
-      });
-    }
-
-    window.addEventListener('pointerdown', requestBgmStart, {once:true, passive:true});
-    window.addEventListener('keydown', requestBgmStart, {once:true});
-
-    document.addEventListener('visibilitychange', ()=>{
-      if(!bgmAudio) return;
-      if(document.hidden){
-        try{ bgmAudio.pause(); }catch(e){}
-      }else if(bgmStarted){
-        bgmAudio.play().catch(()=>{});
-      }
-    });
-
-    /* Match-3 전용 키 (로컬 플레이/티켓 기록: 게임별 통계용) */
-    // ✅ 유저별 localStorage prefix (A/B 유저 분리)
-    const __RG_LS_PREFIX = (() => {
-      try {
-        const token = localStorage.getItem("rg_jwt_token") || "";
-        const part = token.split(".")[1] || "";
-        if (!part) return "rg_guest_";
-        const b64 = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
-        const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
-        const sub = String(json.sub || "").trim();
-        return sub ? `rg_u_${sub}_` : "rg_guest_";
-      } catch (e) {
-        return "rg_guest_";
-      }
-    })();
-
-    const LS_KEYS = {
-      plays   : __RG_LS_PREFIX + 'plays_match',
-      tickets : __RG_LS_PREFIX + 'tickets_match',
-      records : __RG_LS_PREFIX + 'records_match',
-      best    : __RG_LS_PREFIX + 'best_match'
-    };
-
-    function loadJSON(k,def){
-      try{
-        const v=localStorage.getItem(k);
-        return v? JSON.parse(v) : def;
-      }catch(e){
-        return def;
-      }
-    }
-    function saveJSON(k,v){
-      localStorage.setItem(k, JSON.stringify(v));
-    }
-    function updateTicketUI(){
-      const plays   = +localStorage.getItem(LS_KEYS.plays)||0;
-      const tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-      $('#ticketsAmt').textContent = tickets;
-      $('#ticketsCap').textContent = (plays%10)+' / 10';
-      $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
-    }
-
-    /***** 허브 지갑/보상 연동 (retro-running 동일 규격) *****/
-    async function applyGlobalRewardAndSyncWallet(gameId, delta, meta){
-      const d = delta || {};
-      const m = meta  || {};
-
-      const score =
-        (typeof m.score === 'number') ? m.score :
-        (typeof d.score === 'number') ? d.score : 0;
-
-      const RUNKEY  = `rg:${gameId}:activeRunId`;
-      const LASTKEY = `rg:${gameId}:lastFinish`;
-
-      let runId = m.runId || sessionStorage.getItem(RUNKEY);
-      if(!runId){
-        try{
-          const last = JSON.parse(sessionStorage.getItem(LASTKEY) || "null");
-          if(last && last.runId && (Date.now() - (last.ts||0) < 15000)) runId = last.runId;
-        }catch(e){}
-      }
-      if(!runId){
-        runId = (gameId + ":" + Date.now() + ":" + Math.random().toString(16).slice(2));
-        sessionStorage.setItem(RUNKEY, runId);
-      }
-
-      const IDEMKEY = `rg:${gameId}:rewarded:${runId}`;
-      if(sessionStorage.getItem(IDEMKEY) === "1") return null;
-      sessionStorage.setItem(IDEMKEY, "1");
-
-      try{
-        const payload = {
-          exp: Number(d.xp || d.exp || 0),
-          tickets: Number(d.tickets || 0),
-          points: Number(d.coins || d.points || 0),
-          score: Number(score) || 0,
-          meta: Object.assign({}, m || {}, { runId })
-        };
-
-        const data =
-          (typeof window.sendGameReward === "function")
-            ? await window.sendGameReward(String(gameId), payload)
-            : null;
-
-        if(!data || data.success !== true){
-          sessionStorage.removeItem(IDEMKEY);
-          throw new Error((data && data.error) ? data.error : "reward_failed");
-        }
-
-        sessionStorage.setItem(LASTKEY, JSON.stringify({ runId, ts: Date.now() }));
-        if(sessionStorage.getItem(RUNKEY) === runId) sessionStorage.removeItem(RUNKEY);
-
-        const snap = data.snapshot || null;
-        if(snap && typeof window.applyAccountApiResponse === "function"){
-          window.applyAccountApiResponse(snap);
-        }else if(typeof window.refreshWalletHUD === "function"){
-          window.refreshWalletHUD();
-        }
-
-        return data;
-      }catch(e){
-        console.warn(`[${gameId}] finish sync failed:`, e);
-        try{
-          if(typeof window.RG_queueReward === "function"){
-            window.RG_queueReward({
-              gameId,
-              score: Number(score)||0,
-              coins: Number(d.coins||0),
-              tickets: Number(d.tickets||0),
-              xp: Number(d.xp||0),
-              meta: m || {}
-            });
-          }
-        }catch(_e){}
-        return null;
-      }
-    }
-
-    /***** 난이도 배율 *****/
-    function difficultyMult(){
-      const v = $('#tier')?.value || 'beginner';
-      return {
-        beginner    : 1.00,
-        intermediate: 1.15,
-        advanced    : 1.30,
-        hell        : 1.50,
-        doom        : 1.65,
-        insane      : 1.85
-      }[v] || 1.0;
-    }
-
-    /***** Match-3 Game (기능/디자인 유지 + 좌표 매핑 및 허브/지갑/광고 연동 보완) *****/
-    window.addEventListener('load', async () => {
-      try{
-        const ra = (window.requireAuth || (window.RG && window.RG.requireAuth));
-        if (typeof ra === 'function') await ra();
-      }catch(e){
-        return;
-      }
-
-      // ✅ 인증 완료 → 세션 시작(runId 확보)
+      this.resize(); this.bind(); this.newGame(1);
+      requestAnimationFrame((t)=>this.run(t));
       notifyStart();
-
-      const EMPTY   = 0;
-      const RED     = 1;
-      const GREEN   = 2;
-      const BLUE    = 3;
-      const YELLOW  = 4;
-      const PURPLE  = 5;
-      const BOMB    = 6;
-      const RAINBOW = 7;
-
-      function paramsForLevel(lv){
-        const colors    = lv<8?5: lv<15?6: lv<25?7: lv<40?7: lv<50?8: 8;
-        const timeLimit = lv<10? 70: lv<20? 60: lv<30? 55: lv<40? 45: lv<50? 40: lv<80?35: 28;
-        const rockRate  = lv>=20? (lv<40?0.03: lv<50?0.05: lv<80?0.07: 0.10): 0;
-        const iceRate   = lv>=15? (lv<40?0.05: lv<50?0.08: lv<80?0.10: 0.12): 0;
-        const bombRate  = lv>=40? (lv<50?0.04: lv<80?0.06: 0.08): 0;
-        const goalScore = 800 + lv*25;
-
-        return {
-          colors,
-          timeLimit,
-          rockRate,
-          iceRate,
-          bombRate,
-          goalScore,
-          shuffleOnStall:true
-        };
-      }
-
-      class Match3{
-        constructor(canvas){
-          this.c = canvas;
-          this.ctx = canvas.getContext('2d');
-          this.N = 8;
-          this.level = 1;
-          this.params = paramsForLevel(1);
-          this.state = 'idle';
-          this.score = 0;
-          this.best  = +(localStorage.getItem(LS_KEYS.best)||0);
-          this.timeLeft = 60;
-          this.grid = [];
-          this.sel  = null;
-          this.paused = false;
-          this.combo  = 1;
-          this.points = 0;
-          this.chainLv = 0;
-          this.maxChain = 0;
-          this.goalAwarded = false;
-          this.swapAnim = null;
-          this.fx = [];
-          this.last = 0;
-          this.ox = 0;
-          this.oy = 0;
-          this.step = 0;
-
-          this.resize();
-          this.bind();
-          this.newGame(1);
-          requestAnimationFrame((t)=>this.run(t));
-
-          /* ✅ 서버 세션 시작 알림 (slug: 'match-3') */
-          notifyStart();
-        }
-
-        DPR(){ return Math.min(2, window.devicePixelRatio||1); }
-        rnd(n){ return Math.floor(Math.random()*n); }
-        btype(v){ return Math.floor(v/10)===0? NORMAL: Math.floor(v/10); }
-        bval(v){ return Math.floor(v/10)===0? v: v%10; }
-        inBounds(x,y){ return x>=0 && x<this.N && y>=0 && y<this.N; }
-
-        bind(){
-          // ✅ transform(scale)과 DPR에 상관없이 DOM 기준 좌표로 매핑
-          const map = (ev)=>{
-            const r=this.c.getBoundingClientRect();
-            const side=Math.min(r.width, r.height);
-            const left=r.left+(r.width - side)/2;
-            const top =r.top +(r.height- side)/2;
-            const x=ev.clientX-left;
-            const y=ev.clientY-top;
-            return {x,y,side};
-          };
-
-          let down=false,sx=0,sy=0;
-
-          this.c.addEventListener('mousedown',(e)=>{
-            if(this.paused || this.state==='over' || this.swapAnim) return;
-            down=true;
-            const p=map(e);
-            if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-            this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
-            sx=p.x; sy=p.y;
-          });
-          window.addEventListener('mouseup',()=>{ down=false; },{passive:true});
-          this.c.addEventListener('mousemove',(e)=>{
-            if(!down || !this.sel || this.swapAnim) return;
-            const p=map(e);
-            const dx=p.x-sx, dy=p.y-sy;
-            let dir=null;
-            if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>10) dir = dx>0?'r':'l';
-            else if(Math.abs(dy)>10) dir = dy>0?'d':'u';
-            if(dir){
-              this.trySwap(dir);
-              down=false;
-            }
-          });
-
-          this.c.addEventListener('touchstart',(e)=>{
-            if(this.paused || this.state==='over' || this.swapAnim) return;
-            const t=e.touches[0];
-            const p=map(t);
-            if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-            this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
-            sx=p.x; sy=p.y;
-          },{passive:true});
-          this.c.addEventListener('touchmove',(e)=>{
-            if(!this.sel || this.swapAnim) return;
-            const t=e.touches[0];
-            const p=map(t);
-            const dx=p.x-sx, dy=p.y-sy;
-            let dir=null;
-            if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>12) dir=dx>0?'r':'l';
-            else if(Math.abs(dy)>12) dir=dy>0?'d':'u';
-            if(dir){
-              this.trySwap(dir);
-            }
-          },{passive:true});
-
-          // Deck 버튼
-          document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
-          document.getElementById('undoBtn').addEventListener('click',()=>{
-            if(this.state!=='over') this.paused = !this.paused;
-          });
-          document.getElementById('endBtn').addEventListener('click',()=>
-            showAdThen(()=> this.gameOver(true))
-          );
-
-          // HOME: 광고 후 index.html로 이동
-          document.getElementById('homeBtn').addEventListener('click',()=>
-            showAdThen(()=>{ window.location.href = '/index.html'; })
-          );
-
-          const tier=$('#tier'), lvl=$('#lvlRange');
-          const applyTier=(t)=>{
-            let lv = {
-              beginner    : 1,
-              intermediate: 11,
-              advanced    : 21,
-              hell        : 40,
-              doom        : 50,
-              insane      : 100
-            }[t] || 1;
-            lvl.value = lv;
-            this.setLevel(lv);
-          };
-          tier.addEventListener('change',()=> applyTier(tier.value));
-          lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
-
-          document.addEventListener('keydown',(e)=>{
-            if(e.code==='Enter' || e.code==='KeyN'){
-              this.newGame(this.level);
-            }
-            if(e.code==='Space' || e.code==='KeyU'){
-              if(this.state!=='over'){
-                this.paused = !this.paused;
-                e.preventDefault();
-              }
-            }
-          });
-
-          window.addEventListener('resize',()=> this.resize(), {passive:true});
-        }
-
-        resize(){
-          const wrap=document.getElementById('canvasWrap');
-          const d=this.DPR();
-          const r=wrap.getBoundingClientRect();
-          const side=Math.floor(Math.min(r.width, r.height));
-          const safeSide = side>0?side:400;
-          this.c.style.width  = safeSide+'px';
-          this.c.style.height = safeSide+'px';
-          this.c.width  = Math.floor(safeSide*d);
-          this.c.height = Math.floor(safeSide*d);
-          const s=Math.min(this.c.width,this.c.height);
-          this.step = s/this.N;
-          this.ox   = (this.c.width - s)/2;
-          this.oy   = (this.c.height- s)/2;
-        }
-
-        setLevel(lv){
-          this.level = lv;
-          this.params = paramsForLevel(lv);
-          this.updateHUD();
-        }
-
-        updateHUD(){
-          $('#score').textContent = this.score|0;
-          if(this.score>this.best){
-            this.best = this.score|0;
-            localStorage.setItem(LS_KEYS.best, String(this.best));
-          }
-          $('#best').textContent = this.best|0;
-          $('#moves').textContent = (Math.max(0,this.level-1))|0;
-          $('#pointsAmt').textContent = fmt(this.points|0);
-          const cap=5000;
-          $('#pointsBar').style.width = Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
-          updateTicketUI();
-        }
-
-        newGame(lv){
-          this.level = lv;
-          this.params = paramsForLevel(lv);
-          this.score  = 0;
-          this.combo  = 1;
-          this.timeLeft = this.params.timeLimit;
-          this.points = 0;
-          this.chainLv = 0;
-          this.maxChain = 0;
-          this.goalAwarded = false;
-          this.state  = 'playing';
-          this.paused = false;
-          this.sel = null;
-          this.fx.length = 0;
-          this.swapAnim  = null;
-          const ov=document.getElementById('gameOver');
-          if(ov) ov.style.display='none';
-
-          this.grid=[];
-          for(let i=0;i<this.N;i++){
-            this.grid[i]=[];
-            for(let j=0;j<this.N;j++){
-              this.grid[i][j]=this.randomTile(i,j);
-            }
-          }
-          this.addBlockers();
-
-          let guard=0;
-          while(!this.hasAnyMatchMove() && guard<50){
-            this.shuffle();
-            guard++;
-          }
-          this.updateHUD();
-        }
-
-        randomTile(i,j){
-          let col = 1 + this.rnd(this.params.colors);
-          if(i>=2 && this.grid[i-1] && this.grid[i-2]){
-            if(this.grid[i-1][j]===this.grid[i-2][j] && this.grid[i-1][j]!==ROCK && this.grid[i-1][j]!==ICE){
-              col = (this.grid[i-1][j]%this.params.colors)+1;
-            }
-          }
-          if(j>=2){
-            if(this.grid[i][j-1]===this.grid[i][j-2] && this.grid[i][j-1]!==ROCK && this.grid[i][j-1]!==ICE){
-              col = (this.grid[i][j-1]%this.params.colors)+1;
-            }
-          }
-          return col;
-        }
-
-        addBlockers(){
-          for(let i=0;i<this.N;i++){
-            for(let j=0;j<this.N;j++){
-              if(Math.random()<this.params.rockRate){
-                this.grid[i][j]=ROCK;
-              }else if(Math.random()<this.params.iceRate){
-                this.grid[i][j]=ICE*10 + this.grid[i][j];
-              }else if(Math.random()<this.params.bombRate){
-                this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
-              }
-            }
-          }
-        }
-
-        select(x,y){
-          if(this.inBounds(x,y)) this.sel={x,y};
-        }
-
-        trySwap(dir){
-          if(!this.sel || this.swapAnim) return;
-          let dx=0,dy=0;
-          if(dir==='l')dx=-1;
-          if(dir==='r')dx= 1;
-          if(dir==='u')dy=-1;
-          if(dir==='d')dy= 1;
-          const x=this.sel.x, y=this.sel.y;
-          const nx=x+dx, ny=y+dy;
-          if(!this.inBounds(nx,ny)) return;
-
-          const animateSwap=(x1,y1,x2,y2,reverse=false)=> new Promise(res=>{
-            const dur=140;
-            const t0=performance.now();
-            this.swapAnim={x1,y1,x2,y2,reverse,t0,dur,done:res};
-          });
-
-          animateSwap(x,y,nx,ny,false).then(()=>{
-            this.swap(x,y,nx,ny);
-            const found=this.findMatches().length>0;
-            if(!found){
-              animateSwap(x,y,nx,ny,true).then(()=>{
-                this.swap(x,y,nx,ny);
-                if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5);
-              });
-            }else{
-              this.sel=null;
-              this.processCascade();
-            }
-          });
-        }
-
-        swap(x1,y1,x2,y2){
-          const t=this.grid[x1][y1];
-          this.grid[x1][y1]=this.grid[x2][y2];
-          this.grid[x2][y2]=t;
-        }
-
-        findMatches(){
-          const res=[];
-          let i,j,cnt,val,prev,vType,pType,vCol,pCol,lastCol;
-
-          // 가로
-          for(j=0;j<this.N;j++){
-            cnt=1;
-            for(i=1;i<this.N;i++){
-              val = this.grid[i][j];
-              prev= this.grid[i-1][j];
-              vType = this.btype(val)===NORMAL? NORMAL: this.btype(val);
-              pType = this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
-              vCol  = this.bval(val);
-              pCol  = this.bval(prev);
-              const eq = (vType===NORMAL && pType===NORMAL && vCol===pCol);
-              if(eq){
-                cnt++;
-              }else{
-                if(cnt>=3){
-                  res.push({dir:'h', y:j, x:i-cnt, len:cnt, col:pCol});
-                }
-                cnt=1;
-              }
-            }
-            if(cnt>=3){
-              lastCol = this.bval(this.grid[this.N-1][j]);
-              res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol});
-            }
-          }
-
-          // 세로
-          for(i=0;i<this.N;i++){
-            cnt=1;
-            for(j=1;j<this.N;j++){
-              val = this.grid[i][j];
-              prev= this.grid[i][j-1];
-              vType = this.btype(val)===NORMAL? NORMAL: this.btype(val);
-              pType = this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
-              vCol  = this.bval(val);
-              pCol  = this.bval(prev);
-              const eq = (vType===NORMAL && pType===NORMAL && vCol===pCol);
-              if(eq){
-                cnt++;
-              }else{
-                if(cnt>=3){
-                  res.push({dir:'v', x:i, y:j-cnt, len:cnt, col:pCol});
-                }
-                cnt=1;
-              }
-            }
-            if(cnt>=3){
-              lastCol = this.bval(this.grid[i][this.N-1]);
-              res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol});
-            }
-          }
-          return res;
-        }
-
-        resolveMatches(chainLv){
-          const matches=this.findMatches();
-          if(matches.length===0) return {found:false};
-
-          let cleared=0;
-          const specials=[];
-          let basePoint=0;
-
-          for(const m of matches){
-            const sp=this.createSpecialFromMatch(m);
-            const cx = m.dir==='h'? m.x+Math.floor(m.len/2) : m.x;
-            const cy = m.dir==='h'? m.y : m.y+Math.floor(m.len/2);
-            if(sp) specials.push({x:cx,y:cy,val:sp});
-
-            const per = (m.len>=5)?24 : (m.len===4?14:8);
-            basePoint += per;
-
-            if(m.dir==='h'){
-              for(let j=0;j<m.len;j++){
-                const gx=m.x+j, gy=m.y;
-                if(this.btype(this.grid[gx][gy])!==ROCK){
-                  this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
-                  this.grid[gx][gy]=EMPTY;
-                  cleared++;
-                }
-              }
-            }else{
-              for(let j=0;j<m.len;j++){
-                const gx=m.x, gy=m.y+j;
-                if(this.btype(this.grid[gx][gy])!==ROCK){
-                  this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
-                  this.grid[gx][gy]=EMPTY;
-                  cleared++;
-                }
-              }
-            }
-          }
-
-          for(const s of specials){
-            this.grid[s.x][s.y]=s.val;
-          }
-
-          this.score += cleared*10*this.combo;
-          this.combo++;
-          if(chainLv>this.maxChain) this.maxChain = chainLv;
-
-          const chainBonus = Math.min(0.6, Math.max(0, (chainLv-1)*0.2));
-          const mult       = difficultyMult();
-          const earned     = Math.floor(basePoint * (1+chainBonus) * mult);
-          if(earned>0) this.addPoints(earned);
-
-          if(!this.goalAwarded && this.score>=this.params.goalScore){
-            this.goalAwarded=true;
-            this.addPoints(Math.floor(100*mult));
-          }
-
-          this.timeLeft = Math.min(this.params.timeLimit, this.timeLeft + Math.min(2, cleared*0.05));
-
-          this.dropAndFill();
-          return {found:true};
-        }
-
-        addPoints(p){
-          this.points = Math.min(5000, this.points + p);
-          this.updateHUD();
-        }
-
-        createSpecialFromMatch(m){
-          if(m.len>=5) return RAINBOW*10 + m.col;
-          if(m.len===4) return (m.dir==='h'? STRIPE_H : STRIPE_V)*10 + m.col;
-          return 0;
-        }
-
-        processCascade(){
-          this.chainLv=1;
-          while(true){
-            const r=this.resolveMatches(this.chainLv);
-            if(!r.found) break;
-            this.chainLv++;
-          }
-          this.chainLv=0;
-        }
-
-        dropAndFill(){
-          for(let i=0;i<this.N;i++){
-            for(let j=this.N-1;j>=0;j--){
-              if(this.grid[i][j]===EMPTY){
-                for(let k=j-1;k>=0;k--){
-                  if(this.grid[i][k]!==EMPTY){
-                    this.grid[i][j]=this.grid[i][k];
-                    this.grid[i][k]=EMPTY;
-                    break;
-                  }
-                }
-                if(this.grid[i][j]===EMPTY){
-                  this.grid[i][j]=this.randomTile(i,j);
-                }
-              }
-            }
-          }
-
-          for(let i=0;i<this.N;i++){
-            for(let j=0;j<this.N;j++){
-              const v=this.grid[i][j];
-              if(Math.floor(v/10)===BOMB){
-                let n=v%10;
-                n--;
-                if(n<=0){
-                  this.explodeAt(i,j);
-                  this.grid[i][j]=EMPTY;
-                }else{
-                  this.grid[i][j]=BOMB*10+n;
-                }
-              }
-            }
-          }
-
-          if(!this.hasAnyMatchMove()) this.shuffle();
-        }
-
-        explodeAt(cx,cy){
-          for(let i=cx-1;i<=cx+1;i++){
-            for(let j=cy-1;j<=cy+1;j++){
-              if(this.inBounds(i,j)){
-                if(this.btype(this.grid[i][j])!==ROCK){
-                  this.spawnPop(i,j,this.bval(this.grid[i][j]));
-                  this.grid[i][j]=EMPTY;
-                  this.score+=5;
-                }
-              }
-            }
-          }
-        }
-
-        hasAnyMatchMove(){
-          for(let x=0;x<this.N;x++){
-            for(let y=0;y<this.N;y++){
-              if(x+1<this.N){
-                this.swap(x,y,x+1,y);
-                if(this.findMatches().length>0){
-                  this.swap(x,y,x+1,y);
-                  return true;
-                }
-                this.swap(x,y,x+1,y);
-              }
-              if(y+1<this.N){
-                this.swap(x,y,x,y+1);
-                if(this.findMatches().length>0){
-                  this.swap(x,y,x,y+1);
-                  return true;
-                }
-                this.swap(x,y,x,y+1);
-              }
-            }
-          }
-          return false;
-        }
-
-        shuffle(){
-          const flat=[];
-          for(let i=0;i<this.N;i++){
-            for(let j=0;j<this.N;j++){
-              if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
-            }
-          }
-          for(let i=flat.length-1;i>0;i--){
-            const r=this.rnd(i+1);
-            [flat[i],flat[r]]=[flat[r],flat[i]];
-          }
-          let idx=0;
-          for(let i=0;i<this.N;i++){
-            for(let j=0;j<this.N;j++){
-              if(this.grid[i][j]!==ROCK){
-                this.grid[i][j]=flat[idx++];
-              }
-            }
-          }
-        }
-
-        spawnPop(gx,gy,colIdx){
-          const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-          const col=pal[(Math.max(1,colIdx)-1)%pal.length];
-          this.fx.push({gx,gy,tStart:this.last||performance.now(),col});
-        }
-
-        drawPops(ctx){
-          const now=this.last||performance.now();
-          const DURATION=220;
-          const keep=[];
-          for(const fx of this.fx){
-            const k=(now-fx.tStart)/DURATION;
-            if(k>=1) continue;
-            const x=this.ox+(fx.gx+0.5)*this.step;
-            const y=this.oy+(fx.gy+0.5)*this.step;
-            const r=this.step*0.45*(0.25+0.75*k);
-            ctx.beginPath();
-            ctx.arc(x,y,r,0,Math.PI*2);
-            const v=parseInt(fx.col.slice(1),16);
-            const rr=(v>>16)&255, gg=(v>>8)&255, bb=v&255;
-            ctx.fillStyle=`rgba(${rr},${gg},${bb},${(1-k)*0.6})`;
-            ctx.fill();
-            keep.push(fx);
-          }
-          this.fx=keep;
-        }
-
-        update(dt){
-          if(this.paused || this.state==='over') return;
-          this.timeLeft -= dt;
-          if(this.timeLeft<=0){
-            this.timeLeft=0;
-            this.gameOver(false);
-          }
-          this.updateHUD();
-        }
-
-        draw(){
-          const ctx=this.ctx;
-          const d = this.DPR();
-          ctx.clearRect(0,0,this.c.width,this.c.height);
-
-          const g=ctx.createLinearGradient(0,0,0,this.c.height);
-          g.addColorStop(0,'#0b1440');
-          g.addColorStop(1,'#070c22');
-          ctx.fillStyle=g;
-          ctx.fillRect(0,0,this.c.width,this.c.height);
-
-          const s=Math.min(this.c.width,this.c.height);
-          const x0=this.ox, y0=this.oy;
-          this.step=s/this.N;
-
-          for(let i=0;i<this.N;i++){
-            for(let j=0;j<this.N;j++){
-              const v=this.grid[i][j];
-              const bt=this.btype(v);
-              const val=this.bval(v);
-              let x=x0+i*this.step, y=y0+j*this.step;
-
-              if(this.swapAnim){
-                const a=this.swapAnim;
-                const now=performance.now();
-                let t=(now-a.t0)/a.dur;
-                t=Math.max(0,Math.min(1,t));
-                const dirX=a.x2-a.x1;
-                const dirY=a.y2-a.y1;
-                const off = (i===a.x1&&j===a.y1)
-                  ? (a.reverse?1-t:t)
-                  : (i===a.x2&&j===a.y2 ? (a.reverse?1-t:t)*-1 : 0);
-                if(off!==0){
-                  x += off*dirX*this.step;
-                  y += off*dirY*this.step;
-                }
-                if(t>=1){
-                  const done=a.done;
-                  this.swapAnim=null;
-                  if(done) done();
-                }
-              }
-
-              ctx.strokeStyle='#283273';
-              ctx.strokeRect(x,y,this.step,this.step);
-              if(v===EMPTY) continue;
-
-              const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-              const col=pal[(val-1)%pal.length];
-
-              ctx.fillStyle =
-                bt===ROCK   ? '#444a66' :
-                bt===ICE    ? '#a7d8ff' :
-                (bt===STRIPE_H||bt===STRIPE_V) ? '#fff2' :
-                bt===BOMB   ? '#ff9aa6' :
-                bt===RAINBOW? '#ffffff' :
-                col;
-
-              ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
-              ctx.strokeStyle='#0006';
-              ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
-
-              ctx.fillStyle='#001';
-              ctx.font=(12*d)+'px ui-sans-serif';
-              ctx.textAlign='center';
-              ctx.textBaseline='middle';
-
-              if(bt===STRIPE_H)      ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
-              else if(bt===STRIPE_V) ctx.fillText('|',      x+this.step/2, y+this.step/2);
-              else if(bt===BOMB)     ctx.fillText(String(v%10), x+this.step/2, y+this.step/2);
-              else if(bt===RAINBOW)  ctx.fillText('*',      x+this.step/2, y+this.step/2);
-              else if(bt===ICE)      ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
-              else if(bt===ROCK)     ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
-
-              if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
-                ctx.strokeStyle='#8ea3ff';
-                ctx.lineWidth=3;
-                ctx.strokeRect(x+3,y+3,this.step-6,this.step-6);
-                ctx.lineWidth=1;
-              }
-            }
-          }
-
-          this.drawPops(ctx);
-
-          ctx.globalAlpha=0.12;
-          ctx.fillStyle='#000';
-          for(let yy=0; yy<this.c.height; yy+=2*d){
-            ctx.fillRect(0,yy,this.c.width,1*d);
-          }
-          ctx.globalAlpha=1;
-        }
-
-        run(ts){
-          const dt=(ts-(this.last||ts))/1000;
-          this.last=ts;
-          this.update(Math.min(dt,0.033));
-          this.draw();
-          requestAnimationFrame((t)=>this.run(t));
-        }
-
-        gameOver(manual=false){
-          // ✅ 실제 게임 종료(타임아웃/수동 종료)와 보상 호출을 1:1로 맞춤
-          if(this.state==='over') return;
-          this.state='over';
-
-          if(this.score>this.best){
-            this.best=this.score;
-            localStorage.setItem(LS_KEYS.best, String(this.best));
-          }
-
-          addRecord(this.score, this.points);
-          addPlay();
-
-          const ov=document.getElementById('gameOver');
-          if(ov) ov.style.display='flex';
-
-          /* ✅ 서버 세션 종료 (최종 점수 보고) */
-          notifyFinish(this.score|0);
-
-          /* ✅ 계정 지갑/글로벌 HUD 보상 연동 (retro-running 동일 delta/meta 구조) */
-          try{
-            const finalScore   = this.score  || 0;
-            const earnedPoints = this.points || 0;
-            const lv           = this.level  || 1;
-
-            // 통합 허브 규격(delta: xp / tickets / coins)
-            let delta;
-            if(typeof window.calcReward === 'function'){
-              // 공통 보상 계산(게임별 규칙은 calcReward 내부에서 통합 관리)
-              delta = window.calcReward(finalScore, earnedPoints, lv);
-            }else{
-              // fallback: brick-match 전용 기본 규칙
-              const diff     = difficultyMult();
-              const baseXp   = Math.round((finalScore/40 + earnedPoints/30) * diff);
-              const tickets  = finalScore >= (this.params?.goalScore || 0) ? 1 : 0;
-              const coins    = Math.round((earnedPoints || 0) / 8);
-              delta = {
-                xp     : Math.max(0, baseXp),
-                tickets: Math.max(0, tickets),
-                coins  : Math.max(0, coins)
-              };
-            }
-
-            // meta 객체: retro-running/2048와 동일한 기본 필드 + brick-match 전용 세부 정보
-            const tierSel   = $('#tier');
-            const mode      = tierSel ? tierSel.value : 'beginner';
-            const modeLabel = (tierSel && tierSel.options[tierSel.selectedIndex])
-              ? tierSel.options[tierSel.selectedIndex].text
-              : '';
-
-            const meta = {
-              game        : 'match-3',
-              score       : finalScore,
-              points      : earnedPoints,
-              level       : lv,
-              mode,
-              modeLabel,
-              boardSize   : this.N,
-              timeLimit   : this.params?.timeLimit || 0,
-              timeRemaining: this.timeLeft || 0,
-              goalScore   : this.params?.goalScore || 0,
-              clearedGoal : !!this.goalAwarded,
-              maxChain    : this.maxChain || 0,
-              manualEnd   : !!manual
-            };
-
-            applyGlobalRewardAndSyncWallet('match-3', delta, meta);
-          }catch(e){
-            console.error('reward sync error', e);
-          }
-        }
-      }
-
-      function addPlay(){
-        let plays   = +localStorage.getItem(LS_KEYS.plays)||0;
-        plays++;
-        let tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-        if(plays%10===0) tickets++;
-        localStorage.setItem(LS_KEYS.plays,   String(plays));
-        localStorage.setItem(LS_KEYS.tickets, String(tickets));
-        updateTicketUI();
-
-        // 🔁 광고 노출 주기: 3회 플레이마다 1회 팝업
-                // if(plays % 3 === 0){
-        //   showInterstitialAd();
-        // } // ✅ 3회당 광고 노출 제거
-      }
-
-      function addRecord(score, points){
-        const recs=loadJSON(LS_KEYS.records,[]);
-        const now=new Date();
-        recs.unshift({ts:now.toISOString(), score, points});
-        saveJSON(LS_KEYS.records, recs.slice(0,200));
-      }
-
-      function showRecords(){
-        const recs=loadJSON(LS_KEYS.records,[]);
-        const rows = recs.map(r=>{
-          const d=new Date(r.ts);
-          const date=d.toLocaleString('ko-KR');
-          return `<tr>
-            <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
-            <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
-            <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
-          </tr>`;
-        }).join('');
-        $('#recBody').innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-          <thead>
-            <tr>
-              <th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th>
-              <th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th>
-              <th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-        $('#recModal').style.display='flex';
-      }
-
-      document.getElementById('recordsBtn').addEventListener('click',showRecords);
-      document.getElementById('recClose').addEventListener('click',()=>$('#recModal').style.display='none');
-      document.getElementById('recModal').addEventListener('click',e=>{
-        if(e.target.id==='recModal') $('#recModal').style.display='none';
+    }
+
+    DPR(){ return Math.min(2, window.devicePixelRatio||1); }
+    rnd(n){ return Math.floor(Math.random()*n); }
+    btype(v){ return Math.floor(v/10)===0? NORMAL: Math.floor(v/10); }
+    bval(v){ return Math.floor(v/10)===0? v: v%10; }
+    inBounds(x,y){ return x>=0&&x<this.N&&y>=0&&y<this.N; }
+
+    bind(){
+      // ✅ transform(scale)과 DPR을 모두 무시하고, 화면에 보이는 실제 크기만 사용
+      const map = (ev)=>{
+        const r=this.c.getBoundingClientRect();
+        const side=Math.min(r.width, r.height);
+        const left=r.left+(r.width - side)/2;
+        const top =r.top +(r.height- side)/2;
+        const x=ev.clientX-left, y=ev.clientY-top; // 현재 화면좌표(스케일 반영됨)
+        return {x,y,side};
+      };
+      let down=false,sx=0,sy=0;
+
+      this.c.addEventListener('mousedown',(e)=>{
+        if(this.paused||this.state==='over'||this.swapAnim) return;
+        down=true; const p=map(e);
+        if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
+        // ✅ 비율 기반 인덱싱 (DPR/스케일 무관)
+        this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
+        sx=p.x; sy=p.y;
+      });
+      window.addEventListener('mouseup',()=> down=false,{passive:true});
+      this.c.addEventListener('mousemove',(e)=>{
+        if(!down||!this.sel||this.swapAnim) return;
+        const p=map(e); const dx=p.x-sx, dy=p.y-sy; let dir=null;
+        if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>10) dir= dx>0?'r':'l';
+        else if(Math.abs(dy)>10) dir= dy>0?'d':'u';
+        if(dir){ this.trySwap(dir); down=false; }
       });
 
-      const m3 = new Match3(document.getElementById('game'));
-      (function initUI(){
-        const tier=$('#tier'), lvl=$('#lvlRange');
-        const applyTier=(t)=>{
-          let lv={
-            beginner    : 1,
-            intermediate: 11,
-            advanced    : 21,
-            hell        : 40,
-            doom        : 50,
-            insane      : 100
-          }[t] || 1;
-          lvl.value = lv;
-          m3.setLevel(lv);
-        };
-        applyTier(tier.value);
-        lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
-        updateTicketUI();
-      })();
-    }, { once:true });
+      this.c.addEventListener('touchstart',(e)=>{
+        if(this.paused||this.state==='over'||this.swapAnim) return;
+        const t=e.touches[0]; const p=map(t);
+        if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
+        // ✅ 비율 기반 인덱싱
+        this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
+        sx=p.x; sy=p.y;
+      },{passive:true});
+      this.c.addEventListener('touchmove',(e)=>{
+        if(!this.sel||this.swapAnim) return; const t=e.touches[0]; const p=map(t);
+        const dx=p.x-sx, dy=p.y-sy; let dir=null;
+        if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>12) dir= dx>0?'r':'l';
+        else if(Math.abs(dy)>12) dir= dy>0?'d':'u';
+        if(dir){ this.trySwap(dir); }
+      },{passive:true});
 
-    /***** Cabinet fit (뷰포트에 맞게 비율 유지) *****/
-    function fitCabinet(){
-      const cab = document.querySelector('.cabinet');
-      if(!cab) return;
-      const margin = 16;
-      cab.style.transform='none';
-      const w=cab.offsetWidth || 1;
-      const h=cab.offsetHeight|| 1;
-      const scale = Math.min(
-        1,
-        (window.innerWidth  - margin*2)/w,
-        (window.innerHeight - margin*2)/h
-      );
-      cab.style.transform = 'scale('+scale+')';
-    }
-    window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-    window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-    setTimeout(fitCabinet, 0);
+      // Deck / Keys
+      document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
+      document.getElementById('undoBtn').addEventListener('click',()=>{ if(this.state!=='over') this.paused=!this.paused; });
+      document.getElementById('endBtn').addEventListener('click',()=> showAdThen(()=> this.gameOver(true)));
+      document.getElementById('homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
 
-    /***** 세션 훅(안전 래퍼) *****/
-    let __rg_finish_sent_match3 = false;
+      const tier=$('#tier'), lvl=$('#lvlRange');
+      const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
+      tier.addEventListener('change',()=> applyTier(tier.value));
+      lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
 
-    function notifyStart(){
-      try{
-        __rg_finish_sent_match3 = false;
-        if(typeof window.gameStart === 'function') window.gameStart('match-3');
-      }catch(e){}
+      document.addEventListener('keydown',(e)=>{
+        if(e.code==='Enter' || e.code==='KeyN'){ this.newGame(this.level); }
+        if(e.code==='Space' || e.code==='KeyU'){ if(this.state!=='over'){ this.paused=!this.paused; e.preventDefault(); } }
+      });
+
+      window.addEventListener('resize',()=> this.resize(),{passive:true});
     }
 
-    async function notifyFinish(finalScore){
-      if(__rg_finish_sent_match3) return;
-      __rg_finish_sent_match3 = true;
-      try{
-        // ✅ /api/games/finish 경로 차단
-        // ✅ 보상/지갑 반영은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트만 사용
-      }catch(e){
-        __rg_finish_sent_match3 = false;
+    /* 캔버스 크기 계산 */
+    resize(){
+      const wrap=document.getElementById('canvasWrap');
+      const d=this.DPR();
+      const r=wrap.getBoundingClientRect();
+      const side=Math.floor(Math.min(r.width, r.height));
+      this.c.style.width = side+'px';
+      this.c.style.height= side+'px';
+      this.c.width = Math.floor(side*d);
+      this.c.height= Math.floor(side*d);
+      const s=Math.min(this.c.width,this.c.height);
+      this.step=s/this.N; this.ox=(this.c.width - s)/2; this.oy=(this.c.height- s)/2;
+    }
+
+    setLevel(lv){ this.level=lv; this.params=paramsForLevel(lv); this.updateHUD(); }
+
+    updateHUD(){
+      $('#score').textContent=this.score|0;
+      if(this.score>this.best){ this.best=this.score|0; localStorage.setItem(LS_KEYS.best, String(this.best)); }
+      $('#best').textContent=this.best|0;
+      $('#moves').textContent=(Math.max(0,this.level-1))|0;
+      $('#pointsAmt').textContent=fmt(this.points|0);
+      const cap=5000; $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
+      updateTicketUI();
+    }
+
+    newGame(lv){
+      this.level=lv; this.params=paramsForLevel(lv);
+      this.score=0; this.combo=1; this.timeLeft=this.params.timeLimit;
+      this.points=0; this.chainLv=0; this.goalAwarded=false;
+      this.state='playing'; this.paused=false; this.sel=null;
+      this.fx.length=0; this.swapAnim=null;
+      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='none';
+
+      this.grid=[]; for(let i=0;i<this.N;i++){ this.grid[i]=[]; for(let j=0;j<this.N;j++){ this.grid[i][j]=this.randomTile(i,j); } }
+      this.addBlockers();
+
+      let guard=0; while(!this.hasAnyMatchMove() && guard<50){ this.shuffle(); guard++; }
+      this.updateHUD();
+    }
+
+    randomTile(i,j){
+      let col = 1 + this.rnd(this.params.colors);
+      if(i>=2 && this.grid[i-1] && this.grid[i-2]){
+        if(this.grid[i-1][j]===this.grid[i-2][j] && this.grid[i-1][j]!==ROCK && this.grid[i-1][j]!==ICE){
+          col = (this.grid[i-1][j]%this.params.colors)+1;
+        }
+      }
+      if(j>=2){
+        if(this.grid[i][j-1]===this.grid[i][j-2] && this.grid[i][j-1]!==ROCK && this.grid[i][j-1]!==ICE){
+          col = (this.grid[i][j-1]%this.params.colors)+1;
+        }
+      }
+      return col;
+    }
+    addBlockers(){
+      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
+        if(Math.random()<this.params.rockRate) this.grid[i][j]=ROCK;
+        else if(Math.random()<this.params.iceRate) this.grid[i][j]=ICE*10 + this.grid[i][j];
+        else if(Math.random()<this.params.bombRate) this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
       }
     }
 
-    /***** 가시성 훅 *****/
-    document.addEventListener('visibilitychange', () => {
-      if(document.hidden){
-        // 필요 시 일시정지, 로깅 등 연결 지점 (현재는 동작 보존 위해 no-op)
+    select(x,y){ if(this.inBounds(x,y)) this.sel={x,y}; }
+
+    trySwap(dir){
+      if(!this.sel || this.swapAnim) return;
+      let dx=0,dy=0; if(dir==='l')dx=-1; if(dir==='r')dx=1; if(dir==='u')dy=-1; if(dir==='d')dy=1;
+      const x=this.sel.x, y=this.sel.y, nx=x+dx, ny=y+dy; if(!this.inBounds(nx,ny)) return;
+
+      const animateSwap=(x1,y1,x2,y2,reverse=false)=> new Promise(res=>{
+        const dur=140; const t0=performance.now();
+        this.swapAnim={x1,y1,x2,y2,reverse,t0,dur,done:res};
+      });
+
+      animateSwap(x,y,nx,ny,false).then(()=>{
+        this.swap(x,y,nx,ny);
+        const found=this.findMatches().length>0;
+        if(!found){
+          animateSwap(x,y,nx,ny,true).then(()=>{ this.swap(x,y,nx,ny); if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5); });
+        }else{
+          this.sel=null; this.processCascade();
+        }
+      });
+    }
+    swap(x1,y1,x2,y2){ const t=this.grid[x1][y1]; this.grid[x1][y1]=this.grid[x2][y2]; this.grid[x2][y2]=t; }
+
+    findMatches(){
+      const res=[]; let i,j,cnt,val,prev,vType,pType,vCol,pCol,lastCol;
+      for(j=0;j<this.N;j++){
+        cnt=1;
+        for(i=1;i<this.N;i++){
+          val=this.grid[i][j]; prev=this.grid[i-1][j];
+          vType=this.btype(val)===NORMAL? NORMAL: this.btype(val);
+          pType=this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
+          vCol=this.bval(val); pCol=this.bval(prev);
+          const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
+          if(eq) cnt++;
+          else { if (cnt >= 3) { res.push({ dir: 'h', y: j, x: i - cnt, len: cnt, col: pCol }); } cnt = 1; }
+        }
+        if (cnt>=3){ lastCol=this.bval(this.grid[this.N-1][j]); res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol}); }
       }
-    });
-  </script>
+      for(i=0;i<this.N;i++){
+        cnt=1;
+        for(j=1;j<this.N;j++){
+          val=this.grid[i][j]; prev=this.grid[i][j-1];
+          vType=this.btype(val)===NORMAL? NORMAL: this.btype(val);
+          pType=this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
+          vCol=this.bval(val); pCol=this.bval(prev);
+          const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
+          if(eq) cnt++;
+          else { if (cnt >= 3) { res.push({ dir: 'v', x: i, y: j - cnt, len: cnt, col: pCol }); }cnt = 1; }
+        }
+        if(cnt>=3){ lastCol=this.bval(this.grid[i][this.N-1]); res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol}); }
+      }
+      return res;
+    }
+
+    resolveMatches(chainLv){
+      const matches=this.findMatches(); if(matches.length===0) return {found:false};
+      let cleared=0; const specials=[]; let basePoint=0;
+
+      for(const m of matches){
+        const sp=this.createSpecialFromMatch(m);
+        const cx=m.dir==='h'? m.x+Math.floor(m.len/2): m.x;
+        const cy=m.dir==='h'? m.y: m.y+Math.floor(m.len/2);
+        if(sp) specials.push({ x: cx, y: cy, val: sp });
+
+        const per = (m.len>=5)?24 : (m.len===4?14:8);
+        basePoint += per;
+
+        if(m.dir==='h'){
+          for(let j=0;j<m.len;j++){
+            const gx=m.x+j, gy=m.y;
+            if(this.btype(this.grid[gx][gy])!==ROCK){
+              this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
+              this.grid[gx][gy]=EMPTY; cleared++;
+            }
+          }
+        } else {
+          for(let j=0;j<m.len;j++){
+            const gx=m.x, gy=m.y+j;
+            if(this.btype(this.grid[gx][gy])!==ROCK){
+              this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
+              this.grid[gx][gy]=EMPTY; cleared++;
+            }
+          }
+        }
+      }
+      for(const s of specials){ this.grid[s.x][s.y]=s.val; }
+
+      this.score += cleared*10*this.combo; this.combo++;
+      const chainBonus = Math.min(0.6, Math.max(0, (chainLv-1)*0.2));
+      const mult = difficultyMult();
+      const earned = Math.floor(basePoint * (1+chainBonus) * mult);
+      if(earned>0) this.addPoints(earned);
+
+      if(!this.goalAwarded && this.score >= this.params.goalScore){
+        this.goalAwarded = true;
+        this.addPoints(Math.floor(100 * mult));
+      }
+
+      this.timeLeft = Math.min(this.params.timeLimit, this.timeLeft + Math.min(2, cleared*0.05));
+      this.dropAndFill();
+      return {found:true};
+    }
+
+    addPoints(p){
+      this.points = Math.min(5000, this.points + p);
+      this.updateHUD();
+    }
+
+    createSpecialFromMatch(m){
+      if(m.len>=5) return RAINBOW*10 + m.col;
+      if(m.len===4) return (m.dir==='h'? STRIPE_H: STRIPE_V)*10 + m.col;
+      return 0;
+    }
+
+    processCascade(){
+      this.chainLv=1;
+      while(true){
+        const r=this.resolveMatches(this.chainLv);
+        if(!r.found) break;
+        this.chainLv++;
+      }
+      this.chainLv=0;
+    }
+
+    dropAndFill(){
+      for(let i=0;i<this.N;i++){
+        for(let j=this.N-1;j>=0;j--){
+          if(this.grid[i][j]===EMPTY){
+            for(let k=j-1;k>=0;k--){ if(this.grid[i][k]!==EMPTY){ this.grid[i][j]=this.grid[i][k]; this.grid[i][k]=EMPTY; break; } }
+            if(this.grid[i][j]===EMPTY){ this.grid[i][j]=this.randomTile(i,j); }
+          }
+        }
+      }
+      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
+        const v=this.grid[i][j];
+        if(Math.floor(v/10)===BOMB){
+          let n=v%10; n--;
+          if(n<=0){ this.explodeAt(i,j); this.grid[i][j]=EMPTY; }
+          else { this.grid[i][j]=BOMB*10+n; }
+        }
+      }
+      if(!this.hasAnyMatchMove()) this.shuffle();
+    }
+
+    explodeAt(cx,cy){
+      for(let i=cx-1;i<=cx+1;i++) for(let j=cy-1;j<=cy+1;j++)
+        if(this.inBounds(i,j)){ if(this.btype(this.grid[i][j])!==ROCK){ this.spawnPop(i,j,this.bval(this.grid[i][j])); this.grid[i][j]=EMPTY; this.score+=5; } }
+    }
+
+    hasAnyMatchMove(){
+      for(let x=0;x<this.N;x++) for(let y=0;y<this.N;y++){
+        if(x+1<this.N){ this.swap(x,y,x+1,y); if(this.findMatches().length>0){ this.swap(x,y,x+1,y); return true; } this.swap(x,y,x+1,y); }
+        if(y+1<this.N){ this.swap(x,y,x,y+1); if(this.findMatches().length>0){ this.swap(x,y,x,y+1); return true; } this.swap(x,y,x,y+1); }
+      }
+      return false;
+    }
+    shuffle(){
+      const flat=[]; for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++) if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
+      for(let i=flat.length-1;i>0;i--){ const r=this.rnd(i+1); [flat[i],flat[r]]=[flat[r],flat[i]]; }
+      let idx=0; for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++) if(this.grid[i][j]!==ROCK) this.grid[i][j]=flat[idx++];
+    }
+
+    spawnPop(gx,gy,colIdx){
+      const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
+      const col=pal[(Math.max(1,colIdx)-1)%pal.length];
+      this.fx.push({gx,gy,tStart:this.last||performance.now(), col});
+    }
+    drawPops(ctx){
+      const now=this.last||performance.now(); const DURATION=220;
+      const keep=[]; for(const fx of this.fx){
+        const k=(now-fx.tStart)/DURATION; if(k>=1) continue;
+        const x=this.ox+(fx.gx+0.5)*this.step, y=this.oy+(fx.gy+0.5)*this.step;
+        const r=this.step*0.45*(0.25+0.75*k);
+        ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+        const v=parseInt(fx.col.slice(1),16), rr=(v>>16)&255, gg=(v>>8)&255, bb=v&255;
+        ctx.fillStyle=`rgba(${rr},${gg},${bb},${(1-k)*0.6})`; ctx.fill();
+        keep.push(fx);
+      }
+      this.fx=keep;
+    }
+
+    update(dt){
+      if(this.paused||this.state==='over') return;
+      this.timeLeft -= dt; if(this.timeLeft<=0){ this.timeLeft=0; this.gameOver(); }
+      this.updateHUD();
+    }
+
+    draw(){
+      const ctx=this.ctx, d=this.DPR();
+      ctx.clearRect(0,0,this.c.width,this.c.height);
+
+      const g=ctx.createLinearGradient(0,0,0,this.c.height);
+      g.addColorStop(0,'#0b1440'); g.addColorStop(1,'#070c22');
+      ctx.fillStyle=g; ctx.fillRect(0,0,this.c.width,this.c.height);
+
+      const s=Math.min(this.c.width,this.c.height); const x0=this.ox, y0=this.oy; this.step=s/this.N;
+
+      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
+        const v=this.grid[i][j]; const bt=this.btype(v); const val=this.bval(v);
+        let x=x0+i*this.step, y=y0+j*this.step;
+
+        if(this.swapAnim){
+          const a=this.swapAnim, now=performance.now();
+          let t=(now-a.t0)/a.dur; t=Math.max(0,Math.min(1,t));
+          const dirX=a.x2-a.x1, dirY=a.y2-a.y1;
+          const off = (i===a.x1&&j===a.y1)? (a.reverse?1-t:t) : (i===a.x2&&j===a.y2? (a.reverse?1-t:t)*-1 : 0);
+          if(off!==0){ x += off*dirX*this.step; y += off*dirY*this.step; }
+          if(t>=1){ const done=a.done; this.swapAnim=null; if(done) done(); }
+        }
+
+        ctx.strokeStyle='#283273'; ctx.strokeRect(x,y,this.step,this.step);
+        if(v===EMPTY) continue;
+        const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
+        const col=pal[(val-1)%pal.length];
+        ctx.fillStyle= bt===ROCK? '#444a66' : bt===ICE? '#a7d8ff' : bt===STRIPE_H||bt===STRIPE_V? '#fff2' : bt===BOMB? '#ff9aa6' : bt===RAINBOW? '#ffffff' : col;
+        ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
+        ctx.strokeStyle='#0006'; ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
+        ctx.fillStyle='#001'; ctx.font=(12*d)+'px ui-sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        if(bt===STRIPE_H) ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
+        else if(bt===STRIPE_V) ctx.fillText('|', x+this.step/2, y+this.step/2);
+        else if(bt===BOMB) ctx.fillText(String(v%10), x+this.step/2, y+this.step/2);
+        else if(bt===RAINBOW) ctx.fillText('*', x+this.step/2, y+this.step/2);
+        else if(bt===ICE) ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
+        else if(bt===ROCK) ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
+        if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
+          ctx.strokeStyle='#8ea3ff'; ctx.lineWidth=3; ctx.strokeRect(x+3,y+3,this.step-6,this.step-6); ctx.lineWidth=1;
+        }
+      }
+
+      this.drawPops(ctx);
+
+      ctx.globalAlpha=0.12; ctx.fillStyle='#000';
+      for(let yy=0; yy<this.c.height; yy+=2*d){ ctx.fillRect(0,yy,this.c.width,1*d); }
+      ctx.globalAlpha=1;
+    }
+
+    run(ts){ const dt=(ts-(this.last||ts))/1000; this.last=ts; this.update(Math.min(dt,0.033)); this.draw(); requestAnimationFrame((t)=>this.run(t)); }
+
+    gameOver(manual=false){
+      this.state='over';
+      if(this.score>this.best){ this.best=this.score; localStorage.setItem(LS_KEYS.best, String(this.best)); }
+      addRecord(this.score, this.points); addPlay();
+      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='flex';
+      notifyFinish(this.score|0);
+    }
+  }
+
+  const m3=new Match3(document.getElementById('game'));
+  (function initUI(){
+    const tier=$('#tier'), lvl=$('#lvlRange');
+    const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; m3.setLevel(lv); };
+    applyTier(tier.value);
+    lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
+    updateTicketUI();
+  })();
+})();
+
+/***** Cabinet fit *****/
+function fitCabinet(){
+  const cab = document.querySelector('.cabinet'); if(!cab) return;
+  const margin = 16;
+  cab.style.transform='none';
+  const w=cab.offsetWidth, h=cab.offsetHeight;
+  const scale = Math.min(1, (window.innerWidth - margin*2)/w, (window.innerHeight - margin*2)/h);
+  cab.style.transform = 'scale('+scale+')';
+}
+window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+setTimeout(fitCabinet, 0);
+
+/***** 세션 훅(안전 래퍼) *****/
+function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('match-3'); }catch(e){} }
+function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('match-3', finalScore|0); }catch(e){} }
+
+/***** 가시성 훅 *****/
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // 필요 시 일시정지, 로깅 등 연결 지점
+  }
+});
+</script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
@@ -1948,134 +855,31 @@
     <button class="agree" type="button">동의</button>
   </div>
 
+
   <script>
-    (function(){
-      try{
-        var KEY='rg_analytics_consent';
-        function init(){
-          if(typeof window.analyticsInit==='function') window.analyticsInit();
-        }
-        var v=null;
-        try{
-          v=localStorage.getItem(KEY);
-        }catch(e){}
-        var el=document.getElementById('cookieBanner');
-        if(v==='yes'){
-          init();
-          if(el) el.style.display='none';
-          return;
-        }
-        if(!el){ return; }
-
-        el.style.display='flex';
-        var agree=el.querySelector('.agree');
-        var deny =el.querySelector('.deny');
-
-        if(agree) agree.addEventListener('click', function(){
-          try{ localStorage.setItem(KEY,'yes'); }catch(e){}
-          el.style.display='none';
-          init();
-        });
-        if(deny) deny.addEventListener('click', function(){
-          try{ localStorage.setItem(KEY,'no'); }catch(e){}
-          el.style.display='none';
-        });
-      }catch(e){
-        /* no-op */
-      }
-    })();
+  (function(){
+    try{
+      var KEY='rg_analytics_consent';
+      function init(){ if(typeof window.analyticsInit==='function') window.analyticsInit(); }
+      var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
+      var el=document.getElementById('cookieBanner');
+      if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
+      if(!el){ return; } // no banner -> do not init
+      el.style.display='flex';
+      var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
+      if(agree) agree.addEventListener('click', function(){
+        try{ localStorage.setItem(KEY,'yes'); }catch(e){}
+        el.style.display='none'; init();
+      });
+      if(deny) deny.addEventListener('click', function(){
+        try{ localStorage.setItem(KEY,'no'); }catch(e){}
+        el.style.display='none';
+      });
+    }catch(e){ /* no-op */ }
+  })();
   </script>
 
-  <script>
-  const guideModal = document.getElementById('guideModal');
-  function openGuide(){
-    if(!guideModal) return;
-    guideModal.classList.add('show');
-    guideModal.removeAttribute('aria-hidden');
-    setTimeout(()=>{ guideModal.querySelector('.x')?.focus(); }, 0);
-  }
-
-  function closeGuide(){
-    if(!guideModal) return;
-    guideModal.classList.remove('show');
-    guideModal.setAttribute('aria-hidden','true');
-  }
-
-  guideModal?.addEventListener('click', (e)=>{ if(e.target===guideModal) closeGuide(); });
-  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && guideModal?.classList.contains('show')) closeGuide(); });
-</script>
-
-  <!--
-    ────────────────────────────────────────────────────────────────
-    RETRO MATCH-3 – HUD DOM 통일 및 운영 메모 (비실행 주석)
-    ----------------------------------------------------------------
-    ▷ 3-2. HUD 렌더링 로직 단일화 – DOM 규격
-      - 이 파일에 추가된 공통 HUD 블록은 다음과 같다.
-        <div id="rg-hud" class="hud-bar requires-auth">
-          <span class="hud-item hud-level">
-            LV. <span data-hud="level"></span>
-          </span>
-          <span class="hud-item hud-exp">
-            EXP <span data-hud="exp"></span>
-          </span>
-          <span class="hud-item hud-coins">
-            Coins <span data-hud="coins"></span>
-          </span>
-          <span class="hud-item hud-tickets">
-            Tickets <span data-hud="tickets"></span>
-          </span>
-          <span class="hud-item hud-games">
-            Plays <span data-hud="gamesPlayed"></span>
-          </span>
-        </div>
-
-      - 규칙
-        · id="rg-hud" : 페이지당 1번만 등장.
-        · class="hud-bar requires-auth" : app.js 또는 공통 CSS에서 스타일/인증 가드에 사용.
-        · 안쪽 span 중 숫자가 들어가는 위치에만 data-hud 속성 부여.
-        · data-hud 키는 정확히 아래 5개만 사용.
-            level       : 계정 레벨
-            exp         : 계정 경험치 (게이지 혹은 정수)
-            coins       : 계정 포인트/코인
-            tickets     : 계정 티켓
-            gamesPlayed : 누적 플레이 수 또는 오늘 플레이 수
-
-      - 렌더링 담당
-        · public/assets/js/app.js 안의 전역 HUD 렌더 함수가
-          querySelectorAll('[data-hud]')로 DOM을 찾은 뒤,
-          key별로 숫자를 채우는 구조를 기준으로 한다.
-        · 이 게임 파일에서는 HUD 값을 직접 채우지 않는다.
-          (게임 전용 HUD는 updateHUD()에서 관리, 계정 HUD는 app.js 전담)
-
-      - 배치
-        · <header class="marquee"> 바로 아래에 위치.
-          (= 공통 헤더에 HUD가 붙는 형태 – 문서에서 안내한 구조 그대로)
-        · 기존 인게임 HUD(.hud) 블록은 header/HUD 아래에 그대로 유지.
-
-    ▷ 이 파일에서 변경된 지점 요약
-      1) DOM
-        - cabint 내부:
-            <header class="marquee"> ... </header>
-            <div id="rg-hud" class="hud-bar ...>...</div>  ← 새로 추가
-            <div class="hud">...</div>                     ← 기존 인게임 HUD (그대로 유지)
-      2) 스타일/스크립트
-        - CSS, JS 로직, 광고 구조, 게임 로직, 레이아웃은 기존 동작을 그대로 유지.
-        - 공통 HUD 스타일(.hud-bar, .hud-item 등)은
-          전역 CSS 또는 /partials/hud.html 에서 로딩된 것을 사용한다는 전제.
-        - 이 파일 안에서는 HUD DOM만 맞추고, 추가적인 스타일 조정/로직 변경은 하지 않음.
-
-    ▷ 유지보수 메모
-      - 공통 HUD 수정이 필요할 때
-        · 우선 /partials/hud.html 또는 header.html 내부의 HUD 블록을 수정.
-        · 그 DOM 구조와 data-hud 키가 이 파일의 #rg-hud 블록과 동일한지 확인.
-      - 새로운 data-hud 키를 추가해야 할 때
-        · app.js HUD 렌더러에 케이스 추가
-        · 이 파일의 #rg-hud 내부에 동일한 data-hud="..." span 추가
-        · 다른 게임(2048, brick-breaker, retro-running 등) 페이지도 동일 구조로 맞춤.
-
-    ▷ 라인 수 확보를 위한 설명용 주석이며, 실행 로직에는 영향을 주지 않는다.
-    ────────────────────────────────────────────────────────────────
-  -->
-
+  
+  <div id="site-footer"></div>
 </body>
 </html>

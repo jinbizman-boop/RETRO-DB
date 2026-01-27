@@ -1,628 +1,304 @@
 <!DOCTYPE html>
 <html lang="ko" data-env="production" data-analytics="on">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <!-- Google AdSense 소유권 확인 메타 태그 -->
-  <meta name="google-adsense-account" content="ca-pub-6713974265397310">
-  <title>RETRO 2048 – Arcade Cabinet</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>RETRO 2048 – Arcade Cabinet</title>
 
-  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-
-  <!-- === Common SEO/A11y (auto-inserted) === -->
-  <link rel="stylesheet" href="/assets/css/game-frame.css">
-  <link rel="icon" href="/assets/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-  <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#0e1b34">
-  <meta name="description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-  <meta name="robots" content="index,follow">
-  <meta property="og:site_name" content="RETRO GAMES">
-  <meta property="og:title" content="RETRO 2048 – Arcade Cabinet">
-  <meta property="og:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="/assets/og/retro-games-card.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="RETRO 2048 – Arcade Cabinet">
-  <meta name="twitter:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
-  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
-
-  <script>
-    // fixed environment flags for analytics/runtime
-    (function(d){
-      d.documentElement.dataset.env = 'production';
-      d.documentElement.dataset.analytics = 'on';
-      window.__ENV__ = 'production';
-      window.__ANALYTICS_ON__ = true;
-    })(document);
-
-    // ✅ 게임 페이지: app.js의 헤더/푸터 오토 인젝트를 비활성화하는 플래그 (retro-running과 동일)
-    window.__RG_SKIP_PARTIALS__ = true;
-  </script>
-  <!-- === /Common SEO/A11y === -->
-
-  <!-- ✅ AdSense loader (게임 페이지에서 확실히 로드) -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
-    crossorigin="anonymous"></script>
-
-  <!-- 전역 유틸 (정상 app.js 버전 사용) -->
-<script defer src="/assets/js/app.js"></script>
+<!-- === Common SEO/A11y (auto-inserted) === -->
+<link rel="icon" href="/assets/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0e1b34">
+<meta name="description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="robots" content="index,follow">
+<meta property="og:site_name" content="RETRO GAMES">
+<meta property="og:title" content="RETRO 2048 – Arcade Cabinet">
+<meta property="og:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/assets/og/retro-games-card.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RETRO 2048 – Arcade Cabinet">
+<meta name="twitter:description" content="RETRO 2048 – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="twitter:image" content="/assets/og/retro-games-card.png">
 <script>
-  // ✅ Game entry auth gate (auth first → then start game)
-  // - 목적: "로그인 확인이 끝난 뒤" 게임이 시작되도록 1회 리로드 방식으로 보장
-  // - 이유: 게임 스크립트가 window.load / DOMReady 타이밍에 의존해도 안전하게 초기화됨
-  (function () {
-    const PARAM = 'rg_authed';
-    const KEY = 'rg_authed_once:' + location.pathname;
-
-    function hasAuthedParam() {
-      try {
-        return new URLSearchParams(location.search).get(PARAM) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function hasSessionFlag() {
-      try {
-        return sessionStorage.getItem(KEY) === '1';
-      } catch {
-        return false;
-      }
-    }
-
-    function setSessionFlag() {
-      try {
-        sessionStorage.setItem(KEY, '1');
-      } catch {}
-    }
-
-    function cleanUrlParam() {
-      try {
-        const clean = new URL(location.href);
-        clean.searchParams.delete(PARAM);
-        history.replaceState({}, document.title, clean.toString());
-      } catch {}
-    }
-
-    async function ensureAuthThenReloadOnce() {
-      try {
-        const fn =
-          (window.RG && typeof window.RG.requireAuth === 'function')
-            ? window.RG.requireAuth
-            : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
-
-        // app.js가 아직 로드되지 않았으면 그냥 통과(다만 보통 load 시점엔 로드됨)
-        if (!fn) return;
-
-        const ok = await fn(); // 비로그인이면 requireAuth 내부에서 모달/리다이렉트 처리
-        if (ok === false) return;
-
-        // 로그인 확인 완료 → 이 페이지에서 1회만 리로드하도록 플래그
-        setSessionFlag();
-
-        // param이 없으면 param을 붙여 리로드(게임을 "지금부터" 시작)
-        if (!hasAuthedParam()) {
-          const url = new URL(location.href);
-          url.searchParams.set(PARAM, '1');
-          location.replace(url.toString());
-          return;
-        }
-
-        // param이 이미 있으면(리로드 후) URL만 정리
-        cleanUrlParam();
-      } catch (e) {
-        console.warn('[RG][auth] requireAuth gate error:', e);
-      }
-    }
-
-    // 이미 인증 리로드를 한 상태면(세션 플래그 or param) 그냥 진행 + param 정리
-    if (hasAuthedParam() || hasSessionFlag()) {
-      if (hasAuthedParam()) cleanUrlParam();
-      return;
-    }
-
-    // app.js가 defer라서, 안전하게 load 이후 requireAuth 실행
-    window.addEventListener('load', function () {
-      void ensureAuthThenReloadOnce();
-    }, { once: true });
-  })();
+  // fixed environment flags for analytics/runtime
+  (function(d){
+    d.documentElement.dataset.env = 'production';
+    d.documentElement.dataset.analytics = 'on';
+    window.__ENV__ = 'production';
+    window.__ANALYTICS_ON__ = true;
+  })(document);
 </script>
-<script defer src="/assets/js/analytics.js"></script>
-  <!-- 레거시 게임 스크립트 의존 제거: /assets/js/games/2048.js는 더 이상 로드하지 않음 -->
+<!-- === /Common SEO/A11y === -->
+
+<!-- AdSense 글로벌 스크립트 (요청 스니펫 그대로) -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310" crossorigin="anonymous"></script>
+
+<style>
+  :root{
+    --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+    --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+    --board:#121a2f; --tile0:#e9eef6; --ink:#111;
+    --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
+    --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+    color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+    overflow:hidden
+  }
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
+  .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
+
+  /* Cabinet */
+  .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
+  .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);filter:drop-shadow(0 0 12px rgba(255,190,0,.55));}
+  .cabinet:before{left:12px;border-radius:9px}
+  .cabinet:after{right:12px;border-radius:9px}
+
+  .marquee{padding:18px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,#173763,#0b2548);border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)}
+  .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
+  .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
+
+  /* HUD unified (button-like) */
+  .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
+  .chip,.pill,.hud .btnMini{
+    position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
+    background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+    box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
+    touch-action:manipulation;
+  }
+  .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+  .pill{min-width:260px;gap:12px}
+  .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)}
+  .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
+  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#b86cff,#6af0ff);box-shadow:0 0 10px #8ad7ff}
+  .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
+  .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
+  .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
+  .playCount{font-size:12px;opacity:.85;margin-left:6px}
+
+  /* Screen */
+  .play{position:relative;margin:10px 18px;border-radius:16px;background:linear-gradient(180deg,#0a1530,#031125);box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)}
+  .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
+  .bezel{width:100%;height:100%;border-radius:14px;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;overflow:hidden}
+  .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
+  canvas#game{width:100%;height:auto;aspect-ratio:1/1;background:var(--tile0);border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
+
+  /* Deck */
+  .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
+  .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;background:linear-gradient(180deg,#1b3a7a,#102a66);border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;touch-action:manipulation}
+  .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
+  .deck label{display:flex;align-items:center;gap:8px}
+  .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
+
+  /* Records Modal */
+  #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
+  /* Ad Modal */
+  #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
+  #adBox{width:min(680px,92vw);min-height:280px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px}
+  #adHead{display:flex;justify-content:space-between;align-items:center}
+  #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
+  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;background:linear-gradient(135deg,#18224a,#0e1636);border:1px dashed #3952c3}
+
+  /* ===== Mobile Responsive ===== */
+  @media (max-width: 980px){
+    .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
+    .cabinet{width:100vw;border-radius:0}
+    .marquee{padding:12px;border-radius:0}
+    .play{margin:8px 12px}
+    .screen{padding:10px}
+    .hud{gap:8px;padding:10px}
+    .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
+    .pill{min-width:220px}
+    .deck{gap:8px;padding:10px 12px 16px}
+    .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
+  }
+  @media (max-width: 640px){
+    .hud{padding:8px}
+    .chip,.pill,.hud .btnMini{height:40px}
+    .points .nums .big,.tickets .nums .big{font-size:16px}
+    .points .bar,.tickets .bar{width:96px}
+    .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
+    .deck > *{flex:0 0 auto}
+  }
+
+  .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
+    display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+    border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
+    box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
+    z-index:10000;font-size:12px}
+  .cookie-banner .spacer{flex:1}
+  .cookie-banner button{padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
+    background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer}
+  .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
   
-  <style>
-    :root{
-      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
-      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
-      --board:#121a2f; --tile0:#e9eef6; --ink:#111;
-      --t2:#e7f4ff; --t4:#d6eaff; --t8:#ffe7c2; --t16:#ffd6a6; --t32:#ffc8a6; --t64:#ffb79c;
-      --t128:#fff3a8; --t256:#fff09a; --t512:#ffeb8a; --t1024:#eaff9c; --t2048:#caffb0; --t4096:#b6ffd2; --t8192:#b2fff0;
-    }
-    *{box-sizing:border-box}
-    html,body{
-      height:100%;margin:0;background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
-      color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
-      overflow:hidden
-    }
-    /* 허브 숨김 */
-    .wrap{display:none !important;}
-
-    #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
-    .shell{
-      min-height:100vh;
-      display:grid;
-      place-items:center;
-      padding:20px;
-      position:relative;
-      z-index:1;
-      padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
-    }
-
-/* === 좌우 세로형 광고 배너 (강제 고정 스타일) === */
-    .sideAd {
-      position: fixed !important;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 160px;
-      height: 600px;
-      z-index: 100;
-      display: block !important;
-    }
-    .sideAd.left { left: 10px; }
-    .sideAd.right { right: 10px; }
-    .sideAdInner { width: 100%; height: 100%; display: flex; justify-content: center; }
-    
-    /* 화면이 좁아지면(모바일/태블릿) 광고 숨김 (게임 화면 확보) */
-    @media (max-width: 1400px) { .sideAd { display: none !important; } }
-
-    /* Cabinet */
-    .cabinet{
-      position:relative;
-      width:min(1200px,96vw);
-      background:#0e1b34;
-      border-radius:18px;
-      box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;
-      transform-origin:top center
-    }
-    .cabinet:before,.cabinet:after{
-      content:"";
-      position:absolute;top:12px;bottom:12px;width:18px;
-      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
-      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
-    }
-    .cabinet:before{left:12px;border-radius:9px}
-    .cabinet:after{right:12px;border-radius:9px}
-
-    .marquee{
-      padding:18px;
-      border-radius:18px 18px 0 0;
-      background:linear-gradient(180deg,#173763,#0b2548);
-      border-bottom:1px solid #0c2b59;
-      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)
-    }
-    .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
-    .title h1{
-      margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;
-      text-shadow:0 0 12px rgba(62,142,255,.55);
-      font-size:clamp(18px,4.4vw,28px)
-    }
-    .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
-
-    /* === Global HUD (통합 DOM, app.js 전역 HUD와 일치) === */
-    #rg-hud.hud-bar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      justify-content:center;
-      padding:10px 18px 4px;
-      font-size:12px;
-    }
-    .hud-bar .hud-item{
-      min-width:90px;
-      padding:4px 12px;
-      border-radius:999px;
-      background:rgba(6,18,50,.9);
-      border:1px solid rgba(71,120,255,.75);
-      box-shadow:0 6px 14px rgba(0,0,0,.45);
-      text-align:center;
-      letter-spacing:.05em;
-      white-space:nowrap;
-    }
-    .hud-bar .hud-item span[data-hud]{
-      margin-left:4px;
-      font-weight:800;
-      color:#ffdf6e;
-      text-shadow:0 0 6px rgba(255,223,110,.7);
-    }
-
-    /* HUD (2048 전용 인게임 HUD) */
-    .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
-    .chip,.pill,.hud .btnMini{
-      position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
-      background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
-      box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
-      touch-action:manipulation;
-    }
-    .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
-    .pill{min-width:260px;gap:12px}
-    .pill .icon{
-      width:28px;height:28px;display:grid;place-items:center;border-radius:50%;
-      background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);
-      color:#0b2a57;
-      box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)
-    }
-    .points .bar,.tickets .bar{
-      height:8px;border-radius:999px;background:#1a2548;
-      overflow:hidden;border:1px solid #2b3f8f;width:120px
-    }
-    .points .bar>span,.tickets .bar>span{
-      display:block;height:100%;width:0%;
-      background:linear-gradient(90deg,#b86cff,#6af0ff);
-      box-shadow:0 0 10px #8ad7ff
-    }
-    .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
-    .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
-    .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
-    .playCount{font-size:12px;opacity:.85;margin-left:6px}
-
-    /* Screen */
-    .play{
-      position:relative;
-      margin:10px 18px;
-      border-radius:16px;
-      background:linear-gradient(180deg,#0a1530,#031125);
-      box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)
-    }
-    .screen{
-      aspect-ratio:16/9;
-      display:grid;
-      place-items:center;
-      padding:18px
-    }
-    .bezel{
-      width:100%;height:100%;border-radius:14px;
-      background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);
-      box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);
-      display:grid;place-items:center;overflow:hidden
-    }
-
-    /* ★ 플레이 화면 이탈 방지: 캔버스가 항상 베젤 안에 맞게 중앙 정렬되도록 수정 */
-    .canvasWrap{
-      width:100%;
-      height:100%;
-      max-width:980px;
-      max-height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    canvas#game{
-      display:block;
-      max-width:100%;
-      max-height:100%;
-      width:auto;
-      height:auto;
-      aspect-ratio:1/1;
-      background:var(--tile0);
-      border-radius:18px;border:1px solid #1b2b45;
-      box-shadow:inset 0 0 40px rgba(0,0,0,.25)
-    }
-
-    /* Deck */
-    .deck{
-      display:flex;gap:12px;flex-wrap:wrap;justify-content:center;
-      padding:14px 18px 22px;
-      border-top:1px solid #0a2b57;
-      background:linear-gradient(180deg,#0b1f40,#0a1730)
-    }
-    .deck .btn,.deck select,.deck input[type=range]{
-      font-weight:900;color:#dff1ff;
-      background:linear-gradient(180deg,#1b3a7a,#102a66);
-      border:1px solid #224aa8;border-radius:12px;
-      padding:10px 14px;
-      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-      cursor:pointer;touch-action:manipulation
-    }
-    .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
-    .deck label{display:flex;align-items:center;gap:8px}
-    .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
-
-    /* Records Modal */
-    #recModal{
-      display:none;position:fixed;inset:0;
-      background:rgba(5,0,20,.55);
-      backdrop-filter:blur(4px);
-      align-items:center;justify-content:center;
-      z-index:999
-    }
-    /* Ad Modal */
-    #adModal{
-      display:none;position:fixed;inset:0;
-      background:rgba(0,0,0,.65);
-      backdrop-filter:blur(2px);
-      align-items:center;justify-content:center;
-      z-index:1000
-    }
-    #adBox{
-      width:min(680px,92vw);min-height:280px;
-      background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);
-      border:2px solid #3e2b7b;border-radius:20px;
-      box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;
-      padding:18px;display:flex;flex-direction:column;gap:10px
-    }
-    #adHead{display:flex;justify-content:space-between;align-items:center}
-    #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-    .adPlaceholder{
-      display:grid;place-items:center;height:220px;
-      border-radius:14px;
-      background:linear-gradient(135deg,#18224a,#0e1636);
-      border:1px dashed #3952c3
-    }
-
-    /* ===== Mobile Responsive ===== */
-    @media (max-width: 980px){
-      .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
-      .cabinet{width:100vw;border-radius:0}
-      .marquee{padding:12px;border-radius:0}
-      .play{margin:8px 12px}
-      .screen{padding:10px}
-      .hud{gap:8px;padding:10px}
-      .chip,.pill,.hud .btnMini{min-width:112px;height:42px;padding:0 12px}
-      .pill{min-width:220px}
-      .deck{gap:8px;padding:10px 12px 16px}
-      .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
-      #rg-hud.hud-bar{padding:8px 10px 2px}
-    }
-    @media (max-width: 640px){
-      .hud{padding:8px}
-      .chip,.pill,.hud .btnMini{height:40px}
-      .points .nums .big,.tickets .nums .big{font-size:16px}
-      .points .bar,.tickets .bar{width:96px}
-      .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
-      .deck > *{flex:0 0 auto}
-      .hud-bar .hud-item{min-width:78px;padding:3px 10px}
-    }
-
-    .cookie-banner{
-      position:fixed;left:12px;right:12px;bottom:12px;
-      display:none;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-      border:1px solid #2b3f8f;background:linear-gradient(180deg,#0b1f40,#0a1730);
-      box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);
-      z-index:10000;font-size:12px
-    }
-    .cookie-banner .spacer{flex:1}
-    .cookie-banner button{
-      padding:8px 12px;border-radius:10px;border:1px solid #2d3690;
-      background:linear-gradient(180deg,#1a2b7a,#0a1a64);font-weight:800;color:#e9f0ff;cursor:pointer
-    }
-    .cookie-banner .agree{background:linear-gradient(180deg,#ffdf6e,#ffb84d);color:#3a2400;border-color:#7a5600}
-
-    /* ✅ AdSense 최소 통과용: 크롤링 가능한 텍스트/구조 (게임 안내) */
-    .content-guide{
-      max-width: 1080px;
-      margin: 26px auto 8px;
-      padding: 18px 18px 14px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.28);
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-    .content-guide h1{
-      margin: 0 0 10px;
-      font-size: 22px;
-      line-height: 1.2;
-      letter-spacing: .2px;
-      color: #eaf2ff;
-    }
-    .content-guide h2{
-      margin: 14px 0 8px;
-      font-size: 15px;
-      color: rgba(234,242,255,.92);
-    }
-    .content-guide p, .content-guide li{
-      margin: 6px 0;
-      color: rgba(234,242,255,.78);
-      font-size: 13px;
-      line-height: 1.55;
-    }
-    .content-guide ul{
-      margin: 8px 0 0;
-      padding-left: 18px;
-    }
-    .content-guide .mini{
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px dashed rgba(255,255,255,.14);
-      color: rgba(234,242,255,.70);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-    .content-guide a{
-      color: rgba(255,223,110,.95);
-      text-decoration: none;
-      border-bottom: 1px dotted rgba(255,223,110,.55);
-    }
-  </style>
+  /* ==============================
+     ✅ AdSense 좌/우 배너 (캐비닛 좌우에 딱 붙게)
+     - 게임 UI/UX(캐비닛/캔버스/덱)에는 영향 0
+     - 화면에 fixed overlay로만 배치
+  ============================== */
+  :root{
+    --rg-cabW: min(1200px,96vw); /* .cabinet width와 동일 */
+    --rg-adW: 160px;
+    --rg-adGap: 16px;
+  }
+  .sideAd{
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--rg-adW);
+    min-height: 600px;
+    z-index: 120; /* cabinet 위/아래와 충돌 방지 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+  .sideAd.left{
+    left: calc(50% - (var(--rg-cabW) * 0.5) - var(--rg-adW) - var(--rg-adGap));
+  }
+  .sideAd.right{
+    right: calc(50% - (var(--rg-cabW) * 0.5) - var(--rg-adW) - var(--rg-adGap));
+  }
+  .sideAdInner{
+    width: 100%;
+    min-height: 600px;
+    border-radius: 16px;
+    border: 1px solid #2b3f8f;
+    background: linear-gradient(180deg,#0b1f40,#050814);
+    box-shadow: 0 10px 24px rgba(0,0,0,.65), inset 0 0 18px rgba(62,142,255,.35);
+    overflow: hidden;
+  }
+  .sideAd ins.adsbygoogle{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* 모바일/좁은 화면에서는 게임 화면 보호 (UI/UX 유지) */
+  @media (max-width: 1100px){
+    .sideAd{ display:none; }
+  }
+</style>
 </head>
 
-<body data-rg-skip-autoinject="1">
-  <!-- 게임 페이지는 header/footer 파셜을 직접 include 하지 않음 (app.js 오토 인젝트는 일반 페이지에서만 사용) -->
+<!-- 전역 유틸 (모듈 아님) -->
+<script defer src="/assets/js/app.js"></script>
+<script defer src="/assets/js/analytics.js"></script>
 
-  <canvas id="fx"></canvas>
+<body>
+  <div id="site-header"></div>
+<canvas id="fx"></canvas>
 
-  <!-- 2048 전용 배경 음악 (loop, volume 30%) -->
-  <audio id="bgm2048" src="/assets/music/2048-background.mp3" loop preload="auto"></audio>
-  <div class="shell">
-      <!-- ✅ 좌/우 세로형 광고: game-frame.css(.sideAd.left/.sideAd.right) fixed 레일 사용 -->
-      <aside class="sideAd left" aria-label="left vertical ad">
-        <div class="sideAdInner">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-6713974265397310"
-               data-ad-slot="4514999077"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          </script>
+<!-- ✅ 좌/우 AdSense 배너: 캐비닛(게임기) 좌우에 고정 (UI/UX/플레이 로직 무손상) -->
+<aside class="sideAd left" aria-label="left ad">
+  <div class="sideAdInner">
+    <ins class="adsbygoogle"
+      data-ad-client="ca-pub-6713974265397310"
+      data-ad-slot="4514999077"
+      data-ad-format="auto"
+      data-full-width-responsive="true"></ins>
+  </div>
+</aside>
+
+<aside class="sideAd right" aria-label="right ad">
+  <div class="sideAdInner">
+    <ins class="adsbygoogle"
+      data-ad-client="ca-pub-6713974265397310"
+      data-ad-slot="4514999077"
+      data-ad-format="auto"
+      data-full-width-responsive="true"></ins>
+  </div>
+</aside>
+
+<script>
+  // ✅ 배너 광고 초기화 (로더는 head에서 이미 async 로드됨)
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+</script>
+
+<div class="shell">
+    <section class="cabinet" aria-label="retro arcade cabinet">
+      <header class="marquee">
+        <div class="title">
+          <h1>RETRO 2048</h1>
+          <div class="subtitle">SWIPE · ARROWS · WASD</div>
         </div>
-      </aside>
+      </header>
 
-      <aside class="sideAd right" aria-label="right vertical ad">
-        <div class="sideAdInner">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-6713974265397310"
-               data-ad-slot="4514999077"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          </script>
-        </div>
-      </aside>
+      <!-- HUD -->
+      <div class="hud">
+        <div class="chip">점수 <b id="score">0</b></div>
+        <div class="chip">최고 <b id="best">0</b></div>
+        <div class="chip">이동 <b id="moves">0</b></div>
 
-      <!-- 아케이드 캐비닛 -->
-      <div class="game-frame">
-      <section class="cabinet game-canvas" aria-label="retro arcade cabinet">
-        <header class="marquee">
-          <div class="title">
-            <h1>RETRO 2048</h1>
-            <div class="subtitle">SWIPE · ARROWS · WASD</div>
-          </div>
-        </header>
-
-        <!-- ✅ Global Player HUD (통합 DOM – app.js에서 단일 로직으로 갱신) -->
-        <div id="rg-hud" class="hud-bar requires-auth" aria-label="player status HUD">
-          <span class="hud-item hud-level">
-            LV. <span data-hud="level">-</span>
-          </span>
-          <span class="hud-item hud-exp">
-            EXP <span data-hud="exp">-</span>
-          </span>
-          <span class="hud-item hud-coins">
-            Coins <span data-hud="coins">-</span>
-          </span>
-          <span class="hud-item hud-tickets">
-            Tickets <span data-hud="tickets">-</span>
-          </span>
-          <span class="hud-item hud-games">
-            Plays <span data-hud="gamesPlayed">-</span>
-          </span>
-        </div>
-
-        <!-- 2048 In-game HUD (기존 UI/UX 유지) -->
-        <div class="hud">
-          <div class="chip">점수 <b id="score">0</b></div>
-          <div class="chip">최고 <b id="best">0</b></div>
-          <div class="chip">이동 <b id="moves">0</b></div>
-
-          <!-- Points (통합 XP 기반 / app.js HUD와 데이터 일치) -->
-          <div class="pill points" aria-label="사용자 포인트">
-            <div class="icon">🏅</div>
-            <div>
-              <div class="nums">
-                <span class="big" id="pointsAmt" data-user-points>0</span>
-                <span class="cap">/ <span id="pointsCap">20,000</span></span>
-              </div>
-              <div class="bar"><span id="pointsBar"></span></div>
-            </div>
-          </div>
-
-          <!-- Tickets (통합 티켓 기반 / app.js HUD와 데이터 일치) -->
-          <div class="pill tickets" aria-label="티켓 진행">
-            <div class="icon">🎟️</div>
-            <div>
-              <div class="nums">
-                <span class="big" id="ticketsAmt" data-user-tickets>0</span>
-                <span class="cap">티켓</span>
-              </div>
-              <div class="bar"><span id="ticketsBar"></span></div>
-            </div>
-            <div class="playCount" id="ticketsCap">0 / 10</div>
-          </div>
-
-          <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
-        </div>
-
-        <main class="play">
-          <div class="screen">
-            <div class="bezel">
-              <div class="canvasWrap" id="canvasWrap">
-                <canvas id="game"></canvas>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <!-- ✅ AdSense 최소 통과용: 게임 안내(텍스트/구조) — 노출은 버튼+팝업(모달)로 전환 -->
-        <section class="content-guide-mini" aria-label="게임 안내/정책 바로가기">
-          <div class="mini-left">
-            <strong>게임 안내</strong>
-            <span class="mini-desc">규칙 · 조작 · 보상/저장</span>
-          </div>
-          <div class="mini-right">
-            <a class="mini-link" href="/legal/privacy.html">개인정보</a>
-            <a class="mini-link" href="/legal/terms.html">약관</a>
-            <a class="mini-link" href="/legal/cookies.html">쿠키</a>
-            <button type="button" class="mini-btn" onclick="openGuide()">안내 보기</button>
-          </div>
-        </section>
-
-        <!-- GUIDE MODAL -->
-        <div id="guideModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gm-title" aria-hidden="true">
-          <div class="dialog">
-            <button class="x" aria-label="닫기" onclick="closeGuide()">×</button>
-
-            <!-- ✅ 기존 content-guide 원문 내용을 여기로 “그대로” 옮겨 넣기 -->
-            <!-- (중요) h1/h2/ul/p 구조는 유지. 문구만 게임별로 다르면 그대로 두면 됨 -->
-            <h3 id="gm-title">게임 안내</h3>
-
-            <!-- ▼▼▼ 여기부터: 기존 content-guide 안의 내용을 그대로 붙여넣어 ▼▼▼ -->
-            <!-- 예) <h1>...</h1> <p>...</p> <h2>...</h2> <ul>...</ul> ... -->
-            <!-- ▲▲▲ 여기까지 ▲▲▲ -->
-
+        <!-- Points -->
+        <div class="pill points" aria-label="사용자 포인트">
+          <div class="icon">🏅</div>
+          <div>
+            <div class="nums"><span class="big" id="pointsAmt">0</span><span class="cap">/ <span id="pointsCap">5,000</span></span></div>
+            <div class="bar"><span id="pointsBar"></span></div>
           </div>
         </div>
 
-        <!-- Control deck -->
-        <div class="deck">
-          <button class="btn" id="homeBtn">HOME</button>
-          <button class="btn" id="newBtn">새 게임 (N)</button>
-          <button class="btn" id="undoBtn">되돌리기 (U)</button>
-          <label>모드
-            <select id="tier">
-              <option value="beginner">초급 (1–10)</option>
-              <option value="intermediate">중급 (11–20)</option>
-              <option value="advanced">고급 (21–30)</option>
-              <option value="hell">지옥 (40)</option>
-              <option value="doom">파멸 (50)</option>
-              <option value="insane">극악무도 (100)</option>
-            </select>
-          </label>
-          <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
-          <label>보드
-            <select id="sizeSel">
-              <option value="4">4×4</option>
-              <option value="5">5×5</option>
-              <option value="6">6×6</option>
-            </select>
-          </label>
-          <button class="btn" id="endBtn">게임 종료</button>
+        <!-- Tickets -->
+        <div class="pill tickets" aria-label="티켓 진행">
+          <div class="icon">🎟️</div>
+          <div>
+            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+            <div class="bar"><span id="ticketsBar"></span></div>
+          </div>
+          <div class="playCount" id="ticketsCap">0 / 10</div>
         </div>
-      </section>
+
+        <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
       </div>
+
+      <main class="play">
+        <div class="screen">
+          <div class="bezel">
+            <div class="canvasWrap" id="canvasWrap">
+              <canvas id="game"></canvas>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Control deck -->
+      <div class="deck">
+        <button class="btn" id="homeBtn">HOME</button>
+        <button class="btn" id="newBtn">새 게임 (N)</button>
+        <button class="btn" id="undoBtn">되돌리기 (U)</button>
+        <label>모드
+          <select id="tier">
+            <option value="beginner">초급 (1–10)</option>
+            <option value="intermediate">중급 (11–20)</option>
+            <option value="advanced">고급 (21–30)</option>
+            <option value="hell">지옥 (40)</option>
+            <option value="doom">파멸 (50)</option>
+            <option value="insane">극악무도 (100)</option>
+          </select>
+        </label>
+        <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
+        <label>보드
+          <select id="sizeSel">
+            <option value="4">4×4</option>
+            <option value="5">5×5</option>
+            <option value="6">6×6</option>
+          </select>
+        </label>
+        <button class="btn" id="endBtn">게임 종료</button>
+      </div>
+    </section>
   </div>
 
   <!-- Records Modal -->
   <div id="recModal">
     <div style="width:min(640px,94vw);background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3>
-        <button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button>
-      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3><button id="recClose" style="border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer">×</button></div>
       <div id="recBody" style="max-height:60vh;overflow:auto;border:1px solid #2a3a89;border-radius:12px;padding:8px"></div>
     </div>
   </div>
@@ -643,816 +319,374 @@
     </div>
   </div>
 
-  <script>
-  /* ====== AdSense (연동) ====== */
-  const AD_CLIENT = 'ca-pub-6713974265397310';
-  const AD_SLOT   = '4514999077'; // 첨부된 정상 노출 예시와 동일한 광고 단위 ID
+<script>
+/* ====== AdSense (연동) ====== */
+const AD_CLIENT = 'ca-pub-6713974263597310';
+const AD_SLOT   = ''; // 필요 시 교체
+function fallbackAdHTML(){
+  return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
+}
+function showInterstitialAd(){
+  const box=document.getElementById('adContainer'); box.innerHTML='';
+  const ins=document.createElement('ins');
+  ins.className='adsbygoogle';
+  ins.style.display='block';
+  ins.setAttribute('data-ad-client', AD_CLIENT);
+  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
+  ins.setAttribute('data-ad-format','auto');
+  ins.setAttribute('data-full-width-responsive','true');
+  box.appendChild(ins);
+  try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }
+  catch(e){ console.warn(e); box.innerHTML = fallbackAdHTML(); }
+  document.getElementById('adModal').style.display='flex';
+}
+let _afterAd=null;
+function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
+document.getElementById('adClose').addEventListener('click',()=>{
+  document.getElementById('adModal').style.display='none';
+  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
+});
 
-  function fallbackAdHTML(){
-    return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
+/* ===== Neon background (stars) ===== */
+(function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
+  function fit(){const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0);} fit(); addEventListener('resize',fit,{passive:true});
+  const N=80; const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
+  function loop(t){ g.clearRect(0,0,c.width,c.height); for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2); const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle=`rgba(43,123,255,${a})`; g.fill(); p.y+=p.s; if(p.y>innerHeight){p.y=-10; p.x=Math.random()*innerWidth;} } requestAnimationFrame(loop);} requestAnimationFrame(loop);
+})();
+
+/* ===== Helpers ===== */
+const $=sel=>document.querySelector(sel);
+const DPR=()=> Math.min(2, window.devicePixelRatio||1);
+const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
+const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
+const fmt=n=> n.toLocaleString('ko-KR');
+
+/* ===== Difficulty Multiplier ===== */
+function difficultyMult(){
+  const val=$('#tier')?.value||'beginner';
+  return {beginner:1.00, intermediate:1.12, advanced:1.28, hell:1.45, doom:1.60, insane:1.80}[val]||1.0;
+}
+
+/* ===== Params per level ===== */
+function paramsForLevel(lv){
+  const p4 = clamp(0.10 + lv*0.01, 0.10, 0.45);
+  const p8 = lv<12? 0 : clamp((lv-10)*0.006, 0, 0.25);
+  const p16= lv<25? 0 : clamp((lv-24)*0.004, 0, 0.10);
+  const evil= clamp(lv*0.012, 0, 1.0);
+  const dbl = clamp((lv-8)*0.008, 0, 0.40);
+  const undos = Math.max(0, 20 - Math.floor(lv/5));
+  return {p4,p8,p16,evil,doubleSpawn:dbl,undos};
+}
+
+/* ===== Storage (tickets & records) ===== */
+const LS_KEYS={plays:'plays2048',tickets:'tickets2048',records:'records2048',best:'best2048'};
+function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
+function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
+function updateTicketUI(){
+  const plays= +localStorage.getItem(LS_KEYS.plays)||0;
+  const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
+  $('#ticketsAmt').textContent=tickets;
+  $('#ticketsCap').textContent=`${plays%10} / 10`;
+  $('#ticketsBar').style.width = ((plays%10)/10*100).toFixed(1)+'%';
+}
+function addPlay(){
+  let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
+  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0; if(plays%10===0) tickets++;
+  localStorage.setItem(LS_KEYS.plays, String(plays));
+  localStorage.setItem(LS_KEYS.tickets, String(tickets));
+  updateTicketUI();
+  if(plays % 8 === 0){ showInterstitialAd(); }
+}
+function addRecord(score, points){
+  const recs=loadJSON(LS_KEYS.records,[]);
+  const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
+  saveJSON(LS_KEYS.records,recs.slice(0,200));
+}
+function showRecords(){
+  const recs=loadJSON(LS_KEYS.records,[]);
+  const wrap=$('#recBody');
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
+    <tbody>
+      ${recs.map(r=>{ const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
+        return `<tr><td style='padding:6px 8px;border-bottom:1px solid #233077'>${date}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.score||0)}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.points||0)}</td></tr>`}).join('')}
+    </tbody>
+  </table>`;
+  $('#recModal').style.display='flex';
+}
+$('#recordsBtn').addEventListener('click',showRecords);
+$('#recClose').addEventListener('click',()=> $('#recModal').style.display='none');
+$('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
+
+/* ===== 서버 세션 연동 (gameStart/gameFinish) — 안전 래퍼 ===== */
+function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('2048'); }catch(e){} }
+function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('2048', finalScore|0); }catch(e){} }
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // 필요시: 일시정지/로깅 등
   }
-  function showInterstitialAd(){
-    const box=document.getElementById('adContainer'); 
-    if(!box) return;
-    box.innerHTML='';
-    const ins=document.createElement('ins');
-    ins.className='adsbygoogle';
-    ins.style.display='block';
-    ins.setAttribute('data-ad-client', AD_CLIENT);
-    if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-    ins.setAttribute('data-ad-format','auto');
-    ins.setAttribute('data-full-width-responsive','true');
-    box.appendChild(ins);
-    try{
-      (window.adsbygoogle=window.adsbygoogle||[]).push({});
-    }catch(e){
-      console.warn(e);
-      box.innerHTML = fallbackAdHTML();
-    }
-    document.getElementById('adModal').style.display='flex';
-  }
-  let _afterAd=null;
-  function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
-  document.getElementById('adClose').addEventListener('click',()=>{
-    document.getElementById('adModal').style.display='none';
-    const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
-  });
+});
 
-  /* ===== Neon background (stars) ===== */
-  (function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
-    function fit(){const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0);} fit(); addEventListener('resize',fit,{passive:true});
-    const N=80; const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
-    function loop(t){ g.clearRect(0,0,c.width,c.height); for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2); const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle=`rgba(43,123,255,${a})`; g.fill(); p.y+=p.s; if(p.y>innerHeight){p.y=-10; p.x=Math.random()*innerWidth;} } requestAnimationFrame(loop);} requestAnimationFrame(loop);
-  })();
-
-  /* ===== Helpers ===== */
-  const $=sel=>document.querySelector(sel);
-  const DPR=()=> Math.min(2, window.devicePixelRatio||1);
-  const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
-  const pick=(arr)=> arr[Math.floor(Math.random()*arr.length)];
-  const fmt=n=> Number(n).toLocaleString('ko-KR');
-
-  function difficultyMult(){
-    const val=$('#tier')?.value||'beginner';
-    return {beginner:1.00, intermediate:1.12, advanced:1.28, hell:1.45, doom:1.60, insane:1.80}[val]||1.0;
-  }
-
-  function paramsForLevel(lv){
-    const p4 = clamp(0.10 + lv*0.01, 0.10, 0.45);
-    const p8 = lv<12? 0 : clamp((lv-10)*0.006, 0, 0.25);
-    const p16= lv<25? 0 : clamp((lv-24)*0.004, 0, 0.10);
-    const evil= clamp(lv*0.012, 0, 1.0);
-    const dbl = clamp((lv-8)*0.008, 0, 0.40);
-    const undos = Math.max(0, 20 - Math.floor(lv/5));
-    return {p4,p8,p16,evil,doubleSpawn:dbl,undos};
-  }
-
-  /* 
-    🔹 2048 전용 게임 보상 계산기
-    - score: 최종 점수
-    - points: 인게임 포인트(awardPoints로 누적된 값)
-    - maxTile: 최대로 만든 타일 (2048, 4096 등)
-    - level: 난이도/레벨
-    - 반환: { xp, tickets, coins }
-      • coins  → 서버 지갑의 코인/포인트(delta.coins)로 사용
-      • xp     → delta.xp 로 사용
-      • tickets→ delta.tickets 로 사용
-  */
-  function calcReward(score, points, maxTile, level){
-    const safeScore   = Math.max(0, score|0);
-    const safeLevel   = Math.max(1, level|0);
-    const safeTile    = Math.max(2, maxTile|0);
-    const mult        = difficultyMult();
-
-    // 기본 경험치: 점수 기반
-    let baseXp = Math.floor(safeScore / 50);
-    // 레벨 보너스
-    baseXp += safeLevel * 2;
-    // 최대 타일 보너스
-    if (safeTile >= 4096)      baseXp += 160;
-    else if (safeTile >= 2048) baseXp += 80;
-    else if (safeTile >= 1024) baseXp += 40;
-    else if (safeTile >= 512)  baseXp += 20;
-    // 난이도 배수 적용
-    let xp = Math.floor(baseXp * mult);
-    xp = clamp(xp, 0, 8000);
-
-    // 코인은 인게임 points를 그대로 사용하되, 점수 기반으로 약간 보정
-    const scoreBonusCoins = Math.floor(safeScore / 200);
-    let coins = (points|0) + scoreBonusCoins;
-    coins = clamp(coins, 0, 10000);
-
-    // 티켓: 높은 난이도/고득점에 대해 0~5장 정도 차등 지급
-    let tickets = 0;
-    if (safeScore >= 3000 || safeTile >= 1024) tickets = 1;
-    if (safeScore >= 6000 || safeTile >= 2048) tickets = 2;
-    if (safeScore >= 12000 || safeTile >= 4096) tickets = 3;
-    const tier = $('#tier')?.value || 'beginner';
-    if (tier === 'hell' || tier === 'doom') tickets += 1;
-    if (tier === 'insane') tickets += 2;
-    tickets = clamp(tickets, 0, 5);
-
-    return { xp, tickets, coins };
-  }
-
-  /* ✅ 전역 허브 규격 통일 헬퍼 (retro-running 과 동일 구조)
-     - gameCode: '2048', 'retro-running', 'brick-breaker' 등 게임 ID
-     - delta   : { xp, tickets, coins } (보상량)
-     - meta    : { score, points, level, ... } (게임별 메타 정보)
-   */
-  async function applyGlobalRewardAndSyncWallet(gameId, delta, meta){
-    const d = delta || {};
-    const m = meta  || {};
-
-    // 점수는 finish API가 반드시 필요(보상 산정/기록/analytics)
-    const score =
-      (typeof m.score === 'number') ? m.score :
-      (typeof d.score === 'number') ? d.score : 0;
-
-    // 중복 지급 방지(runId)
-    const RUNKEY  = `rg:${gameId}:activeRunId`;
-    const LASTKEY = `rg:${gameId}:lastFinish`;
-
-    let runId = m.runId || sessionStorage.getItem(RUNKEY);
-    if(!runId){
-      try{
-        const last = JSON.parse(sessionStorage.getItem(LASTKEY) || "null");
-        if(last && last.runId && (Date.now() - (last.ts||0) < 15000)) runId = last.runId;
-      }catch(e){}
-    }
-    if(!runId){
-      runId = (gameId + ":" + Date.now() + ":" + Math.random().toString(16).slice(2));
-      sessionStorage.setItem(RUNKEY, runId);
-    }
-
-    const IDEMKEY = `rg:${gameId}:rewarded:${runId}`;
-    if(sessionStorage.getItem(IDEMKEY) === "1") return null;
-    sessionStorage.setItem(IDEMKEY, "1");
-
-    try{
-      const payload = {
-        exp: Number(d.xp || d.exp || 0),
-        tickets: Number(d.tickets || 0),
-        points: Number(d.coins || d.points || 0),
-        score: Number(score) || 0,
-        meta: Object.assign({}, m || {}, { runId })
-      };
-
-      const data =
-        (typeof window.sendGameReward === "function")
-          ? await window.sendGameReward(String(gameId), payload)
-          : null;
-
-      if(!data || data.success !== true){
-        sessionStorage.removeItem(IDEMKEY);
-        throw new Error((data && data.error) ? data.error : "reward_failed");
-      }
-
-      // 최근 run 기록 저장 (중복 방지)
-      sessionStorage.setItem(LASTKEY, JSON.stringify({ runId, ts: Date.now() }));
-      if(sessionStorage.getItem(RUNKEY) === runId) sessionStorage.removeItem(RUNKEY);
-
-      // snapshot 우선 반영
-      const snap = data.snapshot || null;
-      if(snap && typeof window.applyAccountApiResponse === "function"){
-        window.applyAccountApiResponse(snap);
-      }else if(typeof window.refreshWalletHUD === "function"){
-        window.refreshWalletHUD();
-      }
-
-      return data;
-    }catch(e){
-      console.warn(`[${gameId}] finish sync failed:`, e);
-
-      // 최후의 fallback(오프라인 대비 큐)
-      try{
-        if(typeof window.RG_queueReward === "function"){
-          window.RG_queueReward({
-            gameId,
-            score: Number(score)||0,
-            coins: Number(d.coins||0),
-            tickets: Number(d.tickets||0),
-            xp: Number(d.xp||0),
-            meta: m || {}
-          });
-        }
-      }catch(_e){}
-      return null;
-    }
+/* ===== Game ===== */
+class G2048{
+  constructor(canvas){
+    this.c=canvas; this.ctx=canvas.getContext('2d');
+    this.size=4; this.reset(1);
+    this.bind(); this._initResizeObserver(); this.resize(); this.draw();
+    // 페이지 로드시 세션 시작 알림
+    notifyStart();
   }
 
-  // ✅ 유저별 localStorage prefix (A/B 유저 분리)
-  const __RG_LS_PREFIX = (() => {
-    try {
-      const token = localStorage.getItem("rg_jwt_token") || "";
-      const part = token.split(".")[1] || "";
-      if (!part) return "rg_guest_";
-      const b64 = part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4);
-      const json = JSON.parse(decodeURIComponent(escape(atob(b64))));
-      const sub = String(json.sub || "").trim();
-      return sub ? `rg_u_${sub}_` : "rg_guest_";
-    } catch (e) {
-      return "rg_guest_";
-    }
-  })();
+  reset(level){
+    this.level=level||1; this.p=paramsForLevel(this.level);
+    this.best= +(localStorage.getItem(LS_KEYS.best)||0);
+    this.score=0; this.moves=0; this.undosLeft=this.p.undos; this.history=[];
+    this.points=0; this._ended=false;
+    this._scoreMilestone = 0;
+    this._tileBonusGiven = {512:false,1024:false,2048:false,4096:false};
 
-  const LS_KEYS={
-    plays: __RG_LS_PREFIX + 'plays2048',
-    tickets: __RG_LS_PREFIX + 'tickets2048',
-    records: __RG_LS_PREFIX + 'records2048',
-    best: __RG_LS_PREFIX + 'best2048',
-    mission: __RG_LS_PREFIX + 'daily_mission_flags',          // ✅ 유저별 공유
-    missionRewarded: __RG_LS_PREFIX + 'daily_mission_rewarded'
-  };
-  function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
-  function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
-  function updateTicketUI(){
-    const plays= +localStorage.getItem(LS_KEYS.plays)||0;
-    const capLabel = $('#ticketsCap');
-    if(capLabel){
-      capLabel.textContent = `${plays%10} / 10`;
-    }
-    const tickets = +localStorage.getItem(LS_KEYS.tickets)||0;
-    const tAmtEl = $('#ticketsAmt');
-    const tBarEl = $('#ticketsBar');
-    if(tAmtEl) tAmtEl.textContent = fmt(tickets);
-    if(tBarEl){
-      const prog = (plays%10)/10*100;
-      tBarEl.style.width = clamp(prog,0,100) + '%';
-    }
+    this.grid=this.makeGrid(this.size);
+    this.spawn(); this.spawn();
+    this.syncHUD(); this.draw();
   }
-  function addPlay(){
-    let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
-    let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-    if(plays%10===0) tickets++;
-    localStorage.setItem(LS_KEYS.plays, String(plays));
-    localStorage.setItem(LS_KEYS.tickets, String(tickets));
+
+  setSize(n){ this.size=n; this.reset(this.level); }
+  makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
+
+  bind(){
+    /* HOME: 광고 이후 메인(로그인 상태 홈)으로 이동 */
+    $('#homeBtn').onclick = () => showAdThen(()=> {
+      window.location.href = '/index.html';
+    });
+
+    $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd());
+    $('#newBtn').onclick=()=>{ if(this.moves>0){ addRecord(this.score,this.points||0);} this.reset(this.level); };
+    $('#undoBtn').onclick=()=> this.undo();
+    const tier=$('#tier'); const lvl=$('#lvlRange'); const sizeSel=$('#sizeSel');
+    const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
+    tier.addEventListener('change',()=>applyTier(tier.value));
+    lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
+    sizeSel.addEventListener('change',()=> this.setSize(+sizeSel.value));
+
+    const keyMap={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',KeyA:'L',KeyD:'R',KeyW:'U',KeyS:'D'};
+    document.addEventListener('keydown',(e)=>{
+      if(e.code==='KeyN'){ if(this.moves>0){ addRecord(this.score,this.points||0);} this.reset(this.level); }
+      if(e.code==='KeyU'){ this.undo(); }
+      const d=keyMap[e.code]; if(d){ this.move(d); e.preventDefault(); }
+    });
+    // Touch
+    let sx=0, sy=0; this.c.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
+    this.c.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy; const ax=Math.abs(dx), ay=Math.abs(dy); if(Math.max(ax,ay)<20) return; this.move( ax>ay? (dx<0?'L':'R') : (dy<0?'U':'D') ); });
+  }
+
+  setLevel(lv){ this.level=lv; this.p=paramsForLevel(lv); this.syncHUD(); }
+
+  _initResizeObserver(){
+    const wrap = this.c.parentElement || this.c; let lastW = 0;
+    const ro = new ResizeObserver((entries)=>{ const cr = entries[0].contentRect; const w = Math.floor(cr.width);
+      if(w !== lastW){ lastW = w; cancelAnimationFrame(this._rafId); this._rafId = requestAnimationFrame(()=> this.resize()); } });
+    ro.observe(wrap); this._ro = ro;
+    window.addEventListener('orientationchange', ()=> this.resize(), {passive:true});
+    window.addEventListener('resize', ()=> this.resize(), {passive:true});
+  }
+
+  resize(){
+    const bezel = this.c.closest('.bezel') || this.c.parentElement || this.c;
+    const rect = bezel.getBoundingClientRect();
+    const availW = Math.max(0, rect.width - 2);
+    const availH = Math.max(0, rect.height - 2);
+    const SCALE = 0.99; const Y_OFFSET=-12;
+    const sideCSS = Math.floor(Math.min(availW, availH) * SCALE);
+    const d = DPR();
+    this.c.style.width = sideCSS + 'px'; this.c.style.height = sideCSS + 'px';
+    this.c.width = Math.floor(sideCSS * d); this.c.height = Math.floor(sideCSS * d);
+    const wrap = this.c.parentElement; if(wrap){ wrap.style.transform = `translateY(${Y_OFFSET}px)`; }
+    this.draw();
+    fitCabinet();
+  }
+
+  syncHUD(){
+    $('#score').textContent=this.score|0; $('#best').textContent=this.best|0; $('#moves').textContent=this.moves|0;
+    $('#pointsAmt').textContent=fmt(this.points|0);
+    const cap=5000; $('#pointsBar').style.width = Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
     updateTicketUI();
-    // if(plays % 3 === 0){ showInterstitialAd(); } // ✅ 3회당 광고 노출 제거
   }
-  function addRecord(score, points){
-    const recs=loadJSON(LS_KEYS.records,[]);
-    const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
-    saveJSON(LS_KEYS.records,recs.slice(0,200));
-  }
-  function showRecords(){
-    const recs=loadJSON(LS_KEYS.records,[]);
-    const wrap=$('#recBody');
-    wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr><th style='text-align:left;padding:8px;border-bottom:1px solid #314099'>날짜/시간</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>점수</th><th style='text-align:right;padding:8px;border-bottom:1px solid #314099'>포인트</th></tr></thead>
-      <tbody>
-        ${recs.map(r=>{ const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
-          return `<tr><td style='padding:6px 8px;border-bottom:1px solid #233077'>${date}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.score||0)}</td><td style='padding:6px 8px;text-align:right;border-bottom:1px solid #233077'>${fmt(r.points||0)}</td></tr>`}).join('')}
-      </tbody>
-    </table>`;
-    $('#recModal').style.display='flex';
-  }
-  (function bindRecordModal(){
-    const btn = $('#recordsBtn');
-    if(btn) btn.addEventListener('click', showRecords);
-    const close = $('#recClose');
-    if(close) close.addEventListener('click',()=> $('#recModal').style.display='none');
-    const modal = $('#recModal');
-    if(modal) modal.addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
-  })();
 
-  // ✅ 일일 세트 미션 플래그 (runner와 동일 구조 – analytics 구조 통일용)
-  function todayKey(){ return new Date().toISOString().slice(0,10); }
-  function tryDailyMissionBonus2048(){
-    try{
-      const key = todayKey();
-      const flags = loadJSON(LS_KEYS.mission, {});
-      flags[key] = flags[key] || {};
-      flags[key]['2048'] = true;
-      saveJSON(LS_KEYS.mission, flags);
+  randEmpty(){ const empty=[]; for(let r=0;r<this.size;r++)for(let c=0;c<this.size;c++) if(!this.grid[r][c]) empty.push([r,c]); return empty; }
 
-      const rewarded = loadJSON(LS_KEYS.missionRewarded, {});
-      if (rewarded[key]) return;
-      const f = flags[key];
-      if (f && f.runner && f['2048'] && f.tetris){
-        // 세트 미션 보상은 계정 지갑 보상(calcReward/applyGlobalReward)로도 들어가므로
-        // 여기서는 로컬 포인트만 살짝 보너스로 부여
-        // (HUD 동기화는 syncHUD 에서 자동 반영)
-        console.info('[2048] daily mission completed (runner + 2048 + tetris)');
-        rewarded[key] = true;
-        saveJSON(LS_KEYS.missionRewarded, rewarded);
-      }
-    }catch(e){
-      console.warn('daily mission bonus error', e);
+  spawn(){
+    let count = Math.random()<this.p.doubleSpawn? 2: 1;
+    for(let k=0;k<count;k++){
+      const empty=this.randEmpty(); if(empty.length===0) return;
+      const r=Math.random(); let v=2; if(r<this.p.p16) v=16; else if(r<this.p.p16+this.p.p8) v=8; else if(r<this.p.p16+this.p.p8+this.p.p4) v=4;
+      const pos = this.pickSpawnCell(empty, v, this.p.evil);
+      const [rr,cc]=pos; this.grid[rr][cc]=v;
     }
   }
 
-  let __rg_finish_sent_2048 = false;
+  pickSpawnCell(cells, value, evil){
+    if(evil<=0 || cells.length===1) return pick(cells);
+    const l = evil; let best=null, bestScore=-Infinity;
+    for(const [r,c] of cells){
+      const sRand = Math.random()*0.01;
+      const sMob = - this.mobilityIfPlace(r,c,value);
+      const sMerge = - this.mergePotentialAround(r,c,value);
+      const score = l*(sMob + sMerge) + (1-l)*sRand;
+      if(score>bestScore){ bestScore=score; best=[r,c]; }
+    }
+    return best||pick(cells);
+  }
+  neighbors(r,c){ return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([y,x])=> y>=0&&y<this.size&&x>=0&&x<this.size); }
+  mergePotentialAround(r,c,v){ let s=0; for(const [y,x] of this.neighbors(r,c)){ if(this.grid[y][x]===v) s++; } return s; }
+  mobilityIfPlace(r,c,v){ let emptyAdj=0, equalAdj=0; for(const [y,x] of this.neighbors(r,c)){ const t=this.grid[y][x]; if(!t) emptyAdj++; else if(t===v) equalAdj++; } return emptyAdj + 0.5*equalAdj; }
 
-  function notifyStart(){
-    try{
-      __rg_finish_sent_2048 = false; // 새 판 시작 시 finish 재허용
-      if (typeof window.gameStart === 'function') window.gameStart('2048');
-    }catch(e){}
+  storeHistory(){ if(this.undosLeft<=0) return; const snapshot={grid:this.grid.map(r=>r.slice()), score:this.score, moves:this.moves, points:this.points, scoreMilestone:this._scoreMilestone, tileBonusGiven:this._tileBonusGiven}; this.history.push(snapshot); if(this.history.length>50) this.history.shift(); }
+  undo(){ if(this.history.length===0||this.undosLeft<=0) return; const s=this.history.pop(); this.grid=s.grid; this.score=s.score; this.moves=s.moves; this.points=s.points||0; this._scoreMilestone=s.scoreMilestone||0; this._tileBonusGiven=s.tileBonusGiven||this._tileBonusGiven; this.undosLeft--; this.syncHUD(); this.draw(); }
+
+  /* ===== 포인트 모델 ===== */
+  awardPoints(base){
+    const mult = difficultyMult();
+    const add = Math.max(0, Math.floor(base * mult));
+    this.points = Math.min(5000, (this.points||0) + add);
+  }
+  _awardScoreMilestones(){
+    const blocks = Math.floor((this.score|0)/100);
+    if(blocks>this._scoreMilestone){
+      const diff = blocks - this._scoreMilestone;
+      this._scoreMilestone = blocks;
+      this.awardPoints(6 * diff);
+    }
+  }
+  _awardTileMilestone(maxTile){
+    const map = [{t:512,p:30},{t:1024,p:60},{t:2048,p:120},{t:4096,p:240}];
+    for(const {t,p} of map){
+      if(maxTile>=t && !this._tileBonusGiven[t]){
+        this._tileBonusGiven[t]=true;
+        this.awardPoints(p);
+      }
+    }
+  }
+  _snapshotBonusAtEnd(maxTile){
+    if(maxTile>=2048) this.awardPoints(200);
+    else if(maxTile>=1024) this.awardPoints(80);
   }
 
-  async function notifyFinish(finalScore, meta){
-    if(__rg_finish_sent_2048) return;
-    __rg_finish_sent_2048 = true;
-    try{
-      // ✅ /api/games/finish 경로 차단
-      // ✅ 보상/지갑 반영은 applyGlobalRewardAndSyncWallet → sendGameReward(/api/wallet/reward) 단일 루트만 사용
-    }catch(e){
-      __rg_finish_sent_2048 = false;
-    }
-  }
-  document.addEventListener('visibilitychange', () => {});
+  move(dir){
+    if(this._ended) return;
+    this.storeHistory();
+    const before=JSON.stringify(this.grid);
+    let gained=0; const N=this.size; const idxs=[...Array(N).keys()];
+    const get=(r,c)=>this.grid[r][c];
+    const set=(r,c,v)=>{ this.grid[r][c]=v; };
 
-  class G2048{
-    constructor(canvas, opts={}){
-      this.c=canvas;
-      this.ctx=canvas.getContext('2d');
-      this.size=4;
-      this.testMode = !!opts.testMode;
-
-      this.grid = this.makeGrid(this.size);
-
-      this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-      this.score=0;
-      this.moves=0;
-      this.points=0;
-      this._ended=false;
-
-      this.bind();
-      this._initResizeObserver();
-      this.resize();
-
-      if(this.testMode){
-        this.reset(1);
-        this.draw();
-        return;
+    const compress=line=>{
+      const arr=line.filter(v=>v!==0);
+      for(let i=0;i<arr.length-1;i++){
+        if(arr[i]!==0 && arr[i]===arr[i+1]){ arr[i]*=2; gained+=arr[i]; arr[i+1]=0; i++; }
       }
+      const out=arr.filter(v=>v!==0); while(out.length<N) out.push(0); return out;
+    };
 
-      this.reset(1);
-      this.draw();
-      notifyStart();
+    if(dir==='L' || dir==='R'){
+      idxs.forEach(r=>{ let line = idxs.map(c=> get(r,c)); if(dir==='R') line.reverse(); line = compress(line); if(dir==='R') line.reverse(); idxs.forEach(c=> set(r,c,line[c])); });
+    } else {
+      idxs.forEach(c=>{ let line = idxs.map(r=> get(r,c)); if(dir==='D') line.reverse(); line = compress(line); if(dir==='D') line.reverse(); idxs.forEach(r=> set(r,c,line[r])); });
     }
 
-    reset(level){
-      this.level=level||1;
-      this.p=paramsForLevel(this.level);
-      this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-      this.score=0;
-      this.moves=0;
-      this.undosLeft=this.p.undos;
-      this.history=[];
-      this.points=0;
-      this._ended=false;
-      this._scoreMilestone = 0;
-      this._tileBonusGiven = {512:false,1024:false,2048:false,4096:false};
+    const after=JSON.stringify(this.grid);
+    const moved = (before!==after);
+    if(moved){
+      this.score += gained; this.best=Math.max(this.best,this.score); localStorage.setItem(LS_KEYS.best, String(this.best));
+      this.moves++;
+      this._awardScoreMilestones();
+      this._awardTileMilestone(this.maxTile());
 
-      this.grid=this.makeGrid(this.size);
-      this.spawn(); this.spawn();
-      this.draw();
-      this.syncHUD();
-    }
-
-    setSize(n){ this.size=n; this.reset(this.level); }
-    makeGrid(n){ return Array.from({length:n},()=> Array.from({length:n},()=>0)); }
-
-    bind(){
-      $('#homeBtn').onclick = () => showAdThen(()=> {
-        window.location.href = '/index.html';
-      });
-
-      $('#endBtn').onclick =()=> showAdThen(()=> this.manualEnd(true));
-      $('#newBtn').onclick=()=>{
-        if(this.moves>0){ addRecord(this.score,this.points||0); }
-        this.reset(this.level);
-      };
-      $('#undoBtn').onclick=()=> this.undo();
-      const tier=$('#tier'); const lvl=$('#lvlRange'); const sizeSel=$('#sizeSel');
-      const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
-      tier.addEventListener('change',()=>applyTier(tier.value));
-      lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
-      sizeSel.addEventListener('change',()=> this.setSize(+sizeSel.value));
-
-      const keyMap={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',KeyA:'L',KeyD:'R',KeyW:'U',KeyS:'D'};
-      document.addEventListener('keydown',(e)=>{
-        if(e.code==='KeyN'){
-          if(this.moves>0){ addRecord(this.score,this.points||0);}
-          this.reset(this.level);
-        }
-        if(e.code==='KeyU'){ this.undo(); }
-        const d=keyMap[e.code]; if(d){ this.move(d); e.preventDefault(); }
-      });
-      let sx=0, sy=0; this.c.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; },{passive:true});
-      this.c.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy; const ax=Math.abs(dx), ay=Math.abs(dy); if(Math.max(ax,ay)<20) return; this.move( ax>ay? (dx<0?'L':'R') : (dy<0?'U':'D') ); });
-    }
-
-    setLevel(lv){ this.level=lv; this.p=paramsForLevel(lv); this.syncHUD(); }
-
-    _initResizeObserver(){
-      const wrap = this.c.parentElement || this.c;
-      let lastW = 0;
-
-      if (typeof ResizeObserver === 'undefined') {
-        this.resize();
-        return;
-      }
-
-      const ro = new ResizeObserver((entries)=>{
-        const cr = entries[0].contentRect;
-        const w = Math.floor(cr.width);
-        if(w !== lastW){
-          lastW = w;
-          cancelAnimationFrame(this._rafId);
-          this._rafId = requestAnimationFrame(()=> this.resize());
-        }
-      });
-      ro.observe(wrap);
-      this._ro = ro;
-      window.addEventListener('orientationchange', ()=> this.resize(), {passive:true});
-      window.addEventListener('resize', ()=> this.resize(), {passive:true});
-    }
-
-    resize(){
-      const bezel = this.c.closest('.bezel') || this.c.parentElement || this.c;
-      const rect = bezel.getBoundingClientRect();
-      const availW = Math.max(0, rect.width - 2);
-      const availH = Math.max(0, rect.height - 2);
-      const SCALE = 0.98; // 살짝 여유를 줘서 베젤 안에서 항상 안전하게 보이게
-      const sideCSS = Math.floor(Math.min(availW, availH) * SCALE);
-      const d = DPR();
-
-      this.c.style.width  = sideCSS + 'px';
-      this.c.style.height = sideCSS + 'px';
-      this.c.width  = Math.floor(sideCSS * d);
-      this.c.height = Math.floor(sideCSS * d);
-
-      this.draw();
-      fitCabinet();
-    }
-
-    randEmpty(){ const empty=[]; for(let r=0;r<this.size;r++)for(let c=0;c<this.size;c++) if(!this.grid[r][c]) empty.push([r,c]); return empty; }
-
-    spawn(){
-      let count = Math.random()<this.p.doubleSpawn? 2: 1;
-      for(let k=0;k<count;k++){
-        const empty=this.randEmpty(); if(empty.length===0) return;
-        const r=Math.random(); let v=2; if(r<this.p.p16) v=16; else if(r<this.p.p16+this.p.p8) v=8; else if(r<this.p.p16+this.p.p8+this.p.p4) v=4;
-        const pos = this.pickSpawnCell(empty, v, this.p.evil);
-        const [rr,cc]=pos; this.grid[rr][cc]=v;
-      }
-    }
-
-    pickSpawnCell(cells, value, evil){
-      if(evil<=0 || cells.length===1) return pick(cells);
-      const l = evil; let best=null, bestScore=-Infinity;
-      for(const [r,c] of cells){
-        const sRand = Math.random()*0.01;
-        const sMob = - this.mobilityIfPlace(r,c,value);
-        const sMerge = - this.mergePotentialAround(r,c,value);
-        const score = l*(sMob + sMerge) + (1-l)*sRand;
-        if(score>bestScore){ bestScore=score; best=[r,c]; }
-      }
-      return best||pick(cells);
-    }
-    neighbors(r,c){ return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([y,x])=> y>=0&&y<this.size&&x>=0&&x<this.size); }
-    mergePotentialAround(r,c,v){ let s=0; for(const [y,x] of this.neighbors(r,c)){ if(this.grid[y][x]===v) s++; } return s; }
-    mobilityIfPlace(r,c,v){ let emptyAdj=0, equalAdj=0; for(const [y,x] of this.neighbors(r,c)){ const t=this.grid[y][x]; if(!t) emptyAdj++; else if(t===v) equalAdj++; } return emptyAdj + 0.5*equalAdj; }
-
-    storeHistory(){ if(this.undosLeft<=0) return; const snapshot={grid:this.grid.map(r=>r.slice()), score:this.score, moves:this.moves, points:this.points, scoreMilestone:this._scoreMilestone, tileBonusGiven:this._tileBonusGiven}; this.history.push(snapshot); if(this.history.length>50) this.history.shift(); }
-    undo(){ if(this.history.length===0||this.undosLeft<=0) return; const s=this.history.pop(); this.grid=s.grid; this.score=s.score; this.moves=s.moves; this.points=s.points||0; this._scoreMilestone=s.scoreMilestone||0; this._tileBonusGiven=s.tileBonusGiven||this._tileBonusGiven; this.undosLeft--; this.syncHUD(); this.draw(); }
-
-    awardPoints(base){
-      const mult = difficultyMult();
-      const add = Math.max(0, Math.floor(base * mult));
-      this.points = Math.min(5000, (this.points||0) + add);
-    }
-    _awardScoreMilestones(){
-      const blocks = Math.floor((this.score|0)/100);
-      if(blocks>this._scoreMilestone){
-        const diff = blocks - this._scoreMilestone;
-        this._scoreMilestone = blocks;
-        this.awardPoints(6 * diff);
-      }
-    }
-    _awardTileMilestone(maxTile){
-      const map = [{t:512,p:30},{t:1024,p:60},{t:2048,p:120},{t:4096,p:240}];
-      for(const {t,p} of map){
-        if(maxTile>=t && !this._tileBonusGiven[t]){
-          this._tileBonusGiven[t]=true;
-          this.awardPoints(p);
-        }
-      }
-    }
-    _snapshotBonusAtEnd(maxTile){
-      if(maxTile>=2048) this.awardPoints(200);
-      else if(maxTile>=1024) this.awardPoints(80);
-    }
-
-    move(dir){
-      if(this._ended) return;
-      this.storeHistory();
-      const before=JSON.stringify(this.grid);
-      let gained=0; const N=this.size; const idxs=[...Array(N).keys()];
-      const get=(r,c)=>this.grid[r][c];
-      const set=(r,c,v)=>{ this.grid[r][c]=v; };
-
-      const compress=line=>{
-        const arr=line.filter(v=>v!==0);
-        for(let i=0;i<arr.length-1;i++){
-          if(arr[i]!==0 && arr[i]===arr[i+1]){ arr[i]*=2; gained+=arr[i]; arr[i+1]=0; i++; }
-        }
-        const out=arr.filter(v=>v!==0); while(out.length<N) out.push(0); return out;
-      };
-
-      if(dir==='L' || dir==='R'){
-        idxs.forEach(r=>{ let line = idxs.map(c=> get(r,c)); if(dir==='R') line.reverse(); line = compress(line); if(dir==='R') line.reverse(); idxs.forEach(c=> set(r,c,line[c])); });
-      } else {
-        idxs.forEach(c=>{ let line = idxs.map(r=> get(r,c)); if(dir==='D') line.reverse(); line = compress(line); if(dir==='D') line.reverse(); idxs.forEach(r=> set(r,c,line[r])); });
-      }
-
-      const after=JSON.stringify(this.grid);
-      const moved = (before!==after);
-      if(moved){
-        this.score += gained; this.best=Math.max(this.best,this.score); localStorage.setItem(LS_KEYS.best, String(this.best));
-        this.moves++;
-        this._awardScoreMilestones();
-        this._awardTileMilestone(this.maxTile());
-
-        this.spawn(); this.syncHUD(); this.draw();
-        if(this.isGameOver()){ this.manualEnd(false); }
-      }
-    }
-
-// [MASTER ENGINE] 표준화된 종료 및 보상 지급 로직 (Single / Clean)
-    manualEnd(isManual){
-      if (this._ended) return;
-      this._ended = true;
-
-      const maxT = this.maxTile();
-      const finalScore = this.score | 0;
-
-      // 1) 게임 내부 정리
-      this._snapshotBonusAtEnd(maxT);
-      this.syncHUD();
-
-      // 2) 로컬 기록 저장
-      addRecord(finalScore, this.points || 0);
-      addPlay();
-      tryDailyMissionBonus2048();
-
-      if (this.testMode) return;
-
-      // 3) 보상(XP, 티켓, 코인) 계산
-      let delta = { xp: 0, tickets: 0, coins: 0 };
-      try {
-        delta = calcReward(finalScore, this.points || 0, maxT, this.level || 1) || delta;
-      } catch (e) {
-        console.error(e);
-      }
-
-      // 4) 메타 데이터 구성
-      const meta = {
-        gameId: '2048',
-        score: finalScore,
-        points: delta.coins,
-        level: this.level || 1,
-        maxTile: maxT,
-        tier: ($('#tier') && $('#tier').value) || 'beginner',
-        endedBy: isManual ? 'manual' : 'gameover'
-      };
-
-      // 5) 보상 큐 저장 + 즉시 동기화 시도
-      try {
-        const rewardPayload = {
-          coins: delta.coins,
-          xp: delta.xp,
-          tickets: delta.tickets,
-          meta: meta
-        };
-
-        if (window.RG_queueReward) {
-          window.RG_queueReward(rewardPayload);
-        } else {
-          localStorage.setItem("rg_reward", JSON.stringify(rewardPayload));
-        }
-
-        if (typeof applyGlobalRewardAndSyncWallet === 'function') {
-          applyGlobalRewardAndSyncWallet('2048', delta, meta);
-        }
-      } catch (e) {
-        console.error("Reward Queue Error", e);
-      }
-
-      // 6) 종료 알림/UI
-      notifyFinish(finalScore, meta);
-      const ov = document.getElementById('gameOver');
-      if (ov) ov.style.display = 'flex';
-
-      this.flash('Game Over');
-    }
-
-    maxTile(){
-      let m=0; for(const row of this.grid) for(const v of row) if(v>m) m=v; return m;
-    }
-
-    isGameOver(){
-      if(this.randEmpty().length>0) return false;
-      const N=this.size;
-      for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-        const v=this.grid[r][c]; if((r+1<N && this.grid[r+1][c]===v) || (c+1<N && this.grid[r][c+1]===v)) return false;
-      }
-      return true;
-    }
-
-    syncHUD(){
-      $('#score').textContent = fmt(this.score||0);
-      $('#best').textContent  = fmt(this.best||0);
-      $('#moves').textContent = fmt(this.moves||0);
-
-      const points = this.points||0;
-      const capEl = $('#pointsCap');
-      const amtEl = $('#pointsAmt');
-      const barEl = $('#pointsBar');
-      const cap = 20000;
-      if(capEl) capEl.textContent = fmt(cap);
-      if(amtEl) amtEl.textContent = fmt(points);
-      if(barEl) barEl.style.width = clamp(points/cap*100,0,100)+'%';
-
-      // 티켓 바(로컬 기록 기준) – 서버 지갑과는 별도
-      updateTicketUI();
-    }
-
-    draw(){
-      if(!this.grid) return;
-
-      const ctx=this.ctx;
-      const W=this.c.width, H=this.c.height;
-      ctx.clearRect(0,0,W,H);
-
-      const pad = 16*DPR();
-      const n   = this.size;
-      const gap = 10*DPR();
-      const radius = 12*DPR();
-
-      // 보드가 항상 정사각형으로 중앙 정렬되도록 보정 (플레이 화면 이탈 방지)
-      const boardSide = Math.max(0, Math.min(W, H) - pad*2);
-      const cell = (boardSide - gap*(n-1)) / n;
-      const boardX = (W - boardSide) / 2;
-      const boardY = (H - boardSide) / 2;
-
-      ctx.fillStyle=getCSS('--tile0');
-      roundRect(ctx,boardX,boardY,boardSide,boardSide,18*DPR());
-      ctx.fill();
-
-      for(let r=0;r<n;r++){
-        for(let c=0;c<n;c++){
-          const x = boardX + c*(cell+gap);
-          const y = boardY + r*(cell+gap);
-          const v=this.grid[r][c];
-          ctx.fillStyle=tileColor(v);
-          roundRect(ctx,x,y,cell,cell,radius);
-          ctx.fill();
-          if(v){
-            ctx.fillStyle='#111';
-            ctx.font=`bold ${Math.floor(cell*0.38)}px ui-sans-serif`;
-            ctx.textAlign='center';
-            ctx.textBaseline='middle';
-            ctx.fillText(v, x+cell/2, y+cell/2+1);
-          }
-        }
-      }
-    }
-
-    flash(text){
-      const ctx=this.ctx; const W=this.c.width, H=this.c.height;
-      ctx.save();
-      ctx.fillStyle='rgba(0,0,0,.35)';
-      ctx.fillRect(0,0,W,H);
-      ctx.fillStyle='#fff';
-      ctx.font=`bold ${Math.floor(W*0.08)}px ui-sans-serif`;
-      ctx.textAlign='center';
-      ctx.fillText(text, W/2, H/2);
-      ctx.restore();
+      this.spawn(); this.syncHUD(); this.draw();
+      if(this.isGameOver()){ this.manualEnd(); }
     }
   }
 
-  function roundRect(ctx,x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-  }
-  function getCSS(n){ return getComputedStyle(document.documentElement).getPropertyValue(n)||'#fff'; }
-  function tileColor(v){
-    switch(v){
-      case 0: return getCSS('--tile0');
-      case 2: return getCSS('--t2'); case 4: return getCSS('--t4'); case 8: return getCSS('--t8'); case 16: return getCSS('--t16'); case 32: return getCSS('--t32'); case 64: return getCSS('--t64');
-      case 128: return getCSS('--t128'); case 256: return getCSS('--t256'); case 512: return getCSS('--t512'); case 1024: return getCSS('--t1024'); case 2048: return getCSS('--t2048'); case 4096: return getCSS('--t4096');
-      default: return getCSS('--t8192');
-    }
+  manualEnd(){
+    if(this._ended) return;
+    this._ended=true;
+    this._snapshotBonusAtEnd(this.maxTile());
+    this.syncHUD();
+    addRecord(this.score, this.points||0);
+    addPlay();
+    notifyFinish(this.score|0);   /* ✅ 서버로 최종 점수 알림 */
+    this.flash('Game Over');
   }
 
-/***** [MASTER ENGINE] Cabinet Universal Fit (16:9 강제 고정 + 광고 공간 확보) *****/
-  function fitCabinet(){
-    const cab = document.querySelector('.cabinet'); 
-    if(!cab) return;
-    
-    // 1. 초기화
-    cab.style.transform = 'none';
-    cab.style.transformOrigin = 'top center';
-    
-    // 2. 가용 화면 크기 계산 (기본 여백)
-    const margin = 20;
-    let availableW = window.innerWidth - (margin * 2);
-    const availableH = window.innerHeight - (margin * 2);
-
-    // 3. 화면이 넓어서 광고가 보일 때는, 광고 공간(360px)만큼 게임기를 축소시킴
-    // (1번 CSS에서 1400px 이상일 때 광고가 나온다고 설정했으므로 그에 맞춤)
-    if(window.innerWidth > 1400) {
-      availableW -= 360; // 좌우 광고 배너(160*2 + 여백) 공간 확보
-    }
-    
-    // 4. 게임기 본체 목표 해상도 (16:9 비율)
-    const w = 1200; 
-    const h = 675;  
-    
-    // 5. 최적 스케일 계산 (Contain 방식 - 화면 밖으로 절대 안 나감)
-    const scale = Math.min(1, availableW / w, availableH / h);
-    
-    // 6. 적용
-    cab.style.width = w + 'px';
-    cab.style.height = h + 'px';
-    cab.style.transform = 'scale(' + scale + ')';
-    
-    // 7. 모바일 높이 보정
-    document.body.style.height = window.innerHeight + 'px';
+  maxTile(){
+    let m=0; for(const row of this.grid) for(const v of row) if(v>m) m=v; return m;
   }
 
-  // 리사이즈 이벤트
-  window.addEventListener('resize', function(){ requestAnimationFrame(fitCabinet); });
-  window.addEventListener('orientationchange', function(){ setTimeout(fitCabinet, 100); });
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fitCabinet);
-  else fitCabinet();
-  (function runTests(){
-    try{
-      const c=document.createElement('canvas');
-      const g=new G2048(c,{testMode:true});
-      g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
-      const s0=g.score; g.move('L');
-      console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L');
-      console.assert(g.score-s0===4,'score add');
-      g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
-      g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
-      console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
-    }catch(e){
-      console.warn('2048 self-test skipped', e);
+  isGameOver(){
+    if(this.randEmpty().length>0) return false;
+    const N=this.size;
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+      const v=this.grid[r][c]; if((r+1<N && this.grid[r+1][c]===v) || (c+1<N && this.grid[r][c+1]===v)) return false;
     }
-  })();
-
-window.addEventListener('load', async () => {
-  const ra =
-    (window.RG && typeof window.RG.requireAuth === 'function')
-      ? window.RG.requireAuth
-      : (typeof window.requireAuth === 'function' ? window.requireAuth : null);
-
-  if (!ra) return;
-
-  const ok = await ra();
-  if (ok === false) return;
-
-  // ✅ 인증된 경우에만 게임 시작
-  const game = new G2048(document.getElementById('game'));
-
-  // HUD / 기타 초기화
-  if (typeof window.refreshWalletHUD === 'function') {
-    window.refreshWalletHUD();
+    return true;
   }
-}, { once:true });
 
-  // 2048 전용 BGM 초기화 (사용자 첫 상호작용 시 재생, 볼륨 30%)
-  (function initBackgroundMusic(){
-    try{
-      const bgm = document.getElementById('bgm2048');
-      if (!bgm) return;
-      bgm.volume = 0.3;
-
-      let started = false;
-      const start = () => {
-        if (started) return;
-        started = true;
-        bgm.play().catch(()=>{ /* 일부 브라우저의 자동재생 제한 무시 */ });
-      };
-
-      document.addEventListener('click', start, { once: true, passive: true });
-      document.addEventListener('keydown', start, { once: true });
-      document.addEventListener('touchstart', start, { once: true, passive: true });
-    }catch(e){
-      console.warn('bgm init failed', e);
+  draw(){
+    const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.clearRect(0,0,W,H);
+    const pad=16*DPR(); const n=this.size; const gap=10*DPR(); const cell=(W - pad*2 - gap*(n-1))/n; const radius=12*DPR();
+    ctx.fillStyle=getCSS('--tile0'); roundRect(ctx,pad,pad,W-pad*2,H-pad*2,18*DPR()); ctx.fill();
+    for(let r=0;r<n;r++){
+      for(let c=0;c<n;c++){
+        const x=pad + c*(cell+gap), y=pad + r*(cell+gap); const v=this.grid[r][c];
+        ctx.fillStyle=tileColor(v); roundRect(ctx,x,y,cell,cell,radius); ctx.fill();
+        if(v){ ctx.fillStyle='#111'; ctx.font=`bold ${Math.floor(cell*0.38)}px ui-sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v, x+cell/2, y+cell/2+1); }
+      }
     }
-  })();
-  </script>
+  }
+  flash(text){ const ctx=this.ctx; const W=this.c.width, H=this.c.height; ctx.save(); ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font=`bold ${Math.floor(W*0.08)}px ui-sans-serif`; ctx.textAlign='center'; ctx.fillText(text, W/2, H/2); ctx.restore(); }
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function getCSS(n){ return getComputedStyle(document.documentElement).getPropertyValue(n)||'#fff'; }
+function tileColor(v){
+  switch(v){
+    case 0: return getCSS('--tile0');
+    case 2: return getCSS('--t2'); case 4: return getCSS('--t4'); case 8: return getCSS('--t8'); case 16: return getCSS('--t16'); case 32: return getCSS('--t32'); case 64: return getCSS('--t64');
+    case 128: return getCSS('--t128'); case 256: return getCSS('--t256'); case 512: return getCSS('--t512'); case 1024: return getCSS('--t1024'); case 2048: return getCSS('--t2048'); case 4096: return getCSS('--t4096');
+    default: return getCSS('--t8192');
+  }
+}
+
+/* Keep cabinet fully visible on screen */
+function fitCabinet(){
+  const cab = document.querySelector('.cabinet'); if(!cab) return;
+  const margin = 16; cab.style.transform='none'; const w=cab.offsetWidth, h=cab.offsetHeight;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const needScale = (w > vw - margin*2) || (h > vh - margin*2);
+  const scale = needScale ? Math.min(1, (vw - margin*2)/w, (vh - margin*2)/h) : 1;
+  cab.style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+setTimeout(fitCabinet, 0);
+
+/* ===== Tests ===== */
+(function runTests(){
+  const c=document.createElement('canvas'); const g=new G2048(c);
+  g.size=4; g.grid=[[2,2,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; const s0=g.score; g.move('L'); console.assert(g.grid[0][0]===4 && g.grid[0][1]===0,'merge L'); console.assert(g.score-s0===4,'score add');
+  g.points=0; g._scoreMilestone=0; g.score=0; g._awardScoreMilestones(); g.score=101; g._awardScoreMilestones(); console.assert(g._scoreMilestone>=1,'milestone step');
+  g._tileBonusGiven={512:false,1024:false,2048:false,4096:false}; g._awardTileMilestone(1024);
+  console.assert(g._tileBonusGiven[512]&&g._tileBonusGiven[1024],'tile bonuses flag');
+})();
+
+/* ===== Bootstrap ===== */
+const game=new G2048(document.getElementById('game'));
+(function(){
+  const tier=$('#tier'), lvl=$('#lvlRange');
+  const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; game.setLevel(lv); };
+  applyTier(tier.value);
+  lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
+  updateTicketUI();
+})();
+</script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
@@ -1460,6 +694,7 @@ window.addEventListener('load', async () => {
     <button class="deny" type="button">거부</button>
     <button class="agree" type="button">동의</button>
   </div>
+
 
   <script>
   (function(){
@@ -1469,7 +704,7 @@ window.addEventListener('load', async () => {
       var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
       var el=document.getElementById('cookieBanner');
       if(v==='yes'){ init(); if(el) el.style.display='none'; return; }
-      if(!el){ return; }
+      if(!el){ return; } // no banner -> do not init
       el.style.display='flex';
       var agree=el.querySelector('.agree'), deny=el.querySelector('.deny');
       if(agree) agree.addEventListener('click', function(){
@@ -1480,133 +715,11 @@ window.addEventListener('load', async () => {
         try{ localStorage.setItem(KEY,'no'); }catch(e){}
         el.style.display='none';
       });
-    }catch(e){ }
+    }catch(e){ /* no-op */ }
   })();
   </script>
 
-  <script>
-  const guideModal = document.getElementById('guideModal');
-  function openGuide(){
-    if(!guideModal) return;
-    guideModal.classList.add('show');
-    guideModal.removeAttribute('aria-hidden');
-    setTimeout(()=>{ guideModal.querySelector('.x')?.focus(); }, 0);
-  }
-
-  function closeGuide(){
-    if(!guideModal) return;
-    guideModal.classList.remove('show');
-    guideModal.setAttribute('aria-hidden','true');
-  }
-
-  guideModal?.addEventListener('click', (e)=>{ if(e.target===guideModal) closeGuide(); });
-  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && guideModal?.classList.contains('show')) closeGuide(); });
-</script>
-
-  <!--
-    ────────────────────────────────────────────────────────────────
-    내부 개발 가이드 (비실행 주석) – 2048 게임 페이지
-
-    [레이아웃/디자인]
-    - 이 페이지는 독립 풀스크린 아케이드 레이아웃을 사용한다.
-    - header/footer 파셜은 HTML에서 직접 include 하지 않는다.
-    - .cabinet, .marquee, .play, .deck 구조는 다른 레트로 게임들과
-      동일한 비율과 여백을 공유한다.
-    - 캔버스는 .bezel 안에서 항상 정사각형으로 중앙 정렬되며,
-      브라우저 크기에 따라 fitCabinet()으로 전체 캐비닛이 스케일링된다.
-    - 좌우 세로형 광고 배너는 retro-running 과 동일한 AdSense 구조를 사용한다.
-      • data-ad-client, data-ad-slot 값은 메타 태그와 일치
-      • 각 ins.adsbygoogle 바로 아래에서 (adsbygoogle = ...).push({}) 호출
-
-    [게임 로직]
-    - G2048 클래스는 다음 역할을 가진다.
-      • makeGrid / spawn / move / isGameOver: 핵심 2048 규칙
-      • paramsForLevel / difficultyMult: 레벨과 모드에 따른 난이도 곡선
-      • awardPoints / _awardScoreMilestones / _awardTileMilestone / _snapshotBonusAtEnd:
-        게임 플레이 중 인게임 포인트(points)를 적립하는 내부 규칙
-      • syncHUD: 점수/최고점/이동수 + 포인트/티켓 바를 HUD에 반영
-      • manualEnd: 게임 종료 시 최종 정리 및 외부 시스템 연계
-
-    [계정 지갑/경험치/티켓 연동]
-    - 이 파일은 /api/wallet* 엔드포인트를 직접 호출하지 않는다.
-    - 모든 계정 지갑 연동은 app.js 에서 제공하는
-        window.sendGameReward(gameId, payload)
-        window.refreshWalletHUD()
-      두 전역 함수만 사용한다.
-    - 2048 게임에서 manualEnd() 시 다음 순서대로 처리한다.
-        1) _snapshotBonusAtEnd(maxTile) 으로 인게임 포인트 마무리
-        2) syncHUD() 로 게임 화면 HUD 갱신
-        3) addRecord() / addPlay() 로 로컬(브라우저 전용) 기록 저장
-        4) tryDailyMissionBonus2048() 로 세트 미션 플래그 갱신
-        5) calcReward() 를 통해 score/points/maxTile/level 기반 delta 계산
-        6) meta 객체에 게임/난이도/보드/로컬 기록/종료 정보 등을 모두 담아 확장
-        7) applyGlobalRewardAndSyncWallet('2048', delta, meta)를 호출
-           - delta: { xp, tickets, coins }  (retro-running 과 동일 구조)
-           - meta : { gameId, score, points, level, maxTile,
-                      moves, boardSize, boardType, tier,
-                      localPlays, localTickets, localPointsInGame,
-                      endedAt, endedBy }
-        8) notifyFinish(finalScore, meta) 로 상위 런타임/analytics 에 전달
-    - calcReward() 의 세부 로직은 게임 밸런스 조정 시 조절할 수 있으며,
-      서버 엔드포인트의 계약(delta/points/xp/tickets)과만 맞으면 된다.
-
-    [로컬 기록 vs 계정 지갑]
-    - LS_KEYS(plays2048, tickets2048, records2048, best2048)는
-      브라우저 로컬에만 저장되는 기록이다.
-      • plays : 로컬 플레이 횟수
-      • tickets : 로컬 티켓(브라우저 전용, 계정 지갑과 별도)
-      • records : 날짜/시간/점수/포인트 히스토리
-      • best : 로컬 최고 점수
-    - LS_KEYS.mission / missionRewarded 는 retro-running 과 동일 키를 사용해
-      일일 세트 미션 플래그를 공유한다.
-    - 계정 지갑(포인트/티켓/경험치)은 서버 /api/wallet* 에 의해 관리되며,
-      applyGlobalRewardAndSyncWallet → sendGameReward 경로를 통해서만 변경된다.
-    - UI 상에서 data-user-points, data-user-tickets 등은
-      app.js 가 세션(/auth/me)과 지갑(/api/wallet)을 기준으로 값을 채운다.
-      이 값은 로컬 LS_KEYS 값과는 별개이다.
-
-    [광고]
-    - 광고는 세 가지 타입을 사용한다.
-      1) head 영역 global AdSense (client=ca-pub-6713974265397310)
-      2) 좌/우 세로 배너(4514999077, auto 형식 – retro-running 과 동일)
-      3) 인터스티셜 모달(showAdThen, showInterstitialAd)
-    - 개발/테스트 환경에서는 adsbygoogle.push() 호출이 실패할 수 있으므로,
-      try/catch 로 감싸고 placeholder UI 를 보여준다.
-
-    [접근성/반응형]
-    - aria-label, role="dialog", aria-modal 속성을 사용하여
-      주요 영역의 스크린 리더 동작을 고려했다.
-    - 모바일에서 .cabinet 은 전체 폭을 사용하며, safe-area-inset-bottom 을
-      padding-bottom 에 반영하여 홈 인디케이터 영역과 겹치지 않는다.
-    - 캔버스는 DPR(디바이스 픽셀 비율)을 고려해 고해상도로 렌더링한다.
-
-    [analytics 구조 통일]
-    - notifyStart / notifyFinish 의 시그니처를 retro-running 과 맞추었다.
-      • notifyStart('2048')
-      • notifyFinish(finalScore, meta)
-    - 일일 세트 미션 플래그(daily_mission_flags/daily_mission_rewarded)는
-      retro-running 의 runner / tetris 와 동일한 스키마를 사용한다.
-      • runner: flags[date].runner = true
-      • 2048 : flags[date]['2048'] = true
-      • tetris: flags[date].tetris = true
-    - 미션 보상 자체는 서버측/허브에서 처리 가능하도록,
-      여기서는 플래그만 정확히 기록한다.
-
-    [유지보수 가이드]
-    - 다른 레트로 게임(테트리스, 브릭 브레이커, 러너 등)도
-      이 구조와 동일한 패턴으로 정리하는 것을 권장한다.
-        • 게임 내부: calcReward + applyGlobalRewardAndSyncWallet 호출만 유지
-        • 지갑 API 호출: app.js 단일 허브에서만 수행
-    - 새로운 게임을 추가할 때에는:
-        1) meta.ts 에 gameId 를 등록
-        2) user-retro-games.html 에 카드 추가
-        3) 게임 HTML 에서 gameStart/gameFinish/applyGlobalRewardAndSyncWallet 패턴 연결
-      순서로 작업한다.
-
-    이 블록은 파일 줄 수 확보 + 유지보수 가이드를 위한 주석으로,
-    실제 실행에는 아무 영향을 주지 않는다.
-    ────────────────────────────────────────────────────────────────
-  -->
-
+  
+  <div id="site-footer"></div>
 </body>
 </html>

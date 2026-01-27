@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)</title>
+<title>RETRO RUNNER – Arcade Cabinet</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
@@ -593,7 +593,10 @@ function showToast(msg, ms=2000){
       window.addEventListener('resize', ()=>this.resize(), {passive:true});
       $('#newBtn').addEventListener('click',()=>this.startOrRestart());
       $('#undoBtn').addEventListener('click',()=>{ if(this.running&&!this.gameover){ this.paused=!this.paused; }});
-      $('#endBtn').addEventListener('click',()=> showAdThen(()=> this.doGameOver(true)));
+      $('#endBtn').addEventListener('click',()=> showAdThen(()=>{
+        this.gameOver();
+        window.location.href = '/index.html';
+      }));
 
       $('#homeBtn').addEventListener('click',()=> 
         showAdThen(()=> window.location.href = '/index.html')

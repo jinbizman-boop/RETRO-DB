@@ -1,29 +1,464 @@
-<!DOCTYPE html><html lang="ko" data-env="production" data-analytics="on">
+<!DOCTYPE html>
+<html lang="en" data-env="production" data-analytics="on">
 <head>
-<!--#include file="/partials/head-seo.html" -->
-<meta charset="utf-8"><title>이용약관</title><!-- === Common SEO/A11y (auto-inserted) === -->
-<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-<link rel="icon" href="/assets/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1b34">
-<meta name="description" content="이용약관 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
-<meta name="robots" content="index,follow">
-<meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="이용약관">
-<meta property="og:description" content="이용약관 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
-<meta property="og:type" content="website">
-<meta property="og:image" content="/assets/og/retro-games-card.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="이용약관">
-<meta name="twitter:description" content="이용약관 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
-<meta name="twitter:image" content="/assets/og/retro-games-card.png">
-<script>(function(d){d.documentElement.dataset.env='production';d.documentElement.dataset.analytics='on';window.__ENV__='production';window.__ANALYTICS_ON__=true;})(document);</script>
-<!-- === /Common SEO/A11y === -->
+  <!--#include file="/partials/head-seo.html" -->
 
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Privacy Policy | RETRO GAMES</title>
+
+  <!-- ✅ AdSense account verification meta (required) -->
+  <meta name="google-adsense-account" content="ca-pub-6713974265397310">
+
+  <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0e1b34">
+  <meta name="description" content="Privacy Policy | RETRO GAMES official policy page.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:site_name" content="RETRO GAMES">
+  <meta property="og:title" content="Privacy Policy | RETRO GAMES">
+  <meta property="og:description" content="Privacy Policy | RETRO GAMES official policy page.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og/retro-games-card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Privacy Policy | RETRO GAMES">
+  <meta name="twitter:description" content="Privacy Policy | RETRO GAMES official policy page.">
+  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
+  <script>
+    (function(d){
+      d.documentElement.dataset.env='production';
+      d.documentElement.dataset.analytics='on';
+      window.__ENV__='production';
+      window.__ANALYTICS_ON__=true;
+    })(document);
+  </script>
+  <!-- === /Common SEO/A11y === -->
+
+  <!-- ✅ AdSense snippet (as requested) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+          crossorigin="anonymous"></script>
+
+  <!-- Project scripts (keep) -->
+  <script defer src="assets/js/app.js"></script>
+  <script defer src="assets/js/analytics.js"></script>
+
+  <style>
+    :root{
+      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+      --ink:#eaf2ff; --muted:rgba(234,242,255,.75);
+      --panel:rgba(0,0,0,.28); --border:rgba(255,255,255,.12);
+      --radius:18px; --radius2:20px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;margin:0;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      color:#fff;
+      font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+      overflow-x:hidden;
+    }
+    body{padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
+    #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.6}
+
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + var(--safe-bottom));
+    }
+
+    /* Cabinet */
+    .cabinet{
+      position:relative;
+      width:min(1100px,96vw);
+      background:#0e1b34;
+      border-radius:18px;
+      box-shadow:0 12px 40px rgba(0,0,0,.65), inset 0 0 0 2px #0a1a33;
+      transform-origin:top center;
+    }
+    .cabinet:before,.cabinet:after{
+      content:"";
+      position:absolute;
+      top:12px;bottom:12px;
+      width:18px;
+      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
+      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
+    }
+    .cabinet:before{left:12px;border-radius:9px}
+    .cabinet:after{right:12px;border-radius:9px}
+
+    .marquee{
+      padding:18px;
+      border-radius:18px 18px 0 0;
+      background:linear-gradient(180deg,#173763,#0b2548);
+      border-bottom:1px solid #0c2b59;
+      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
+    }
+    .title{
+      display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+      text-align:center;
+    }
+    .title h1{
+      margin:0;
+      font-weight:900;
+      letter-spacing:1px;
+      color:#eaf3ff;
+      text-shadow:0 0 12px rgba(62,142,255,.55);
+      font-size:clamp(18px,4.4vw,28px);
+    }
+    .subtitle{
+      opacity:.78;
+      letter-spacing:.12em;
+      font-size:clamp(10px,2.7vw,12px);
+      text-align:center;
+    }
+
+    .hud{
+      display:flex;
+      gap:12px;
+      padding:12px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    .hud .btnMini{
+      position:relative;
+      min-width:160px;
+      height:46px;
+      padding:0 16px;
+      border-radius:14px;
+      border:1px solid #1e63ff;
+      color:#fff;
+      font-weight:900;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      letter-spacing:.3px;
+      background:
+        linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),
+        radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+      box-shadow:0 12px 18px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.5),
+        inset 0 -8px 14px rgba(0,0,0,.28);
+      cursor:pointer;
+      touch-action:manipulation;
+      text-decoration:none;
+    }
+    .hud .btnMini:hover{filter:brightness(1.05)}
+
+    .play{
+      position:relative;
+      margin:10px 18px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#0a1530,#031125);
+      box-shadow:inset 0 0 0 1px #0b2a57, inset 0 0 60px rgba(0,0,0,.55);
+    }
+    .screen{
+      aspect-ratio:16/9;
+      display:grid;
+      place-items:center;
+      padding:18px;
+    }
+    .bezel{
+      width:100%;
+      height:100%;
+      border-radius:14px;
+      background:
+        radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),
+        linear-gradient(180deg,#0a1c39,#0a1326);
+      box-shadow:inset 0 0 0 1px #132a59, inset 0 0 60px rgba(0,0,0,.65);
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+    }
+
+    .doc{
+      width:min(92%,980px);
+      max-height:85%;
+      padding:18px;
+      border-radius:18px;
+      border:1px solid #1b2b45;
+      background:rgba(0,0,0,.22);
+      box-shadow:inset 0 0 40px rgba(0,0,0,.25);
+      overflow:auto;
+    }
+    .doc h2{
+      margin:0 0 10px;
+      font-size:18px;
+      color:#ffe9a3;
+      text-shadow:0 0 8px rgba(255,216,106,.6);
+    }
+    .doc h3{
+      margin:18px 0 8px;
+      font-size:14px;
+      color:#eaf2ff;
+    }
+    .doc p, .doc li{
+      margin:8px 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+    .doc ul{margin:8px 0 0; padding-left:18px}
+    .doc a{
+      color:rgba(255,223,110,.95);
+      text-decoration:none;
+      border-bottom:1px dotted rgba(255,223,110,.55);
+    }
+    .doc code{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:12px;
+      color:#dff1ff;
+      background:rgba(10,20,60,.55);
+      border:1px solid rgba(80,120,255,.25);
+      padding:2px 6px;
+      border-radius:8px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    .card{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.18);
+      border-radius:16px;
+      padding:12px 14px;
+    }
+    .card b{color:#eaf2ff}
+    .tag{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(30,99,255,.55);
+      background:rgba(0,70,255,.10);
+      color:#dff1ff;
+      font-weight:900;
+      font-size:12px;
+      margin:6px 0 10px;
+    }
+
+    .notice{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid rgba(255,223,110,.28);
+      background:rgba(255,223,110,.08);
+      color:rgba(255,248,214,.92);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .foot{
+      padding:14px 18px 22px;
+      border-top:1px solid #0a2b57;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
+      border-radius:0 0 18px 18px;
+      text-align:center;
+      color:#aab;
+      font-size:12px;
+    }
+
+    @media (max-width: 980px){
+      .shell{padding:12px;padding-bottom:calc(12px + var(--safe-bottom))}
+      .cabinet{width:100vw;border-radius:0}
+      .marquee{padding:12px;border-radius:0}
+      .play{margin:8px 12px}
+      .screen{padding:10px}
+      .hud{gap:8px;padding:10px}
+      .grid2{grid-template-columns:1fr}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      #fx{display:none}
+    }
+  </style>
 </head>
+
 <body>
-  <!--#include file=\"/partials/header.html\" -->
-  <div id="site-header"></div><h1>이용약관</h1><p>이 문서는 서비스 이용에 관한 기본 약관의 예시입니다. 실제 서비스에 맞게 업데이트하세요.</p>  <div id="site-footer"></div>
+  <!--#include file="/partials/header.html" -->
+  <div id="site-header"></div>
+
+  <canvas id="fx"></canvas>
+
+  <div class="shell">
+    <section class="cabinet" aria-label="privacy policy cabinet">
+      <header class="marquee">
+        <div class="title">
+          <h1>Privacy Policy</h1>
+          <div class="subtitle">PRIVACY · DATA · CONTACT</div>
+        </div>
+      </header>
+
+      <div class="hud">
+        <!-- ✅ HOME must go to index.html -->
+        <a class="btnMini" href="/index.html" aria-label="Go to Home">HOME</a>
+        <a class="btnMini" href="/legal/cookies.html" aria-label="Cookie and analytics guide">COOKIES</a>
+        <a class="btnMini" href="/legal/terms.html" aria-label="Terms of service">TERMS</a>
+      </div>
+
+      <main class="play">
+        <div class="screen">
+          <div class="bezel">
+            <article class="doc" role="document" aria-label="Privacy policy">
+              <h2>Privacy Policy for RETRO GAMES</h2>
+
+              <p>
+                This Privacy Policy explains how RETRO GAMES (“we”, “our”, “the Service”) may handle information
+                when you visit and use our web-based mini games. We aim to minimize data and only use what is needed
+                to operate, secure, and improve the Service.
+              </p>
+
+              <div class="notice">
+                <b>Important:</b> We may display ads via <b>Google AdSense</b> or other partners.
+                Those partners may use cookies or similar technologies to deliver and measure ads.
+                Please review the <a href="/legal/cookies.html">Cookies/Analysis Guide</a> for details.
+              </div>
+
+              <h3>1) Information we may process</h3>
+              <div class="grid2">
+                <div class="card">
+                  <div class="tag">Service Operation</div>
+                  <p>
+                    <b>Technical logs</b> such as basic request/response data (e.g., timestamp, IP in part or full depending on hosting),
+                    browser/OS info (User-Agent), and error events may be processed for security and stability.
+                  </p>
+                </div>
+                <div class="card">
+                  <div class="tag">Cookies & Similar Tech</div>
+                  <p>
+                    We may use <b>cookies / local storage</b> to remember settings and to support analytics/ads.
+                    See <a href="/legal/cookies.html">Cookies/Analysis Guide</a>.
+                  </p>
+                </div>
+              </div>
+
+              <h3>2) What we do NOT intentionally collect</h3>
+              <ul>
+                <li>We do not ask for sensitive personal data (e.g., resident registration number, health data).</li>
+                <li>We do not intentionally collect data from children under 13.</li>
+              </ul>
+
+              <h3>3) Purpose of processing</h3>
+              <ul>
+                <li><b>Operate</b> the Service (game pages, settings, basic functionality).</li>
+                <li><b>Secure</b> the Service (fraud prevention, abuse response, incident investigation).</li>
+                <li><b>Improve</b> performance and UX (anonymous statistics, bug fixes).</li>
+                <li><b>Support ads</b> that help fund the Service (ad delivery/measurement).</li>
+              </ul>
+
+              <h3>4) Third-party services (Ads / Analytics)</h3>
+              <p>
+                We may use third-party providers such as Google for ads (AdSense) and, if enabled, analytics.
+                These providers may process information on their own systems under their policies.
+              </p>
+              <ul>
+                <li><a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">Google Privacy Policy</a></li>
+                <li><a href="https://policies.google.com/technologies/ads" rel="noopener noreferrer" target="_blank">Google Ads Technology</a></li>
+                <li><a href="https://adssettings.google.com/" rel="noopener noreferrer" target="_blank">Google Ad Settings</a></li>
+              </ul>
+
+              <h3>5) Retention</h3>
+              <p>
+                We retain information only as long as needed for the purposes described above.
+                Security and operational logs may be kept for a limited period (e.g., days to months) depending on hosting and incident needs.
+                Third-party cookies/identifiers follow the provider’s retention policies.
+              </p>
+
+              <h3>6) Your choices</h3>
+              <ul>
+                <li>Manage cookies via the site consent UI (if shown) or your browser settings.</li>
+                <li>Control personalized ads in <a href="https://adssettings.google.com/" rel="noopener noreferrer" target="_blank">Google Ad Settings</a>.</li>
+                <li>Note: blocking cookies may limit certain features and may show non-personalized ads.</li>
+              </ul>
+
+              <h3>7) Contact</h3>
+              <p>
+                Privacy inquiries: <a href="mailto:jinbizman@gmail.com">jinbizman@gmail.com</a>
+              </p>
+
+              <div class="notice">
+                <b>Updates:</b> We may update this policy to reflect operational or legal changes.
+                The latest version will be posted on this page.
+              </div>
+            </article>
+          </div>
+        </div>
+      </main>
+
+      <div class="foot">
+        © RETRO GAMES · Privacy Policy
+      </div>
+    </section>
+  </div>
+
+  <div id="site-footer"></div>
+
+  <!-- consent.js (keep) -->
   <script defer src="/assets/js/consent.js"></script>
-<!--#include file="/partials/header.html" --></body></html>
+
+  <script>
+    /* Neon background (stars) */
+    (function(){
+      const c=document.getElementById('fx'); if(!c) return;
+      const g=c.getContext('2d');
+      function fit(){
+        const d=Math.min(2, window.devicePixelRatio||1);
+        c.width=Math.floor(innerWidth*d); c.height=Math.floor(innerHeight*d);
+        g.setTransform(d,0,0,d,0,0);
+      }
+      fit(); addEventListener('resize',fit,{passive:true});
+      const N=80;
+      const pts=new Array(N).fill(0).map(()=>({
+        x:Math.random()*innerWidth,
+        y:Math.random()*innerHeight*0.9,
+        r:Math.random()*2+0.5,
+        s:Math.random()*0.6+0.2,
+        ph:Math.random()*6.283
+      }));
+      function loop(t){
+        g.clearRect(0,0,c.width,c.height);
+        for(const p of pts){
+          g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2);
+          const a=0.3+Math.sin(t*0.002+p.ph)*0.25;
+          g.fillStyle=`rgba(43,123,255,${a})`;
+          g.fill();
+          p.y+=p.s;
+          if(p.y>innerHeight){ p.y=-10; p.x=Math.random()*innerWidth; }
+        }
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    })();
+
+    /* Keep cabinet visible */
+    function fitCabinet(){
+      const cab=document.querySelector('.cabinet'); if(!cab) return;
+      const margin=16;
+      cab.style.transform='none';
+      const w=cab.offsetWidth, h=cab.offsetHeight;
+      const vw=window.innerWidth, vh=window.innerHeight;
+      const needScale=(w>vw-margin*2)||(h>vh-margin*2);
+      const scale=needScale ? Math.min(1,(vw-margin*2)/w,(vh-margin*2)/h) : 1;
+      cab.style.transform=`scale(${scale})`;
+    }
+    window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+    window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+    setTimeout(fitCabinet, 0);
+  </script>
+
+  <!--#include file="/partials/footer.html" -->
+</body>
+</html>

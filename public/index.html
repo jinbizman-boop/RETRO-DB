@@ -7,7 +7,7 @@
   <!-- 기본 메타 (고도화: viewport-fit=cover 추가) -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>RETRO GAMES – Neon Home</title>
+  <title>RETRO GAMES</title>
 
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
@@ -226,8 +226,35 @@
   .btn:hover{filter:brightness(1.06)}
   .badge{display:none}
 
-  footer{
-    padding:12px 16px;text-align:center;color:#aab;opacity:.9;font-size:12px;margin-top:var(--gapY)
+  footer.rg-footer{
+    padding:12px 16px;
+    margin-top:var(--gapY);
+    color:#aab;
+    opacity:.9;
+    font-size:12px;
+
+    /* ✅ 가능한 한 가로로 나열 */
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    flex-wrap:wrap;         /* 좁아지면 자연스럽게 다음 줄로 */
+    text-align:center;
+    line-height:1.5;
+  }
+  footer.rg-footer .rgf-item{
+    white-space:nowrap;     /* ✅ 각 덩어리는 최대한 줄바꿈 방지 */
+  }
+  footer.rg-footer .rgf-sep{
+    opacity:.6;
+    white-space:nowrap;
+  }
+
+  /* ✅ 모바일에서는 덩어리 텍스트가 너무 길면 줄바꿈 허용 */
+  @media (max-width: 520px){
+    footer.rg-footer .rgf-item{
+      white-space:normal;   /* 너무 길면 가독성 위해 줄바꿈 허용 */
+    }
   }
   #fx{position:fixed;inset:0;pointer-events:none;opacity:.55}
   .divider{
@@ -364,7 +391,7 @@
   <div class="wrap">
     <header>
       <div class="title">🎮 RETRO GAMES</div>
-      <div class="subtitle">오늘의 미니게임을 선택하세요!</div>
+      <div class="subtitle">Choose today's mini game!</div>
     </header>
     <div class="divider"></div>
 
@@ -374,34 +401,34 @@
           <div class="ctaWrap">
             <!-- 기존: 인증 요구(모달) -->
             <div class="goldBtn" role="button" tabindex="0" onclick="goLucky()" onkeypress="if(event.key==='Enter') goLucky()" aria-label="오늘의 행운 뽑기">
-              <span>오늘의 행운 뽑기</span>
+              <span>Pick today's luck</span>
             </div>
           </div>
 
           <div class="rowTop" aria-label="게임 목록 가로 스크롤">
             <div class="card" onclick="goGame('2048.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="12" y="12" width="96" height="96" rx="18" fill="#7a9cff"/><text x="60" y="78" text-anchor="middle" font-size="46" font-family="system-ui,Segoe UI" font-weight="900" fill="#0b1a3f">2048</text></svg></div>
-              <h3>2048</h3><div class="meta">난이도 1–100 · 보드 4×4~6×6</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <h3>2048</h3><div class="meta">the principle of square that is easily learned by game</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('brick-breaker.html')">
               <div class="thumb"><svg width="90" height="80" viewBox="0 0 130 120"><rect x="14" y="20" width="102" height="18" rx="8" fill="#8ea3ff"/><rect x="14" y="44" width="102" height="18" rx="8" fill="#c4ceff"/><rect x="48" y="88" width="60" height="10" rx="5" fill="#70ffa8"/><circle cx="42" cy="74" r="7" fill="#ffd166"/></svg></div>
-              <h3>Brick Breaker</h3><div class="meta">프리셋/특수볼/리플레이</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <h3>Brick Breaker</h3><div class="meta">Brick-breaking game of memories</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('brick-match.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="18" y="22" width="28" height="28" rx="6" fill="#ff9aa6"/><rect x="46" y="22" width="28" height="28" rx="6" fill="#92ff9a"/><rect x="74" y="22" width="28" height="28" rx="6" fill="#7ad7ff"/></svg></div>
-              <h3>Retro Match</h3><div class="meta">타임 어택 · 특수 타일</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <h3>Retro Match</h3><div class="meta">A game where you score points by matching bricks of the same color</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('retro-running.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="16" y="84" width="88" height="8" fill="#6ec36e"/><circle cx="52" cy="46" r="10" fill="#ffddea"/></svg></div>
-              <h3>Retro Runner</h3><div class="meta">2단 점프 · 아이템 · 낮/밤</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <h3>Retro Runner</h3><div class="meta">2D-based, Dino-running game</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
 
             <div class="card" onclick="goGame('tetris.html')">
               <div class="thumb"><svg width="80" height="80" viewBox="0 0 120 120"><rect x="18" y="60" width="24" height="24" fill="#7ad7ff"/><rect x="42" y="60" width="24" height="24" fill="#ffe17a"/><rect x="66" y="60" width="24" height="24" fill="#caa5ff"/><rect x="42" y="36" width="24" height="24" fill="#92ff9a"/></svg></div>
-              <h3>Tetris</h3><div class="meta">홀드/넥스트 · 가비지 라인</div><div class="btnbar"><div class="btn">PLAY</div></div>
+              <h3>Tetris</h3><div class="meta">The Fundamental Tetris Game of Memories</div><div class="btnbar"><div class="btn">PLAY</div></div>
             </div>
           </div>
         </div>
@@ -412,13 +439,13 @@
     <section class="content-guide-mini" aria-label="RETRO GAMES 안내/정책 바로가기">
       <div class="mini-left">
         <strong>RETRO GAMES</strong>
-        <span class="mini-desc">안내 · 이용방법 · 정책/고객지원</span>
+        <span class="mini-desc">Guides · How to Use · Policy/Customer Support</span>
       </div>
       <div class="mini-right">
-        <a class="mini-link" href="/legal/privacy.html">개인정보</a>
-        <a class="mini-link" href="/legal/terms.html">약관</a>
-        <a class="mini-link" href="/legal/cookies.html">쿠키</a>
-        <button type="button" class="mini-btn" onclick="openInfo()">안내 보기</button>
+        <a class="mini-link" href="/legal/privacy.html">Personal information</a>
+        <a class="mini-link" href="/legal/terms.html">Terms and Conditions</a>
+        <a class="mini-link" href="/legal/cookies.html">Cookie</a>
+        <button type="button" class="mini-btn" onclick="openInfo()">View the Guide</button>
       </div>
     </section>
 
@@ -428,37 +455,44 @@
         <button class="x" aria-label="닫기" onclick="closeInfo()">×</button>
 
         <!-- ✅ content-guide 원문 내용 (DOM 안에 그대로 유지) -->
-        <h3 id="im-title">RETRO GAMES 안내</h3>
+        <h3 id="im-title">RETRO GAMES INTRODUCTION</h3>
         <p>
-          RETRO GAMES는 웹에서 바로 즐길 수 있는 미니게임 허브입니다.
-          각 게임은 플레이 기록과 보상(경험치/포인트/티켓)을 기반으로 진행되며,
-          서비스 품질 개선을 위해 익명 통계를 사용할 수 있습니다.
+          RETRO GAMES is a mini-game hub that you can enjoy instantly on the web.
+          Each game progresses based on play records and rewards (experience/points/tickets),
+          and anonymous statistics may be used to improve service quality.
         </p>
 
-        <h3>게임 이용 방법</h3>
+        <h3>How to use the game</h3>
         <ul style="text-align:left; margin:10px 0 0; padding-left:18px; color:rgba(234,242,255,.78); font-size:13px; line-height:1.55;">
-          <li>회원가입/로그인 후 모든 미니게임을 이용할 수 있습니다.</li>
-          <li>게임별 규칙은 각 게임 화면의 안내(상단/하단 도움말)에서 확인할 수 있습니다.</li>
-          <li>비정상 종료/오류가 발생하면 브라우저 새로고침 후 다시 시도하세요.</li>
+          <li>All mini-games are available without membership/login.</li>
+          <li>Game-specific rules can be found in the guide (top/bottom help) on each game screen.</li>
+          <li>If an abnormal shutdown/error occurs, reload the browser and try again.</li>
+          <li>Currently, Retro Games is undergoing renewal as 'New Retro Games' and will operate normally before the renewal launch.</li>
         </ul>
 
-        <h3 style="margin-top:14px;">정책 및 고객지원</h3>
+        <h3 style="margin-top:14px;">Policy and Customer Support</h3>
         <ul style="text-align:left; margin:10px 0 0; padding-left:18px; color:rgba(234,242,255,.78); font-size:13px; line-height:1.55;">
-          <li><a href="/legal/privacy.html">개인정보처리방침</a></li>
-          <li><a href="/legal/terms.html">이용약관</a></li>
-          <li><a href="/legal/cookies.html">쿠키/분석 안내</a></li>
-          <li>광고/제휴 문의: <a href="mailto:jinbizman@gmail.com">jinbizman@gmail.com</a></li>
+          <li><a href="/legal/privacy.html">Personal Information Processing Policy</a></li>
+          <li><a href="/legal/terms.html">Terms and Conditions of Use</a></li>
+          <li><a href="/legal/cookies.html">Cookie/Analysis Guide</a></li>
+          <li>Commercial/affiliate inquiries: <a href="mailto:jinbizman@gmail.com">jinbizman@gmail.com</a></li>
         </ul>
 
         <p style="margin-top:12px; opacity:.8; font-size:12px; line-height:1.55;">
-          본 사이트의 광고는 Google AdSense를 통해 제공될 수 있으며,
-          광고는 사용자 환경/지역/브라우저 정책에 따라 표시 형태가 달라질 수 있습니다.
+          Advertisements on this site may be available through Google AdSense,
+          Advertisements may be displayed in different ways depending on your environment/region/browser policies.
         </p>
       </div>
     </div>
 
     <div class="divider"></div>
-    <footer>©2025 JINBIZ MANAGEMENT ┃ New RetroGames to be temporarily operational until completion ┃ Admire Google, please advertise a simple game created by a poor low-end office worker</footer>
+    <footer class="rg-footer" aria-label="사이트 푸터">
+      <span class="rgf-item">©2025 JINBIZ MANAGEMENT</span>
+      <span class="rgf-sep" aria-hidden="true">┃</span>
+      <span class="rgf-item">New RetroGames to be temporarily operational until completion</span>
+      <span class="rgf-sep" aria-hidden="true">┃</span>
+      <span class="rgf-item">Admire Google, please advertise a simple game created by a poor low-end office worker</span>
+    </footer>
   </div>
   <script>
   /* 홈(index)은 게임 페이지가 아니므로 SLUG를 사용하지 않음 */
@@ -529,10 +563,10 @@
   </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
-    <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
+    <div>Do you agree with the use of analysis (cookie) to improve service quality?</div>
     <div class="spacer"></div>
-    <button class="deny" type="button">거부</button>
-    <button class="agree" type="button">동의</button>
+    <button class="deny" type="button">Refusal</button>
+    <button class="agree" type="button">Consent</button>
   </div>
 
   <script>

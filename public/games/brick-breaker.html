@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RETRO GAMES – BRICK MATCH</title>
+<title>RETRO GAMES – Brick Breaker</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0e1b34">
-<meta name="description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="description" content="RETRO Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta name="robots" content="index,follow">
 <meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
-<meta property="og:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta property="og:title" content="RETRO Brick Breaker – Arcade Cabinet">
+<meta property="og:description" content="RETRO Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/assets/og/retro-games-card.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="RETRO MATCH-3 – Arcade Cabinet (Fixed)">
-<meta name="twitter:description" content="RETRO MATCH-3 – Arcade Cabinet (Fixed) | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
+<meta name="twitter:title" content="RETRO Brick Breaker – Arcade Cabinet">
+<meta name="twitter:description" content="RETRO Brick Breaker – Arcade Cabinet | 레트로 감성 미니게임을 즐기는 RETRO GAMES">
 <meta name="twitter:image" content="/assets/og/retro-games-card.png">
 <script>
   // fixed environment flags for analytics/runtime
@@ -32,7 +32,7 @@
 </script>
 <!-- === /Common SEO/A11y === -->
 
-<!-- AdSense 스니펫: 요청값 그대로 -->
+<!-- AdSense 글로벌 스니펫 (첨부된 코드 그대로) -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310" crossorigin="anonymous"></script>
 
 <style>
@@ -45,48 +45,73 @@
   }
   *{box-sizing:border-box}
   html,body{
-    height:100%;margin:0;color:#fff;font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";overflow:hidden;
-    background:#0b001e radial-gradient(circle at 40% -10%, #320076, #0b001e 70%) no-repeat;background-size:cover;
+    height:100%;margin:0;color:#fff;
+    font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+    overflow:hidden;
+    background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
   }
   #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75}
   .shell{min-height:100vh;display:grid;place-items:center;padding:20px;position:relative;z-index:1;padding-bottom:calc(20px + env(safe-area-inset-bottom,0))}
+
+  /* Cabinet */
   .cabinet{position:relative;width:min(1200px,96vw);background:#0e1b34;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.65),inset 0 0 0 2px #0a1a33;transform-origin:top center}
-  .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;filter:drop-shadow(0 0 12px rgba(255,190,0,.55));background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00)}
+  .cabinet:before,.cabinet:after{content:"";position:absolute;top:12px;bottom:12px;width:18px;background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);filter:drop-shadow(0 0 12px rgba(255,190,0,.55));}
   .cabinet:before{left:12px;border-radius:9px}
   .cabinet:after{right:12px;border-radius:9px}
-  .marquee{padding:18px;border-radius:18px 18px 0 0;border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);background:linear-gradient(180deg,#173763,#0b2548)}
+
+  .marquee{padding:18px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,#173763,#0b2548);border-bottom:1px solid #0c2b59;box-shadow:inset 0 -6px 26px rgba(0,0,0,.35)}
   .title{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
   .title h1{margin:0;font-weight:900;letter-spacing:2px;color:#eaf3ff;text-shadow:0 0 12px rgba(62,142,255,.55);font-size:clamp(18px,4.4vw,28px)}
-  .subtitle{opacity:.75;letter-spacing:.2em;text-align:center;font-size:clamp(10px,2.7vw,12px)}
+  .subtitle{opacity:.75;letter-spacing:.2em;font-size:clamp(10px,2.7vw,12px);text-align:center}
+
+  /* HUD */
   .hud{display:flex;gap:12px;padding:12px;justify-content:center;flex-wrap:wrap}
-  .chip,.pill,.hud .btnMini{position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%)}
+  .chip,.pill,.hud .btnMini{
+    position:relative;min-width:128px;height:46px;padding:0 16px;border-radius:14px;border:1px solid #1e63ff;color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;letter-spacing:.3px;
+    background:linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+    box-shadow:0 12px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -8px 14px rgba(0,0,0,.28);
+    touch-action:manipulation;
+  }
   .chip b{color:#fff;font-weight:900;padding-left:6px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
   .pill{min-width:260px;gap:12px}
-  .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65);background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff)}
+  .pill .icon{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffffff,#d8f1ff);color:#0b2a57;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25), 0 0 10px rgba(255,255,255,.65)}
   .points .bar,.tickets .bar{height:8px;border-radius:999px;background:#1a2548;overflow:hidden;border:1px solid #2b3f8f;width:120px}
-  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;box-shadow:0 0 10px #8ad7ff;background:linear-gradient(90deg,#b86cff,#6af0ff)}
+  .points .bar>span,.tickets .bar>span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#b86cff,#6af0ff);box-shadow:0 0 10px #8ad7ff}
   .points .nums,.tickets .nums{display:flex;align-items:baseline;gap:8px;font-weight:900}
   .points .nums .big,.tickets .nums .big{font-size:18px;color:#ffe9a3;text-shadow:0 0 8px #ffd86a}
   .points .nums .cap,.tickets .nums .cap{opacity:.8;font-size:12px}
-  .play{position:relative;margin:10px 18px;border-radius:16px;box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.65);background:linear-gradient(180deg,#0a1530,#031125)}
+  .playCount{font-size:12px;opacity:.85;margin-left:6px}
+
+  /* Screen */
+  .play{position:relative;margin:10px 18px;border-radius:16px;background:linear-gradient(180deg,#0a1530,#031125);box-shadow:inset 0 0 0 1px #0b2a57,inset 0 0 60px rgba(0,0,0,.55)}
   .screen{aspect-ratio:16/9;display:grid;place-items:center;padding:18px}
-  .bezel{width:100%;height:100%;border-radius:14px;box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;position:relative;overflow:hidden;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326)}
+  .bezel{width:100%;height:100%;border-radius:14px;background:radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),linear-gradient(180deg,#0a1c39,#0a1326);box-shadow:inset 0 0 0 1px #132a59,inset 0 0 60px rgba(0,0,0,.65);display:grid;place-items:center;position:relative;overflow:hidden}
   .canvasWrap{width:min(92%,980px);max-height:85%;display:grid;place-items:center}
-  canvas#game{display:block;max-width:100%;max-height:100%;width:100%;height:100%;background:#000;border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
+  canvas#game{width:100%;height:auto;aspect-ratio:16/10;background:#000;border-radius:18px;border:1px solid #1b2b45;box-shadow:inset 0 0 40px rgba(0,0,0,.25)}
+
+  /* Overlay */
   .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,0,20,.55);backdrop-filter:blur(2px);z-index:5}
-  .overlay .msg{font-weight:900;letter-spacing:.2em;text-align:center;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));font-size:clamp(28px,5vw,68px);color:#ffe166;text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)}
+  .overlay .msg{font-weight:900;letter-spacing:.2em;text-align:center;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));
+    font-size:clamp(28px,5vw,68px);color:#ffe166;text-shadow:0 0 16px rgba(255,225,102,.45),0 0 40px rgba(14,165,255,.25)}
   .overlay .sub{margin-top:10px;font-size:clamp(12px,2.2vw,16px);opacity:.9;color:#dfe9ff;text-align:center}
+
+  /* Deck */
   .deck{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:14px 18px 22px;border-top:1px solid #0a2b57;background:linear-gradient(180deg,#0b1f40,#0a1730)}
-  .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;background:linear-gradient(180deg,#1b3a7a,#102a66)}
+  .deck .btn,.deck select,.deck input[type=range]{font-weight:900;color:#dff1ff;background:linear-gradient(180deg,#1b3a7a,#102a66);border:1px solid #224aa8;border-radius:12px;padding:10px 14px;box-shadow:0 10px 18px rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.05);cursor:pointer;touch-action:manipulation}
   .deck .btn:hover,.deck select:hover{filter:brightness(1.06)}
   .deck label{display:flex;align-items:center;gap:8px}
   .deck input[type=range]{width:140px;height:12px;accent-color:#5fb0ff}
+
+  /* Records Modal */
   #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
+  /* Ad Modal */
   #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
-  #adBox{width:min(680px,92vw);min-height:280px;border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)}
+  #adBox{width:min(680px,92vw);min-height:280px;background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px}
   #adHead{display:flex;justify-content:space-between;align-items:center}
   #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;border:1px dashed #3952c3;background:linear-gradient(135deg,#18224a,#0e1636)}
+  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;background:linear-gradient(135deg,#18224a,#0e1636);border:1px dashed #3952c3}
+
+  /* ===== Mobile Responsive ===== */
   @media (max-width: 980px){
     .shell{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0))}
     .cabinet{width:100vw;border-radius:0}
@@ -100,10 +125,12 @@
     .deck .btn,.deck select,.deck input[type=range]{padding:10px 12px}
   }
   @media (max-width: 640px){
+    .hud{padding:8px}
     .chip,.pill,.hud .btnMini{height:40px}
+    .points .nums .big,.tickets .nums .big{font-size:16px}
     .points .bar,.tickets .bar{width:96px}
     .deck{justify-content:flex-start;overflow:auto;-webkit-overflow-scrolling:touch}
-    .deck>*{flex:0 0 auto}
+    .deck > *{flex:0 0 auto}
   }
 
   .cookie-banner{position:fixed;left:12px;right:12px;bottom:12px;
@@ -165,6 +192,7 @@
 </style>
 </head>
 
+<!-- 전역 스크립트(모듈 아님) -->
 <script defer src="/assets/js/app.js"></script>
 <script defer src="/assets/js/analytics.js"></script>
 
@@ -203,8 +231,8 @@
     <section class="cabinet" aria-label="retro arcade cabinet">
       <header class="marquee">
         <div class="title">
-          <h1>RETRO BRIC MATCH</h1>
-          <div class="subtitle">SWIPE · ARROWS · WASD</div>
+          <h1>RETRO BRICK BREAKER</h1>
+          <div class="subtitle">MOUSE · TOUCH · ARROWS</div>
         </div>
       </header>
 
@@ -214,6 +242,7 @@
         <div class="chip">BEST <b id="best">0</b></div>
         <div class="chip">MOVES <b id="moves">0</b></div>
 
+        <!-- Points -->
         <div class="pill points" aria-label="사용자 포인트">
           <div class="icon">🏅</div>
           <div>
@@ -222,6 +251,7 @@
           </div>
         </div>
 
+        <!-- Tickets -->
         <div class="pill tickets" aria-label="티켓 진행">
           <div class="icon">🎟️</div>
           <div>
@@ -243,7 +273,7 @@
             <div id="gameOver" class="overlay" aria-live="polite" role="alert">
               <div>
                 <div class="msg">GAME OVER</div>
-                <div class="sub">N/Enter: NEW GAME · Space/U: Pause/Resume</div>
+                <div class="sub">N: 새 게임 · Enter: 다시 시작</div>
               </div>
             </div>
           </div>
@@ -267,8 +297,10 @@
         </label>
         <label>LEVEL <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
         <label>BOARD
-          <select id="sizeSel" disabled>
-            <option value="12" selected>Fixation</option>
+          <select id="sizeSel">
+            <option value="12">Average</option>
+            <option value="14">Wide</option>
+            <option value="10">Narrow</option>
           </select>
         </label>
         <button class="btn" id="endBtn">GAME OVER</button>
@@ -348,9 +380,9 @@
   </div>
 
 <script>
-/***** Ad 연동 *****/
+/* ================= AdSense ================= */
 const AD_CLIENT = 'ca-pub-6713974265397310';
-const AD_SLOT   = '';
+const AD_SLOT   = ''; // 필요 시 실제 슬롯으로 교체
 function fallbackAdHTML(){
   return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
 }
@@ -371,528 +403,490 @@ let _afterAd=null;
 function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
 document.getElementById('adClose').addEventListener('click',()=>{
   document.getElementById('adModal').style.display='none';
-  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e);} 
+  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
 });
 
-/***** Neon FX (background stars) *****/
-(function(){
-  const c=document.getElementById('fx'); if(!c) return;
-  const g=c.getContext('2d');
-  function fit(){ const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0); }
-  fit(); addEventListener('resize',fit,{passive:true});
-  const N=80;
-  const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
-  function loop(t){
-    g.clearRect(0,0,c.width,c.height);
-    for(const p of pts){
-      g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2);
-      const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle='rgba(43,123,255,'+a+')'; g.fill();
-      p.y+=p.s; if(p.y>innerHeight){ p.y=-10; p.x=Math.random()*innerWidth; }
-    }
-    requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
+/* ================= Neon FX ================= */
+(function(){ const c=document.getElementById('fx'); if(!c) return; const g=c.getContext('2d');
+  function fit(){const d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; g.setTransform(d,0,0,d,0,0);} fit(); addEventListener('resize',fit,{passive:true});
+  const N=80; const pts=new Array(N).fill(0).map(()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight*0.9,r:Math.random()*2+0.5,s:Math.random()*0.6+0.2,ph:Math.random()*6.283}));
+  function loop(t){ g.clearRect(0,0,c.width,c.height); for(const p of pts){ g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2); const a=0.3+Math.sin(t*0.002+p.ph)*0.25; g.fillStyle=`rgba(43,123,255,${a})`; g.fill(); p.y+=p.s; if(p.y>innerHeight){p.y=-10; p.x=Math.random()*innerWidth;} } requestAnimationFrame(loop);} requestAnimationFrame(loop);
 })();
 
-/***** Helpers & Storage *****/
+/* ================= Helpers & Storage ================= */
 const $=sel=>document.querySelector(sel);
-const DPR=()=>Math.min(2, window.devicePixelRatio||1);
-const clamp=(n,a,b)=>Math.max(a, Math.min(b,n));
-const fmt=n=>n.toLocaleString('ko-KR');
+const DPR=()=> Math.min(2, window.devicePixelRatio||1);
+const clamp=(n,a,b)=> Math.max(a, Math.min(b,n));
+const fmt=n=> n.toLocaleString('ko-KR');
 
-/* Match-3 전용 키 */
-const LS_KEYS={plays:'plays_match',tickets:'tickets_match',records:'records_match',best:'best_match'};
+/* ★ 브릭브레이커 전용 키(다른 게임과 기록 분리) */
+const LS_KEYS={plays:'plays_brick',tickets:'tickets_brick',records:'records_brick',best:'best_brick'};
 
-function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch(e){ return def; }}
+function loadJSON(k,def){try{const v=localStorage.getItem(k); return v? JSON.parse(v): def;}catch{ return def; }}
 function saveJSON(k,v){localStorage.setItem(k, JSON.stringify(v));}
 function updateTicketUI(){
   const plays= +localStorage.getItem(LS_KEYS.plays)||0;
   const tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
   $('#ticketsAmt').textContent=tickets;
-  $('#ticketsCap').textContent=(plays%10)+' / 10';
-  $('#ticketsBar').style.width = (((plays%10)/10*100).toFixed(1))+'%';
+  $('#ticketsCap').textContent=`${plays%10} / 10`;
+  $('#ticketsBar').style.width = ((plays%10)/10*100).toFixed(1)+'%';
 }
 function addPlay(){
   let plays= +localStorage.getItem(LS_KEYS.plays)||0; plays++;
-  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0;
-  if(plays%10===0) tickets++;
+  let tickets= +localStorage.getItem(LS_KEYS.tickets)||0; if(plays%10===0) tickets++;
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
   if(plays % 8 === 0){ showInterstitialAd(); }
 }
 function addRecord(score, points){
-  const recs=loadJSON(LS_KEYS.records,[]); const now=new Date();
-  recs.unshift({ts:now.toISOString(), score, points});
+  const recs=loadJSON(LS_KEYS.records,[]);
+  const now=new Date(); recs.unshift({ts:now.toISOString(), score, points});
   saveJSON(LS_KEYS.records,recs.slice(0,200));
 }
 function openGameRule(){
   $('#recModal').style.display='flex';
 }
-document.getElementById('recordsBtn').addEventListener('click', openGameRule);
+$('#recordsBtn').addEventListener('click', openGameRule);
 
 function closeGameRule(){
   $('#recModal').style.display='none';
 }
-document.getElementById('recClose').addEventListener('click', closeGameRule);
+$('#recClose').addEventListener('click', closeGameRule);
 
-document.getElementById('recModal').addEventListener('click', e=>{
+$('#recModal').addEventListener('click', e=>{
   if(e.target && e.target.id === 'recModal') closeGameRule();
 });
 
 window.addEventListener('keydown', (e)=>{
-  if(e.key === 'Escape' && document.getElementById('recModal').style.display === 'flex') closeGameRule();
+  if(e.key === 'Escape' && $('#recModal').style.display === 'flex') closeGameRule();
 });
 
-/***** 난이도 배율 *****/
+/* ================= 난이도 배율 ================= */
 function difficultyMult(){
-  const v=$('#tier')?.value||'beginner';
-  return {beginner:1.00, intermediate:1.15, advanced:1.30, hell:1.50, doom:1.65, insane:1.85}[v]||1.0;
+  const val=$('#tier')?.value||'beginner';
+  return {beginner:1.00, intermediate:1.15, advanced:1.35, hell:1.50, doom:1.60, insane:1.85}[val]||1.0;
 }
 
-/***** Match-3 Game (원본 유지 + 좌표 매핑 픽스) *****/
-(function(){
-  const EMPTY=0, NORMAL=1, ROCK=2, ICE=3, STRIPE_H=4, STRIPE_V=5, BOMB=6, RAINBOW=7;
+/* ================= 브릭브레이커 파라미터 ================= */
+let _colsPreset=12;
+function paramsForLevel(lv){
+  const baseSpeed = 220 + lv*7.5;
+  const paddleW = clamp(180 - lv*1.4, 56, 180);
+  const rows = lv<8? 5 : lv<15? 6 : lv<25? 7 : lv<35? 8 : lv<50? 9 : 10;
+  const cols = _colsPreset;
+  const brickHpBase = lv<15? 1 : lv<30? 1.3 : lv<40? 1.6 : lv<50? 2.0 : lv<80? 2.6 : 3.4;
+  const powerRate = lv<15? 0.18 : lv<30? 0.14 : lv<50? 0.10 : lv<80? 0.08 : 0.05;
+  const chaosEvery = lv>=40? (lv>=80? 6 : 9) : null;
+  const unbreakableRate = lv>=100? 0.10 : lv>=80? 0.04 : 0;
+  const fallBrickRate = lv>=50? 0.03 : 0;
+  const comboWindow = clamp(1.2 - lv*0.004, 0.35, 1.2);
+  return {baseSpeed,paddleW,rows,cols,brickHpBase,powerRate,chaosEvery,unbreakableRate,fallBrickRate,comboWindow};
+}
+const POWER = {EXPAND:'E', SLOW:'S', MULTI:'M', LIFE:'L', DEBUFF:'D', LASER:'R', PIERCE:'P', EXPLODE:'X'};
 
-  function paramsForLevel(lv){
-    const colors = lv<8?5: lv<15?6: lv<25?7: lv<40?7: lv<50?8: 8;
-    const timeLimit = lv<10? 70: lv<20? 60: lv<30? 55: lv<40? 45: lv<50? 40: lv<80?35: 28;
-    const rockRate = lv>=20? (lv<40?0.03: lv<50?0.05: lv<80?0.07: 0.10): 0;
-    const iceRate = lv>=15? (lv<40?0.05: lv<50?0.08: lv<80?0.10: 0.12): 0;
-    const bombRate = lv>=40? (lv<50?0.04: lv<80?0.06: 0.08): 0;
-    const goalScore = 800 + lv*25;
-    return { colors, timeLimit, rockRate, iceRate, bombRate, goalScore, shuffleOnStall:true };
+/* ================= 간단 SFX ================= */
+var SFX=(function(){ let ctx; const ensure=()=> ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)()); function beep(freq=440,dur=0.08,type='square',gain=0.06){ const ac=ensure(); const o=ac.createOscillator(); const g=ac.createGain(); o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g); g.connect(ac.destination); const t=ac.currentTime; o.start(t); o.stop(t+dur); g.gain.setTargetAtTime(0,t+dur*0.6,0.03); } return {hit:()=>beep(680,0.05,'square',0.05), brick:()=>beep(540,0.07,'square',0.05), power:()=>beep(820,0.1,'triangle',0.06), lose:()=>beep(180,0.3,'sawtooth',0.08), laser:()=>beep(1200,0.05,'triangle',0.04)}; })();
+
+/* ================= 게임 본체 ================= */
+class BrickBreaker{
+  constructor(canvas){
+    this.c=canvas; this.ctx=canvas.getContext('2d');
+    this.best= +(localStorage.getItem(LS_KEYS.best)||0);
+    this.level=1; this._resizeRAF=null; this._fitRAF=null;
+    this._initResizeObserver();
+    this.reset(1);
+    this.bind();
+    this.resize();
+    this.last=0; requestAnimationFrame(t=>this.loop(t));
+
+    /* ✅ 서버 세션 시작 알림 (slug 고정: 'brick-breaker') */
+    notifyStart();
   }
-
-  class Match3{
-    constructor(canvas){
-      this.c=canvas; this.ctx=canvas.getContext('2d');
-      this.N=8; this.level=1; this.params=paramsForLevel(1);
-      this.state='idle'; this.score=0; this.best= +(localStorage.getItem(LS_KEYS.best)||0);
-      this.timeLeft=60; this.grid=[]; this.sel=null; this.paused=false;
-      this.combo=1; this.points=0; this.chainLv=0; this.goalAwarded=false;
-      this.swapAnim=null; this.fx=[]; this.last=0; this.ox=0; this.oy=0; this.step=0;
-
-      this.resize(); this.bind(); this.newGame(1);
-      requestAnimationFrame((t)=>this.run(t));
-      notifyStart();
-    }
-
-    DPR(){ return Math.min(2, window.devicePixelRatio||1); }
-    rnd(n){ return Math.floor(Math.random()*n); }
-    btype(v){ return Math.floor(v/10)===0? NORMAL: Math.floor(v/10); }
-    bval(v){ return Math.floor(v/10)===0? v: v%10; }
-    inBounds(x,y){ return x>=0&&x<this.N&&y>=0&&y<this.N; }
-
-    bind(){
-      // ✅ transform(scale)과 DPR을 모두 무시하고, 화면에 보이는 실제 크기만 사용
-      const map = (ev)=>{
-        const r=this.c.getBoundingClientRect();
-        const side=Math.min(r.width, r.height);
-        const left=r.left+(r.width - side)/2;
-        const top =r.top +(r.height- side)/2;
-        const x=ev.clientX-left, y=ev.clientY-top; // 현재 화면좌표(스케일 반영됨)
-        return {x,y,side};
-      };
-      let down=false,sx=0,sy=0;
-
-      this.c.addEventListener('mousedown',(e)=>{
-        if(this.paused||this.state==='over'||this.swapAnim) return;
-        down=true; const p=map(e);
-        if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-        // ✅ 비율 기반 인덱싱 (DPR/스케일 무관)
-        this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
-        sx=p.x; sy=p.y;
-      });
-      window.addEventListener('mouseup',()=> down=false,{passive:true});
-      this.c.addEventListener('mousemove',(e)=>{
-        if(!down||!this.sel||this.swapAnim) return;
-        const p=map(e); const dx=p.x-sx, dy=p.y-sy; let dir=null;
-        if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>10) dir= dx>0?'r':'l';
-        else if(Math.abs(dy)>10) dir= dy>0?'d':'u';
-        if(dir){ this.trySwap(dir); down=false; }
-      });
-
-      this.c.addEventListener('touchstart',(e)=>{
-        if(this.paused||this.state==='over'||this.swapAnim) return;
-        const t=e.touches[0]; const p=map(t);
-        if(p.x<0||p.y<0||p.x>p.side||p.y>p.side) return;
-        // ✅ 비율 기반 인덱싱
-        this.select(Math.floor((p.x/p.side)*this.N), Math.floor((p.y/p.side)*this.N));
-        sx=p.x; sy=p.y;
-      },{passive:true});
-      this.c.addEventListener('touchmove',(e)=>{
-        if(!this.sel||this.swapAnim) return; const t=e.touches[0]; const p=map(t);
-        const dx=p.x-sx, dy=p.y-sy; let dir=null;
-        if(Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>12) dir= dx>0?'r':'l';
-        else if(Math.abs(dy)>12) dir= dy>0?'d':'u';
-        if(dir){ this.trySwap(dir); }
-      },{passive:true});
-
-      // Deck / Keys
-      document.getElementById('newBtn').addEventListener('click',()=> this.newGame(this.level));
-      document.getElementById('undoBtn').addEventListener('click',()=>{ if(this.state!=='over') this.paused=!this.paused; });
-      document.getElementById('endBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
-      document.getElementById('homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
-
-      const tier=$('#tier'), lvl=$('#lvlRange');
-      const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
-      tier.addEventListener('change',()=> applyTier(tier.value));
-      lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
-
-      document.addEventListener('keydown',(e)=>{
-        if(e.code==='Enter' || e.code==='KeyN'){ this.newGame(this.level); }
-        if(e.code==='Space' || e.code==='KeyU'){ if(this.state!=='over'){ this.paused=!this.paused; e.preventDefault(); } }
-      });
-
-      window.addEventListener('resize',()=> this.resize(),{passive:true});
-    }
-
-    /* 캔버스 크기 계산 */
-    resize(){
-      const wrap=document.getElementById('canvasWrap');
-      const d=this.DPR();
-      const r=wrap.getBoundingClientRect();
-      const side=Math.floor(Math.min(r.width, r.height));
-      this.c.style.width = side+'px';
-      this.c.style.height= side+'px';
-      this.c.width = Math.floor(side*d);
-      this.c.height= Math.floor(side*d);
-      const s=Math.min(this.c.width,this.c.height);
-      this.step=s/this.N; this.ox=(this.c.width - s)/2; this.oy=(this.c.height- s)/2;
-    }
-
-    setLevel(lv){ this.level=lv; this.params=paramsForLevel(lv); this.updateHUD(); }
-
-    updateHUD(){
-      $('#score').textContent=this.score|0;
-      if(this.score>this.best){ this.best=this.score|0; localStorage.setItem(LS_KEYS.best, String(this.best)); }
-      $('#best').textContent=this.best|0;
-      $('#moves').textContent=(Math.max(0,this.level-1))|0;
-      $('#pointsAmt').textContent=fmt(this.points|0);
-      const cap=5000; $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
-      updateTicketUI();
-    }
-
-    newGame(lv){
-      this.level=lv; this.params=paramsForLevel(lv);
-      this.score=0; this.combo=1; this.timeLeft=this.params.timeLimit;
-      this.points=0; this.chainLv=0; this.goalAwarded=false;
-      this.state='playing'; this.paused=false; this.sel=null;
-      this.fx.length=0; this.swapAnim=null;
-      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='none';
-
-      this.grid=[]; for(let i=0;i<this.N;i++){ this.grid[i]=[]; for(let j=0;j<this.N;j++){ this.grid[i][j]=this.randomTile(i,j); } }
-      this.addBlockers();
-
-      let guard=0; while(!this.hasAnyMatchMove() && guard<50){ this.shuffle(); guard++; }
-      this.updateHUD();
-    }
-
-    randomTile(i,j){
-      let col = 1 + this.rnd(this.params.colors);
-      if(i>=2 && this.grid[i-1] && this.grid[i-2]){
-        if(this.grid[i-1][j]===this.grid[i-2][j] && this.grid[i-1][j]!==ROCK && this.grid[i-1][j]!==ICE){
-          col = (this.grid[i-1][j]%this.params.colors)+1;
-        }
-      }
-      if(j>=2){
-        if(this.grid[i][j-1]===this.grid[i][j-2] && this.grid[i][j-1]!==ROCK && this.grid[i][j-1]!==ICE){
-          col = (this.grid[i][j-1]%this.params.colors)+1;
-        }
-      }
-      return col;
-    }
-    addBlockers(){
-      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
-        if(Math.random()<this.params.rockRate) this.grid[i][j]=ROCK;
-        else if(Math.random()<this.params.iceRate) this.grid[i][j]=ICE*10 + this.grid[i][j];
-        else if(Math.random()<this.params.bombRate) this.grid[i][j]=BOMB*10 + (3 + (this.level>=80?1:0));
-      }
-    }
-
-    select(x,y){ if(this.inBounds(x,y)) this.sel={x,y}; }
-
-    trySwap(dir){
-      if(!this.sel || this.swapAnim) return;
-      let dx=0,dy=0; if(dir==='l')dx=-1; if(dir==='r')dx=1; if(dir==='u')dy=-1; if(dir==='d')dy=1;
-      const x=this.sel.x, y=this.sel.y, nx=x+dx, ny=y+dy; if(!this.inBounds(nx,ny)) return;
-
-      const animateSwap=(x1,y1,x2,y2,reverse=false)=> new Promise(res=>{
-        const dur=140; const t0=performance.now();
-        this.swapAnim={x1,y1,x2,y2,reverse,t0,dur,done:res};
-      });
-
-      animateSwap(x,y,nx,ny,false).then(()=>{
-        this.swap(x,y,nx,ny);
-        const found=this.findMatches().length>0;
-        if(!found){
-          animateSwap(x,y,nx,ny,true).then(()=>{ this.swap(x,y,nx,ny); if(this.level>=50) this.timeLeft=Math.max(0,this.timeLeft-1.5); });
-        }else{
-          this.sel=null; this.processCascade();
-        }
-      });
-    }
-    swap(x1,y1,x2,y2){ const t=this.grid[x1][y1]; this.grid[x1][y1]=this.grid[x2][y2]; this.grid[x2][y2]=t; }
-
-    findMatches(){
-      const res=[]; let i,j,cnt,val,prev,vType,pType,vCol,pCol,lastCol;
-      for(j=0;j<this.N;j++){
-        cnt=1;
-        for(i=1;i<this.N;i++){
-          val=this.grid[i][j]; prev=this.grid[i-1][j];
-          vType=this.btype(val)===NORMAL? NORMAL: this.btype(val);
-          pType=this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
-          vCol=this.bval(val); pCol=this.bval(prev);
-          const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
-          if(eq) cnt++;
-          else { if (cnt >= 3) { res.push({ dir: 'h', y: j, x: i - cnt, len: cnt, col: pCol }); } cnt = 1; }
-        }
-        if (cnt>=3){ lastCol=this.bval(this.grid[this.N-1][j]); res.push({dir:'h', y:j, x:this.N-cnt, len:cnt, col:lastCol}); }
-      }
-      for(i=0;i<this.N;i++){
-        cnt=1;
-        for(j=1;j<this.N;j++){
-          val=this.grid[i][j]; prev=this.grid[i][j-1];
-          vType=this.btype(val)===NORMAL? NORMAL: this.btype(val);
-          pType=this.btype(prev)===NORMAL? NORMAL: this.btype(prev);
-          vCol=this.bval(val); pCol=this.bval(prev);
-          const eq=(vType===NORMAL && pType===NORMAL && vCol===pCol);
-          if(eq) cnt++;
-          else { if (cnt >= 3) { res.push({ dir: 'v', x: i, y: j - cnt, len: cnt, col: pCol }); }cnt = 1; }
-        }
-        if(cnt>=3){ lastCol=this.bval(this.grid[i][this.N-1]); res.push({dir:'v', x:i, y:this.N-cnt, len:cnt, col:lastCol}); }
-      }
-      return res;
-    }
-
-    resolveMatches(chainLv){
-      const matches=this.findMatches(); if(matches.length===0) return {found:false};
-      let cleared=0; const specials=[]; let basePoint=0;
-
-      for(const m of matches){
-        const sp=this.createSpecialFromMatch(m);
-        const cx=m.dir==='h'? m.x+Math.floor(m.len/2): m.x;
-        const cy=m.dir==='h'? m.y: m.y+Math.floor(m.len/2);
-        if(sp) specials.push({ x: cx, y: cy, val: sp });
-
-        const per = (m.len>=5)?24 : (m.len===4?14:8);
-        basePoint += per;
-
-        if(m.dir==='h'){
-          for(let j=0;j<m.len;j++){
-            const gx=m.x+j, gy=m.y;
-            if(this.btype(this.grid[gx][gy])!==ROCK){
-              this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
-              this.grid[gx][gy]=EMPTY; cleared++;
-            }
-          }
-        } else {
-          for(let j=0;j<m.len;j++){
-            const gx=m.x, gy=m.y+j;
-            if(this.btype(this.grid[gx][gy])!==ROCK){
-              this.spawnPop(gx,gy,this.bval(this.grid[gx][gy]));
-              this.grid[gx][gy]=EMPTY; cleared++;
-            }
-          }
-        }
-      }
-      for(const s of specials){ this.grid[s.x][s.y]=s.val; }
-
-      this.score += cleared*10*this.combo; this.combo++;
-      const chainBonus = Math.min(0.6, Math.max(0, (chainLv-1)*0.2));
-      const mult = difficultyMult();
-      const earned = Math.floor(basePoint * (1+chainBonus) * mult);
-      if(earned>0) this.addPoints(earned);
-
-      if(!this.goalAwarded && this.score >= this.params.goalScore){
-        this.goalAwarded = true;
-        this.addPoints(Math.floor(100 * mult));
-      }
-
-      this.timeLeft = Math.min(this.params.timeLimit, this.timeLeft + Math.min(2, cleared*0.05));
-      this.dropAndFill();
-      return {found:true};
-    }
-
-    addPoints(p){
-      this.points = Math.min(5000, this.points + p);
-      this.updateHUD();
-    }
-
-    createSpecialFromMatch(m){
-      if(m.len>=5) return RAINBOW*10 + m.col;
-      if(m.len===4) return (m.dir==='h'? STRIPE_H: STRIPE_V)*10 + m.col;
-      return 0;
-    }
-
-    processCascade(){
-      this.chainLv=1;
-      while(true){
-        const r=this.resolveMatches(this.chainLv);
-        if(!r.found) break;
-        this.chainLv++;
-      }
-      this.chainLv=0;
-    }
-
-    dropAndFill(){
-      for(let i=0;i<this.N;i++){
-        for(let j=this.N-1;j>=0;j--){
-          if(this.grid[i][j]===EMPTY){
-            for(let k=j-1;k>=0;k--){ if(this.grid[i][k]!==EMPTY){ this.grid[i][j]=this.grid[i][k]; this.grid[i][k]=EMPTY; break; } }
-            if(this.grid[i][j]===EMPTY){ this.grid[i][j]=this.randomTile(i,j); }
-          }
-        }
-      }
-      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
-        const v=this.grid[i][j];
-        if(Math.floor(v/10)===BOMB){
-          let n=v%10; n--;
-          if(n<=0){ this.explodeAt(i,j); this.grid[i][j]=EMPTY; }
-          else { this.grid[i][j]=BOMB*10+n; }
-        }
-      }
-      if(!this.hasAnyMatchMove()) this.shuffle();
-    }
-
-    explodeAt(cx,cy){
-      for(let i=cx-1;i<=cx+1;i++) for(let j=cy-1;j<=cy+1;j++)
-        if(this.inBounds(i,j)){ if(this.btype(this.grid[i][j])!==ROCK){ this.spawnPop(i,j,this.bval(this.grid[i][j])); this.grid[i][j]=EMPTY; this.score+=5; } }
-    }
-
-    hasAnyMatchMove(){
-      for(let x=0;x<this.N;x++) for(let y=0;y<this.N;y++){
-        if(x+1<this.N){ this.swap(x,y,x+1,y); if(this.findMatches().length>0){ this.swap(x,y,x+1,y); return true; } this.swap(x,y,x+1,y); }
-        if(y+1<this.N){ this.swap(x,y,x,y+1); if(this.findMatches().length>0){ this.swap(x,y,x,y+1); return true; } this.swap(x,y,x,y+1); }
-      }
-      return false;
-    }
-    shuffle(){
-      const flat=[]; for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++) if(this.grid[i][j]!==ROCK) flat.push(this.grid[i][j]);
-      for(let i=flat.length-1;i>0;i--){ const r=this.rnd(i+1); [flat[i],flat[r]]=[flat[r],flat[i]]; }
-      let idx=0; for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++) if(this.grid[i][j]!==ROCK) this.grid[i][j]=flat[idx++];
-    }
-
-    spawnPop(gx,gy,colIdx){
-      const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-      const col=pal[(Math.max(1,colIdx)-1)%pal.length];
-      this.fx.push({gx,gy,tStart:this.last||performance.now(), col});
-    }
-    drawPops(ctx){
-      const now=this.last||performance.now(); const DURATION=220;
-      const keep=[]; for(const fx of this.fx){
-        const k=(now-fx.tStart)/DURATION; if(k>=1) continue;
-        const x=this.ox+(fx.gx+0.5)*this.step, y=this.oy+(fx.gy+0.5)*this.step;
-        const r=this.step*0.45*(0.25+0.75*k);
-        ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
-        const v=parseInt(fx.col.slice(1),16), rr=(v>>16)&255, gg=(v>>8)&255, bb=v&255;
-        ctx.fillStyle=`rgba(${rr},${gg},${bb},${(1-k)*0.6})`; ctx.fill();
-        keep.push(fx);
-      }
-      this.fx=keep;
-    }
-
-    update(dt){
-      if(this.paused||this.state==='over') return;
-      this.timeLeft -= dt; if(this.timeLeft<=0){ this.timeLeft=0; this.gameOver(); }
-      this.updateHUD();
-    }
-
-    draw(){
-      const ctx=this.ctx, d=this.DPR();
-      ctx.clearRect(0,0,this.c.width,this.c.height);
-
-      const g=ctx.createLinearGradient(0,0,0,this.c.height);
-      g.addColorStop(0,'#0b1440'); g.addColorStop(1,'#070c22');
-      ctx.fillStyle=g; ctx.fillRect(0,0,this.c.width,this.c.height);
-
-      const s=Math.min(this.c.width,this.c.height); const x0=this.ox, y0=this.oy; this.step=s/this.N;
-
-      for(let i=0;i<this.N;i++) for(let j=0;j<this.N;j++){
-        const v=this.grid[i][j]; const bt=this.btype(v); const val=this.bval(v);
-        let x=x0+i*this.step, y=y0+j*this.step;
-
-        if(this.swapAnim){
-          const a=this.swapAnim, now=performance.now();
-          let t=(now-a.t0)/a.dur; t=Math.max(0,Math.min(1,t));
-          const dirX=a.x2-a.x1, dirY=a.y2-a.y1;
-          const off = (i===a.x1&&j===a.y1)? (a.reverse?1-t:t) : (i===a.x2&&j===a.y2? (a.reverse?1-t:t)*-1 : 0);
-          if(off!==0){ x += off*dirX*this.step; y += off*dirY*this.step; }
-          if(t>=1){ const done=a.done; this.swapAnim=null; if(done) done(); }
-        }
-
-        ctx.strokeStyle='#283273'; ctx.strokeRect(x,y,this.step,this.step);
-        if(v===EMPTY) continue;
-        const pal=['#ffd166','#70ffa8','#8ea3ff','#ff6b6b','#f7a6ff','#9bf6ff','#ffe66d','#caffbf'];
-        const col=pal[(val-1)%pal.length];
-        ctx.fillStyle= bt===ROCK? '#444a66' : bt===ICE? '#a7d8ff' : bt===STRIPE_H||bt===STRIPE_V? '#fff2' : bt===BOMB? '#ff9aa6' : bt===RAINBOW? '#ffffff' : col;
-        ctx.fillRect(x+4,y+4,this.step-8,this.step-8);
-        ctx.strokeStyle='#0006'; ctx.strokeRect(x+4,y+4,this.step-8,this.step-8);
-        ctx.fillStyle='#001'; ctx.font=(12*d)+'px ui-sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        if(bt===STRIPE_H) ctx.fillText('\u2014', x+this.step/2, y+this.step/2);
-        else if(bt===STRIPE_V) ctx.fillText('|', x+this.step/2, y+this.step/2);
-        else if(bt===BOMB) ctx.fillText(String(v%10), x+this.step/2, y+this.step/2);
-        else if(bt===RAINBOW) ctx.fillText('*', x+this.step/2, y+this.step/2);
-        else if(bt===ICE) ctx.fillText('\u2744', x+this.step/2, y+this.step/2);
-        else if(bt===ROCK) ctx.fillText('\u25A0', x+this.step/2, y+this.step/2);
-        if(this.sel && this.sel.x===i && this.sel.y===j && !this.swapAnim){
-          ctx.strokeStyle='#8ea3ff'; ctx.lineWidth=3; ctx.strokeRect(x+3,y+3,this.step-6,this.step-6); ctx.lineWidth=1;
-        }
-      }
-
-      this.drawPops(ctx);
-
-      ctx.globalAlpha=0.12; ctx.fillStyle='#000';
-      for(let yy=0; yy<this.c.height; yy+=2*d){ ctx.fillRect(0,yy,this.c.width,1*d); }
-      ctx.globalAlpha=1;
-    }
-
-    run(ts){ const dt=(ts-(this.last||ts))/1000; this.last=ts; this.update(Math.min(dt,0.033)); this.draw(); requestAnimationFrame((t)=>this.run(t)); }
-
-    gameOver(manual=false){
-      this.state='over';
-      if(this.score>this.best){ this.best=this.score; localStorage.setItem(LS_KEYS.best, String(this.best)); }
-      addRecord(this.score, this.points); addPlay();
-      const ov=document.getElementById('gameOver'); if(ov) ov.style.display='flex';
-      notifyFinish(this.score|0);
-    }
+  _initResizeObserver(){
+    const bezel = this.c.closest('.bezel') || document.body;
+    const ro = new ResizeObserver(()=>{ if(this._resizeRAF) cancelAnimationFrame(this._resizeRAF); this._resizeRAF = requestAnimationFrame(()=> this.resize()); });
+    ro.observe(bezel); this._ro=ro;
+    window.addEventListener('orientationchange', ()=>{ if(this._resizeRAF) cancelAnimationFrame(this._resizeRAF); this._resizeRAF=requestAnimationFrame(()=> this.resize()); }, {passive:true});
   }
-
-  const m3=new Match3(document.getElementById('game'));
-  (function initUI(){
+  _targetSize(){
+    const bezel = this.c.closest?.('.bezel') || this.c.parentElement || document.scrollingElement || document.body;
+    let rect;
+    try{ rect = (typeof bezel.getBoundingClientRect==='function') ? bezel.getBoundingClientRect() : {width: this.c.clientWidth||640, height: this.c.clientHeight||400}; }
+    catch(e){ rect = {width: this.c.clientWidth||640, height: this.c.clientHeight||400}; }
+    const availW = Math.max(0, (rect.width||640) - 24);
+    const availH = Math.max(0, (rect.height||400) - 24);
+    const aspect = 16/10;
+    let cssW = Math.min(availW, availH*aspect);
+    let cssH = cssW/aspect;
+    if(!isFinite(cssW) || cssW<=0){ cssW = 640; cssH = 400; }
+    return {cssW:Math.floor(cssW), cssH:Math.floor(cssH)};
+  }
+  resize(){
+    const d=DPR(); const {cssW, cssH} = this._targetSize();
+    const styleW = parseInt(this.c.style.width||0,10); const styleH = parseInt(this.c.style.height||0,10);
+    if(styleW!==cssW || styleH!==cssH){
+      this.c.style.width = cssW+'px'; this.c.style.height = cssH+'px';
+      this.c.width = Math.max(10, Math.floor(cssW*d)); this.c.height = Math.max(10, Math.floor(cssH*d));
+      if(this.paddle){ this.paddle.y = this.c.height - 28*d; this.paddle.x = clamp(this.paddle.x, this.paddle.w*0.5, this.c.width - this.paddle.w*0.5); }
+      if(this.balls){ for(const b of this.balls){ b.x = clamp(b.x, b.r, this.c.width-b.r); b.y = clamp(b.y, b.r, this.c.height-b.r); } }
+      this.draw();
+    }
+    if(this._fitRAF) cancelAnimationFrame(this._fitRAF); this._fitRAF = requestAnimationFrame(()=> fitCabinet());
+  }
+  bind(){
     const tier=$('#tier'), lvl=$('#lvlRange');
-    const applyTier=(t)=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; m3.setLevel(lv); };
-    applyTier(tier.value);
-    lvl.addEventListener('input',()=> m3.setLevel(+lvl.value));
-    updateTicketUI();
-  })();
-})();
+    const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
+    tier.addEventListener('change',()=>applyTier(tier.value));
+    lvl.addEventListener('input',()=> this.setLevel(+lvl.value));
+    $('#sizeSel').addEventListener('change',e=>{ _colsPreset=+e.target.value||12; this.setLevel(this.level); });
+    $('#newBtn').addEventListener('click',()=> this.reset(this.level));
+    $('#undoBtn').addEventListener('click',()=>{ this.paused=!this.paused; });
 
-/***** Cabinet fit *****/
+    /* HOME: 광고 후 index 화면으로 이동 */
+    $('#homeBtn').addEventListener('click',()=> 
+      showAdThen(()=> window.location.href = '/index.html')
+    );
+
+    $('#endBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
+
+    // 포인터 매핑
+    const mapX = (clientX)=>{ const r=this.c.getBoundingClientRect(); const scaleX = this.c.width / r.width; return (clientX - r.left) * scaleX; };
+    this.c.addEventListener('mousemove',e=>{ this.mouseX=mapX(e.clientX); });
+    this.c.addEventListener('touchmove',e=>{ this.mouseX=mapX(e.touches[0].clientX); e.preventDefault(); },{passive:false});
+
+    document.addEventListener('keydown',e=>{
+      if(e.code==='KeyN'){ this.reset(this.level); }
+      if(e.code==='KeyU' || e.code==='Space'){ this.paused=!this.paused; }
+      if(e.code==='Enter'){ this.reset(this.level); }
+      if(!this.running||this.paused) return;
+      if(e.code==='ArrowLeft'){ this.paddle.x += (this.reverse?-1:1)*-24*DPR(); }
+      if(e.code==='ArrowRight'){ this.paddle.x += (this.reverse?-1:1)*24*DPR(); }
+    });
+  }
+  setLevel(lv){ this.reset(lv); }
+
+  /* 포인트 모델 */
+  awardPoints(base){
+    const mult = difficultyMult();
+    const v = Math.max(0, Math.floor(base * mult));
+    this.points = Math.min(5000, (this.points||0) + v);
+    this.updateHUD();
+  }
+
+  reset(lv){
+    const d=DPR();
+    this.level=lv||1; this.params=paramsForLevel(this.level);
+    this.score=0; this.points=0;
+    this.lives=3; this.eventsAcc=0; this.reverse=false;
+    this.slowTimer=0; this.expandTimer=0; this.combo=1; this.comboTimer=0;
+    this.stageDeaths=0; this.paddleHitStreak=0;
+    this.laserTimer=0; this.pierceTimer=0; this.explodeTimer=0;
+    this.particles=[]; this.lasers=[]; this.powers=[]; this.balls=[];
+    this.running=true; this.paused=false; this._ended=false;
+    const _ov=document.getElementById('gameOver'); if(_ov) _ov.style.display='none';
+    const W=this.c.width, H=this.c.height;
+    this.preset='classic'; this.paddle={x:W*0.5, y:H-28*d, w:this.params.paddleW*d, h:12*d};
+    this.makeLevel(); this.spawnBall(); this.updateHUD(); this.draw();
+  }
+
+  manualEnd(){
+    if(this._ended) return;
+    this._ended=true; this.running=false; this.paused=false;
+    addRecord(this.score, this.points||0);
+    addPlay();
+    document.getElementById('gameOver').style.display='flex';
+    /* ✅ 서버 세션 종료(최종 점수 보고) */
+    notifyFinish(this.score|0);
+  }
+
+  updateHUD(){
+    $('#score').textContent=this.score|0;
+    if(this.score>this.best){ this.best=this.score|0; localStorage.setItem(LS_KEYS.best, String(this.best)); }
+    $('#best').textContent=this.best|0;
+    $('#moves').textContent=(Math.max(0,this.level-1))|0;
+    $('#pointsAmt').textContent=fmt(this.points|0);
+    const cap=5000; $('#pointsBar').style.width=Math.min(100,(this.points/cap*100)).toFixed(1)+'%';
+    updateTicketUI();
+  }
+
+  spawnBall(px){
+    const speed=this.params.baseSpeed*DPR();
+    const angle = -Math.PI/3 + (Math.random()*Math.PI/6);
+    const x = px|| this.paddle.x; const y = this.paddle.y - 12*DPR();
+    this.balls.push({x,y,r:6*DPR(), vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, pierce:false, explode:false});
+  }
+
+  makeLevel(){
+    const p=this.params; const rows=p.rows, cols=p.cols, brickHpBase=p.brickHpBase, unbreakableRate=p.unbreakableRate;
+    const pad=16*DPR(); const W=this.c.width- pad*2; const bw=W/cols; const bh=20*DPR();
+    this.bricks=[];
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        let hp=Math.max(1, Math.round(brickHpBase + (Math.random()*0.8-0.4)));
+        let steel=Math.random()<unbreakableRate;
+        const x=pad+c*bw+2, y=pad+r*(bh+4), w=bw-4, h=bh;
+        this.bricks.push({x,y,w,h,hp: steel?9999:hp, steel});
+      }
+    }
+  }
+
+  addPower(x,y){
+    const r=Math.random(); let kind=POWER.EXPAND;
+    if(r<0.18) kind=POWER.EXPAND;
+    else if(r<0.34) kind=POWER.SLOW;
+    else if(r<0.48) kind=POWER.MULTI;
+    else if(r<0.6) kind=POWER.LIFE;
+    else if(r<0.72) kind=POWER.PIERCE;
+    else if(r<0.84) kind=POWER.EXPLODE;
+    else if(r<0.94) kind=POWER.LASER;
+    else kind=POWER.DEBUFF;
+    this.powers.push({x,y,vy:60*DPR(),kind});
+  }
+  applyPower(kind){
+    SFX.power();
+    if(kind===POWER.EXPAND){ this.expandTimer=8; this.paddle.w *= 1.35; }
+    if(kind===POWER.SLOW){ this.slowTimer=6; this.balls.forEach(b=>{ b.vx*=0.7; b.vy*=0.7; }); }
+    if(kind===POWER.MULTI){
+      const extra=Math.min(3, 1+Math.floor(this.level/30));
+      const clones=[];
+      for(let i=0;i<extra;i++){
+        const b=this.balls[i%this.balls.length]; if(!b) break;
+        const nb={x:b.x,y:b.y,r:b.r,vx:b.vx,vy:b.vy,pierce:b.pierce,explode:b.explode};
+        const ang=(-0.6 + i*(1.2/Math.max(1,extra-1))); const sp=Math.hypot(nb.vx,nb.vy);
+        nb.vx=Math.cos(ang)*sp; nb.vy=Math.sin(ang)*sp; clones.push(nb);
+      }
+      this.balls.push(...clones);
+    }
+    if(kind===POWER.LIFE){ this.lives++; }
+    if(kind===POWER.DEBUFF){ if(Math.random()<0.5){ this.paddle.w*=0.75; } else { this.balls.forEach(b=>{ b.vx*=1.2; b.vy*=1.2; }); } }
+    if(kind===POWER.LASER){ this.laserTimer=6; }
+    if(kind===POWER.PIERCE){ this.pierceTimer=8; this.balls.forEach(b=> b.pierce=true); }
+    if(kind===POWER.EXPLODE){ this.explodeTimer=8; this.balls.forEach(b=> b.explode=true); }
+  }
+
+  chaosEvent(){ const r=Math.random(); if(r<0.33){ this.reverse=true; setTimeout(()=> this.reverse=false, 4000); } else if(r<0.66){ this.balls.forEach(b=>{ b.vx*=1.25; b.vy*=1.25; }); setTimeout(()=> this.balls.forEach(b=>{ b.vx*=0.8; b.vy*=0.8; }), 3000); } }
+
+  ballBrickCollision(b, br){
+    const nx=clamp(b.x, br.x, br.x+br.w); const ny=clamp(b.y, br.y, br.y+br.h);
+    const dx=b.x-nx, dy=b.y-ny;
+    if(dx*dx+dy*dy <= b.r*b.r){
+      if(!b.pierce){ if(Math.abs(dx)>Math.abs(dy)) b.vx*=-1; else b.vy*=-1; }
+      if(!br.steel){
+        br.hp--;
+        this.score += 10*this.combo;
+        if(br.hp<=0){
+          br.remove=true;
+          this.awardPoints(3); // 블록 파괴 보상
+          if(Math.random()<this.params.powerRate) this.addPower(br.x+br.w/2, br.y+br.h/2);
+        }
+      }
+      if(b.explode){ this.explode(br.x+br.w/2, br.y+br.h/2, 48*DPR()); }
+      this.combo++; this.comboTimer=this.params.comboWindow;
+      SFX.brick(); return true;
+    }
+    return false;
+  }
+
+  explode(cx,cy,r){
+    for(const br of this.bricks){
+      if(br.remove||br.steel) continue;
+      const bx=clamp(cx, br.x, br.x+br.w); const by=clamp(cy, br.y, br.y+br.h);
+      const dx=cx-bx, dy=cy-by;
+      if(dx*dx+dy*dy < r*r){
+        br.hp-=2; if(br.hp<=0){ br.remove=true; this.awardPoints(3); }
+        this.score+=5;
+      }
+    }
+  }
+
+  fireLaser(){ if(this.laserTimer<=0) return; SFX.laser(); this.lasers.push({x:this.paddle.x, y:this.paddle.y-6*DPR(), vy:-480*DPR()}); }
+
+  tick(dt){
+    if(!this.running||this.paused) return;
+    const W=this.c.width, H=this.c.height;
+    if(this.mouseX!=null){ this.paddle.x = clamp(this.mouseX, this.paddle.w*0.5, W-this.paddle.w*0.5); }
+
+    if(this.expandTimer>0){ this.expandTimer-=dt; if(this.expandTimer<=0) this.paddle.w/=1.35; }
+    if(this.slowTimer>0){ this.slowTimer-=dt; }
+    if(this.laserTimer>0){ this.laserTimer-=dt; this.fireLaser(); }
+    if(this.pierceTimer>0){ this.pierceTimer-=dt; if(this.pierceTimer<=0) this.balls.forEach(b=> b.pierce=false); }
+    if(this.explodeTimer>0){ this.explodeTimer-=dt; if(this.explodeTimer<=0) this.balls.forEach(b=> b.explode=false); }
+    if(this.params.chaosEvery){ this.eventsAcc+=dt; if(this.eventsAcc>=this.params.chaosEvery){ this.eventsAcc=0; this.chaosEvent(); } }
+    if(this.comboTimer>0){ this.comboTimer-=dt; if(this.comboTimer<=0) this.combo=1; }
+
+    // lasers
+    for(let i=this.lasers.length-1;i>=0;i--){
+      const L=this.lasers[i]; L.y += L.vy*dt;
+      for(const br of this.bricks){
+        if(br.remove||br.steel) continue;
+        if(L.y<br.y+br.h && L.y>br.y && Math.abs(L.x-(br.x+br.w/2))<br.w/2){
+          br.hp-=2; this.score+=4; if(br.hp<=0){ br.remove=true; this.awardPoints(3); }
+        }
+      }
+      if(L.y<0) this.lasers.splice(i,1);
+    }
+
+    // powers
+    for(let i=0;i<this.powers.length;i++){ this.powers[i].y += this.powers[i].vy*dt; }
+    for(let i=this.powers.length-1;i>=0;i--){
+      const p=this.powers[i];
+      if(p.y>this.paddle.y-10 && Math.abs(p.x-this.paddle.x)<this.paddle.w*0.5){ this.applyPower(p.kind); this.powers.splice(i,1);}
+      else if(p.y>H+20) this.powers.splice(i,1);
+    }
+
+    // balls
+    for(let i=this.balls.length-1;i>=0;i--){
+      const b=this.balls[i]; b.x += b.vx*dt; b.y += b.vy*dt;
+      if(b.x<b.r){ b.x=b.r; b.vx*=-1; SFX.hit(); }
+      if(b.x>W-b.r){ b.x=W-b.r; b.vx*=-1; SFX.hit(); }
+      if(b.y<b.r){ b.y=b.r; b.vy*=-1; SFX.hit(); }
+      if(b.y>H+20){ this.balls.splice(i,1); continue; }
+
+      // 패들 충돌
+      if(b.y+b.r>=this.paddle.y && Math.abs(b.x - this.paddle.x) <= this.paddle.w*0.5 && b.vy>0){
+        b.y=this.paddle.y - b.r;
+        const hitRatio = (b.x - this.paddle.x)/(this.paddle.w*0.5);
+        const speed = Math.hypot(b.vx,b.vy)*(this.slowTimer>0?0.9:1.02);
+        const angle = (-Math.PI/3) + hitRatio*(Math.PI/2.2);
+        b.vx = Math.cos(angle)*speed; b.vy = Math.sin(angle)*speed;
+        SFX.hit();
+
+        // 콤보: 연속 패들 반사 20회마다 +20P
+        this.paddleHitStreak++;
+        if(this.paddleHitStreak>0 && this.paddleHitStreak%20===0){ this.awardPoints(20); }
+      }
+    }
+
+    // 공 소진
+    if(this.balls.length===0){
+      this.lives--; this.stageDeaths++; this.paddleHitStreak=0;
+      SFX.lose();
+      if(this.lives<=0) return this.gameOver();
+      this.spawnBall();
+    }
+
+    // 벽돌 충돌/정리
+    for(const br of this.bricks){ if(br.remove) continue; for(const b of this.balls){ this.ballBrickCollision(b, br); } }
+    this.bricks = this.bricks.filter(b=> !b.remove);
+
+    // 스테이지 클리어
+    if(this.bricks.length===0){
+      this.awardPoints(80);                // 클리어 보너스
+      if(this.stageDeaths===0){ this.awardPoints(30); } // 노데미지 보너스
+      this.level = Math.min(100, this.level+1);
+      this.params=paramsForLevel(this.level);
+      this.makeLevel(); this.spawnBall();
+      this.stageDeaths=0; this.paddleHitStreak=0;
+    }
+
+    this.updateHUD();
+  }
+
+  gameOver(){
+    if(this._ended) return;
+    this._ended=true; this.running=false; this.paused=false;
+    if(this.score>this.best){ this.best=this.score|0; localStorage.setItem(LS_KEYS.best, String(this.best)); }
+    addRecord(this.score, this.points||0); addPlay();
+    document.getElementById('gameOver').style.display='flex';
+    /* ✅ 서버 세션 종료(최종 점수 보고) */
+    notifyFinish(this.score|0);
+  }
+
+  draw(){
+    const ctx=this.ctx; const d=DPR();
+    ctx.clearRect(0,0,this.c.width,this.c.height);
+    const g=ctx.createLinearGradient(0,0,0,this.c.height); g.addColorStop(0,'#0b1440'); g.addColorStop(1,'#070c22'); ctx.fillStyle=g; ctx.fillRect(0,0,this.c.width,this.c.height);
+    ctx.save(); ctx.globalAlpha=0.18; ctx.fillStyle='#cfd6ff';
+    for(let i=0;i<70;i++){ const x=(i*97)%this.c.width; const y=(i*53)%this.c.height*0.6; ctx.fillRect((x+this.level*3)%this.c.width,y,1*d,1*d); }
+    ctx.restore();
+
+    // 레이저
+    ctx.strokeStyle='#7ad7ff'; ctx.lineWidth=2*d;
+    for(const L of this.lasers){ ctx.beginPath(); ctx.moveTo(L.x,L.y); ctx.lineTo(L.x, L.y-20*d); ctx.stroke(); }
+
+    // 패들
+    ctx.fillStyle='#8ea3ff'; const px=this.paddle.x-this.paddle.w*0.5, py=this.paddle.y; ctx.fillRect(px,py,this.paddle.w,this.paddle.h);
+
+    // 볼
+    for(const ball of this.balls){
+      const gr=ctx.createRadialGradient(ball.x-2*d,ball.y-2*d,1,ball.x,ball.y,ball.r);
+      gr.addColorStop(0,'#fff'); gr.addColorStop(1, ball.pierce?'#88ffd8': ball.explode?'#ff9aa6':'#ffd36b');
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
+    }
+
+    // 벽돌
+    for(const br of this.bricks){
+      ctx.fillStyle= br.steel? '#556' : (br.hp>=3?'#ff6b6b': br.hp===2? '#ffd166':'#70ffa8');
+      ctx.fillRect(br.x,br.y,br.w,br.h); ctx.strokeStyle='#0005'; ctx.strokeRect(br.x,br.y,br.w,br.h);
+    }
+
+    // 파워업
+    for(const p of this.powers){
+      ctx.fillStyle= p.kind==='D'? '#ff6b6b': p.kind==='R'? '#7ad7ff': p.kind==='P'? '#88ffd8': p.kind==='X'? '#ff9aa6':'#70ffa8';
+      ctx.fillRect(p.x-10*d,p.y-10*d,20*d,20*d);
+      ctx.fillStyle='#001'; ctx.font=(12*d)+'px ui-sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.kind,p.x,p.y+1);
+    }
+
+    // CRT 스캔라인
+    ctx.globalAlpha=0.12; ctx.fillStyle='#000'; for(let sy=0;sy<this.c.height;sy+=2*d){ ctx.fillRect(0,sy,this.c.width,1*d); } ctx.globalAlpha=1;
+  }
+
+  loop(ts){
+    const dt=(ts-(this.last||ts))/1000; this.last=ts;
+    if(this.running && !this.paused){ this.tick(Math.min(dt,0.033)); this.draw(); } else { this.draw(); }
+    requestAnimationFrame(t=>this.loop(t));
+  }
+}
+
+/* ================= Cabinet fit ================= */
 function fitCabinet(){
   const cab = document.querySelector('.cabinet'); if(!cab) return;
-  const margin = 16;
-  cab.style.transform='none';
+  const margin = 16; cab.style.transform='none';
   const w=cab.offsetWidth, h=cab.offsetHeight;
-  const scale = Math.min(1, (window.innerWidth - margin*2)/w, (window.innerHeight - margin*2)/h);
-  cab.style.transform = 'scale('+scale+')';
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const needScale = (w > vw - margin*2) || (h > vh - margin*2);
+  const scale = needScale ? Math.min(1, (vw - margin*2)/w, (vh - margin*2)/h) : 1;
+  cab.style.transform = `scale(${scale})`;
 }
-window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
-window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+window.addEventListener('resize', ()=> requestAnimationFrame(fitCabinet), {passive:true});
+window.addEventListener('orientationchange', ()=> requestAnimationFrame(fitCabinet), {passive:true});
 setTimeout(fitCabinet, 0);
 
-/***** 세션 훅(안전 래퍼) *****/
-function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('match-3'); }catch(e){} }
-function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('match-3', finalScore|0); }catch(e){} }
+/* ================= 서버 세션 연동 (안전 래퍼) =================
+   - assets/js/app.js 내부에서 window.gameStart / window.gameFinish 를 export 하지 않는 경우도
+     있으므로, 존재 여부를 검사해서 조용히 동작하도록 처리합니다. */
+function notifyStart(){ try{ if (typeof window.gameStart === 'function') window.gameStart('brick-breaker'); }catch(e){} }
+function notifyFinish(finalScore){ try{ if (typeof window.gameFinish === 'function') window.gameFinish('brick-breaker', finalScore|0); }catch(e){} }
 
-/***** 가시성 훅 *****/
+/* 가시성 이벤트 훅 (필요 시 일시정지/로깅 처리) */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    // 필요 시 일시정지, 로깅 등 연결 지점
+    // 예: this.paused = true; 등 (현재는 디자인/동작 보존 위해 표시만)
   }
 });
+
+/* ================= Sanity Tests ================= */
+(function runTests(){
+  const p1=paramsForLevel(1), p40=paramsForLevel(40), p100=paramsForLevel(100);
+  console.assert(p40.baseSpeed>p1.baseSpeed, 'speed increases');
+  console.assert(p40.paddleW<=p1.paddleW, 'paddle width non-increasing');
+  console.assert(p100.unbreakableRate>=p40.unbreakableRate, 'steel rate monotonic');
+  // _targetSize 안전성
+  const cv=document.createElement('canvas'); cv.width=640; cv.height=400; const g=new BrickBreaker(cv); let ok=true; try{ const s=g._targetSize(); ok = Number.isFinite(s.cssW)&&Number.isFinite(s.cssH); }catch(e){ ok=false; } console.assert(ok, '_targetSize finite');
+})();
+
+/* ================= Bootstrap ================= */
+const game=new BrickBreaker(document.getElementById('game'));
+(function initUI(){
+  const tier=$('#tier'), lvl=$('#lvlRange');
+  const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; game.setLevel(lv); };
+  applyTier(tier.value);
+  lvl.addEventListener('input',()=> game.setLevel(+lvl.value));
+  updateTicketUI();
+})();
 </script>
+
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
     <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>

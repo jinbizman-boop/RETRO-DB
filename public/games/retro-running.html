@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RETRO DINO RUNNER – Arcade Cabinet (Fixed, Responsive)</title>
+<title>RETRO GAMES – DINO RUNNER</title>
 
 <!-- === Common SEO/A11y (auto-inserted) === -->
 <link rel="icon" href="/assets/favicon.ico">
@@ -283,16 +283,16 @@
     <section class="cabinet" aria-label="retro arcade cabinet">
       <header class="marquee">
         <div class="title">
-          <h1>RETRO DINO</h1>
-          <div class="subtitle">SPACE/ENTER: 시작 · SPACE/↑: 점프(2단) · ↓: 웅크리기 · U: 일시정지 · I: 아이템</div>
+          <h1>RETRO DINO RUNNING</h1>
+          <div class="subtitle">SPACE/ENTER: START · SPACE/↑: Jump (2nd stage) · ↓: Crouching · U: Pause · I: Items</div>
         </div>
       </header>
 
       <!-- HUD -->
       <div class="hud">
-        <div class="chip">점수 <b id="score">0</b></div>
-        <div class="chip">최고 <b id="best">0</b></div>
-        <div class="chip">이동 <b id="moves">0</b></div>
+        <div class="chip">SCORE <b id="score">0</b></div>
+        <div class="chip">BEST <b id="best">0</b></div>
+        <div class="chip">MOVES <b id="moves">0</b></div>
 
         <div class="pill points" aria-label="사용자 포인트">
           <div class="icon">🏅</div>
@@ -305,13 +305,13 @@
         <div class="pill tickets" aria-label="티켓 진행">
           <div class="icon">🎟️</div>
           <div>
-            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">티켓</span></div>
+            <div class="nums"><span class="big" id="ticketsAmt">0</span><span class="cap">TICKET</span></div>
             <div class="bar"><span id="ticketsBar"></span></div>
           </div>
           <div class="playCount" id="ticketsCap">0 / 10</div>
         </div>
 
-        <button class="btnMini" id="recordsBtn" aria-label="내 게임 기록">MY RECORDS</button>
+        <button class="btnMini" id="recordsBtn" aria-label="Game rules">GAME RULE</button>
       </div>
 
       <main class="play">
@@ -329,14 +329,14 @@
               <div class="touchLayer" id="touchLayer" aria-hidden="true">
                 <div class="touchZone tzLeft" id="tzLeft"></div>
                 <div class="touchZone tzRight" id="tzRight"></div>
-                <div class="touchHint">좌측: 누르면 웅크리기 / 우측: 탭=점프, 더블탭=시작/재시작</div>
+                <div class="touchHint">LEFT: If you press it, curl up / RIGHT: Tap = jump, double tap = start/start</div>
               </div>
             </div>
 
             <div id="gameOver" class="overlay" aria-live="polite" role="alert">
               <div>
                 <div class="msg">GAME OVER</div>
-                <div class="sub">N/Enter/Space: 새 게임 · U: 일시정지/재개 · SPACE/↑: 점프</div>
+                <div class="sub">N/Enter/Space: NEW GAMES · U: Pause/Resume · SPACE/↑: jump</div>
               </div>
             </div>
           </div>
@@ -346,25 +346,25 @@
       <!-- Control deck -->
       <div class="deck">
         <button class="btn" id="homeBtn">HOME</button>
-        <button class="btn" id="newBtn">새 게임 (N / Enter / Space)</button>
-        <button class="btn" id="undoBtn">일시정지/재개 (U)</button>
-        <label>모드
+        <button class="btn" id="newBtn">NEW GAME (N)</button>
+        <button class="btn" id="undoBtn">RETURN (U)</button>
+        <label>MODE
           <select id="tier">
-            <option value="beginner">초급 (1–10)</option>
-            <option value="intermediate">중급 (11–20)</option>
-            <option value="advanced">고급 (21–30)</option>
-            <option value="hell">지옥 (40)</option>
-            <option value="doom">파멸 (50)</option>
-            <option value="insane">극악무도 (100)</option>
+            <option value="beginner">Beginner (1–10)</option>
+            <option value="intermediate">Intermediate (11–20)</option>
+            <option value="advanced">High quality (21–30)</option>
+            <option value="hell">Hell (40)</option>
+            <option value="doom">Ruin (50)</option>
+            <option value="insane">Heinous crime (100)</option>
           </select>
         </label>
-        <label>레벨 <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
-        <label>보드
+        <label>LEVEL <input id="lvlRange" type="range" min="1" max="100" value="1" step="1"></label>
+        <label>BOARD
           <select id="sizeSel" disabled>
-            <option value="12" selected>고정</option>
+            <option value="12" selected>Fixation</option>
           </select>
         </label>
-        <button class="btn" id="endBtn">게임 종료</button>
+        <button class="btn" id="endBtn">GAME OVER</button>
       </div>
     </section>
   </div>
@@ -372,8 +372,62 @@
   <!-- Records Modal -->
   <div id="recModal">
     <div style="width:min(640px,94vw);border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:22px; background-image:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:#ffdf6e">내 게임 기록</h3><button id="recClose" style="border:0;background-color:transparent;color:#fff;font-size:22px;cursor:pointer">×</button></div>
-      <div id="recBody" style="max-height:60vh;overflow:auto;border:1px solid #2a3a89;border-radius:12px;padding:8px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:#ffdf6e">GAME RULE</h3><button id="recClose" style="border:0;background-color:transparent;color:#fff;font-size:22px;cursor:pointer" aria-label="Close">×</button></div>
+      <div id="recBody" style="max-height:60vh;overflow:auto;border:1px solid #2a3a89;border-radius:12px;padding:14px">
+        <div style="color:rgba(234,243,255,.78);font-size:13px;line-height:1.65">
+
+          <div style="margin-bottom:12px;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.10)">
+            RETRO DINO RUNNER is an endless runner. Start the run, jump over obstacles, crouch under threats, and survive as long as you can to set a new best score.
+          </div>
+
+          <h4 style="margin:12px 0 6px;color:#eaf3ff;font-size:13px">Controls</h4>
+          <ul style="margin:6px 0 0;padding-left:18px">
+            <li><b>Start / Restart:</b> Space or Enter (also N)</li>
+            <li><b>Jump:</b> Space or ↑ (double jump available)</li>
+            <li><b>Crouch:</b> ↓ (hold)</li>
+            <li><b>Pause / Resume:</b> U</li>
+            <li><b>Use Item:</b> I</li>
+            <li><b>Mobile:</b> Right side tap = Jump / Double tap = Start · Left side press = Crouch</li>
+          </ul>
+
+          <h4 style="margin:12px 0 6px;color:#eaf3ff;font-size:13px">Scoring & Rewards</h4>
+          <ul style="margin:6px 0 0;padding-left:18px">
+            <li>Your score increases over time as your speed ramps up.</li>
+            <li>Avoiding obstacles awards points; streaks grant extra bonuses.</li>
+            <li>Milestones (every 100 score) grant small point rewards.</li>
+            <li>Your <b>Best</b> score is saved locally in your browser.</li>
+          </ul>
+
+          <h4 style="margin:12px 0 6px;color:#eaf3ff;font-size:13px">Items</h4>
+          <ul style="margin:6px 0 0;padding-left:18px">
+            <li><b>⚡ Speed:</b> Temporary speed boost and faster scoring pace.</li>
+            <li><b>❤️ Revive:</b> Prevents a game over once (auto-consumed on collision).</li>
+            <li>Unused items at the end may be converted into small bonus points.</li>
+          </ul>
+
+          <h4 style="margin:12px 0 6px;color:#eaf3ff;font-size:13px">Tips</h4>
+          <ul style="margin:6px 0 0;padding-left:18px">
+            <li>Time your jumps early—late jumps are the #1 reason for collisions.</li>
+            <li>Use crouch for low threats and to stabilize your rhythm.</li>
+            <li>Save revive for higher speeds when reaction time is tight.</li>
+            <li>If you need a break, use Pause (U) to avoid sudden mistakes.</li>
+          </ul>
+
+          <h4 style="margin:12px 0 6px;color:#eaf3ff;font-size:13px">Version</h4>
+          <p style="margin:6px 0">RETRO GAMES • Web Mini Games • v1.0</p>
+
+          <h4 style="margin:12px 0 6px;color:#eaf3ff;font-size:13px">Contact</h4>
+          <p style="margin:6px 0">
+            Business / support: <a href="mailto:jinbizman@gmail.com" style="color:rgba(255,223,110,.95);text-decoration:none;border-bottom:1px dotted rgba(255,223,110,.55)">jinbizman@gmail.com</a>
+          </p>
+
+          <div style="margin-top:12px;font-size:12px;color:rgba(234,243,255,.72);border-left:3px solid rgba(255,223,110,.55);padding:10px 12px;background:rgba(0,0,0,.18);border-radius:12px">
+            Ads may be served by Google AdSense. Depending on your region and browser settings,
+            ads may be personalized or shown in a non-personalized form.
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 
@@ -482,33 +536,23 @@ function addRecord(score, points){
   const now=new Date(); recs.unshift({ts:now.toISOString(), score:score, points:points});
   saveJSON(LS_KEYS.records,recs.slice(0,200));
 }
-function showRecords(){
-  const recs=loadJSON(LS_KEYS.records,[]);
-  const rows = recs.map(function(r){
-    const d=new Date(r.ts); const date=d.toLocaleString('ko-KR');
-    return `<tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #233077">${date}</td>
-      <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.score||0)}</td>
-      <td style="padding:6px 8px;text-align:right;border-bottom:1px solid #233077">${fmt(r.points||0)}</td>
-    </tr>`;
-  }).join('');
-  const html = `
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding:8px;border-bottom:1px solid #314099">날짜/시간</th>
-          <th style="text-align:right;padding:8px;border-bottom:1px solid #314099">점수</th>
-          <th style="text-align:right;padding:8px;border-bottom:1px solid #314099">포인트</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-  $('#recBody').innerHTML = html;
+function openGameRule(){
   $('#recModal').style.display='flex';
 }
-$('#recordsBtn').addEventListener('click',showRecords);
-$('#recClose').addEventListener('click',()=>$('#recModal').style.display='none');
-$('#recModal').addEventListener('click',e=>{ if(e.target.id==='recModal') $('#recModal').style.display='none'; });
+$('#recordsBtn').addEventListener('click', openGameRule);
+
+function closeGameRule(){
+  $('#recModal').style.display='none';
+}
+$('#recClose').addEventListener('click', closeGameRule);
+
+$('#recModal').addEventListener('click', e=>{
+  if(e.target && e.target.id === 'recModal') closeGameRule();
+});
+
+window.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && $('#recModal')?.style.display === 'flex') closeGameRule();
+});
 
 /***** Toast *****/
 function showToast(msg, ms=2000){

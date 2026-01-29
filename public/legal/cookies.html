@@ -1,30 +1,486 @@
-<!DOCTYPE html><html lang="ko" data-env="production" data-analytics="on">
+<!DOCTYPE html>
+<html lang="ko" data-env="production" data-analytics="on">
 <head>
-<!--#include file="/partials/head-seo.html" -->
+  <!--#include file="/partials/head-seo.html" -->
 
-<meta charset="utf-8"><title>쿠키 정책</title><!-- === Common SEO/A11y (auto-inserted) === -->
-<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-<link rel="icon" href="/assets/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#0e1b34">
-<meta name="description" content="쿠키 정책 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
-<meta name="robots" content="index,follow">
-<meta property="og:site_name" content="RETRO GAMES">
-<meta property="og:title" content="쿠키 정책">
-<meta property="og:description" content="쿠키 정책 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
-<meta property="og:type" content="website">
-<meta property="og:image" content="/assets/og/retro-games-card.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="쿠키 정책">
-<meta name="twitter:description" content="쿠키 정책 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
-<meta name="twitter:image" content="/assets/og/retro-games-card.png">
-<script>(function(d){d.documentElement.dataset.env='production';d.documentElement.dataset.analytics='on';window.__ENV__='production';window.__ANALYTICS_ON__=true;})(document);</script>
-<!-- === /Common SEO/A11y === -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>쿠키/분석 안내 | RETRO GAMES</title>
 
+  <!-- ✅ AdSense 계정 확인 메타 (필수) -->
+  <meta name="google-adsense-account" content="ca-pub-6713974265397310">
+
+  <!-- === Common SEO/A11y (auto-inserted) === -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/icon-180.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0e1b34">
+  <meta name="description" content="쿠키/분석 안내 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
+  <meta name="robots" content="index,follow">
+  <meta property="og:site_name" content="RETRO GAMES">
+  <meta property="og:title" content="쿠키/분석 안내">
+  <meta property="og:description" content="쿠키/분석 안내 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/og/retro-games-card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="쿠키/분석 안내">
+  <meta name="twitter:description" content="쿠키/분석 안내 | RETRO GAMES 정책 페이지 | 레트로 감성 미니게임 서비스의 공식 문서">
+  <meta name="twitter:image" content="/assets/og/retro-games-card.png">
+  <script>
+    (function(d){
+      d.documentElement.dataset.env='production';
+      d.documentElement.dataset.analytics='on';
+      window.__ENV__='production';
+      window.__ANALYTICS_ON__=true;
+    })(document);
+  </script>
+  <!-- === /Common SEO/A11y === -->
+
+  <!-- ✅ AdSense 스니펫(요청 그대로) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713974265397310"
+          crossorigin="anonymous"></script>
+
+  <!-- 프로젝트 스크립트(기존 유지) -->
+  <script defer src="/assets/js/app.js"></script>
+  <script defer src="/assets/js/analytics.js"></script>
+
+  <style>
+    :root{
+      --cabinet:#071933; --cabinet2:#0b2a57; --bezel:#0c1e3f; --glow:#0ea5ff; --side:#f4be09;
+      --btn:#133262; --btnBorder:#285dd1; --btnFg:#e9f1ff;
+      --ink:#eaf2ff; --muted:rgba(234,242,255,.75);
+      --panel:rgba(0,0,0,.28); --border:rgba(255,255,255,.12);
+      --radius:18px; --radius2:20px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;margin:0;
+      background:radial-gradient(circle at 40% -10%,#320076,#0b001e 70%);
+      color:#fff;
+      font-family:'Pretendard',ui-sans-serif,system-ui,"Segoe UI",Roboto,"Apple SD Gothic Neo";
+      overflow-x:hidden;
+    }
+    body{padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
+    #fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.6}
+
+    .shell{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+      position:relative;
+      z-index:1;
+      padding-bottom:calc(20px + var(--safe-bottom));
+    }
+
+    /* Cabinet */
+    .cabinet{
+      position:relative;
+      width:min(1100px,96vw);
+      background:#0e1b34;
+      border-radius:18px;
+      box-shadow:0 12px 40px rgba(0,0,0,.65), inset 0 0 0 2px #0a1a33;
+      transform-origin:top center;
+    }
+    .cabinet:before,.cabinet:after{
+      content:"";
+      position:absolute;
+      top:12px;bottom:12px;
+      width:18px;
+      background:linear-gradient(180deg,#ffd34a,#f0b400 60%,#d99a00);
+      filter:drop-shadow(0 0 12px rgba(255,190,0,.55));
+    }
+    .cabinet:before{left:12px;border-radius:9px}
+    .cabinet:after{right:12px;border-radius:9px}
+
+    .marquee{
+      padding:18px;
+      border-radius:18px 18px 0 0;
+      background:linear-gradient(180deg,#173763,#0b2548);
+      border-bottom:1px solid #0c2b59;
+      box-shadow:inset 0 -6px 26px rgba(0,0,0,.35);
+    }
+    .title{
+      display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+      text-align:center;
+    }
+    .title h1{
+      margin:0;
+      font-weight:900;
+      letter-spacing:1px;
+      color:#eaf3ff;
+      text-shadow:0 0 12px rgba(62,142,255,.55);
+      font-size:clamp(18px,4.4vw,28px);
+    }
+    .subtitle{
+      opacity:.78;
+      letter-spacing:.12em;
+      font-size:clamp(10px,2.7vw,12px);
+      text-align:center;
+    }
+
+    .hud{
+      display:flex;
+      gap:12px;
+      padding:12px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    .hud .btnMini{
+      position:relative;
+      min-width:160px;
+      height:46px;
+      padding:0 16px;
+      border-radius:14px;
+      border:1px solid #1e63ff;
+      color:#fff;
+      font-weight:900;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      letter-spacing:.3px;
+      background:
+        linear-gradient(180deg,#8fe0ff 0%,#49a8ff 26%,#2f84ff 58%,#1560f2 100%),
+        radial-gradient(140% 120% at 20% -40%,rgba(255,255,255,.65),rgba(255,255,255,0) 55%);
+      box-shadow:0 12px 18px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.5),
+        inset 0 -8px 14px rgba(0,0,0,.28);
+      cursor:pointer;
+      touch-action:manipulation;
+      text-decoration:none;
+    }
+    .hud .btnMini:hover{filter:brightness(1.05)}
+
+    .play{
+      position:relative;
+      margin:10px 18px;
+      border-radius:16px;
+      background:linear-gradient(180deg,#0a1530,#031125);
+      box-shadow:inset 0 0 0 1px #0b2a57, inset 0 0 60px rgba(0,0,0,.55);
+    }
+    .screen{
+      aspect-ratio:16/9;
+      display:grid;
+      place-items:center;
+      padding:18px;
+    }
+    .bezel{
+      width:100%;
+      height:100%;
+      border-radius:14px;
+      background:
+        radial-gradient(120% 200% at 50% -60%,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),
+        linear-gradient(180deg,#0a1c39,#0a1326);
+      box-shadow:inset 0 0 0 1px #132a59, inset 0 0 60px rgba(0,0,0,.65);
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+    }
+
+    .doc{
+      width:min(92%,980px);
+      max-height:85%;
+      padding:18px;
+      border-radius:18px;
+      border:1px solid #1b2b45;
+      background:rgba(0,0,0,.22);
+      box-shadow:inset 0 0 40px rgba(0,0,0,.25);
+      overflow:auto;
+    }
+    .doc h2{
+      margin:0 0 10px;
+      font-size:18px;
+      color:#ffe9a3;
+      text-shadow:0 0 8px rgba(255,216,106,.6);
+    }
+    .doc h3{
+      margin:18px 0 8px;
+      font-size:14px;
+      color:#eaf2ff;
+    }
+    .doc p, .doc li{
+      margin:8px 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+    .doc ul{margin:8px 0 0; padding-left:18px}
+    .doc a{
+      color:rgba(255,223,110,.95);
+      text-decoration:none;
+      border-bottom:1px dotted rgba(255,223,110,.55);
+    }
+    .doc code{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:12px;
+      color:#dff1ff;
+      background:rgba(10,20,60,.55);
+      border:1px solid rgba(80,120,255,.25);
+      padding:2px 6px;
+      border-radius:8px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    .card{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.18);
+      border-radius:16px;
+      padding:12px 14px;
+    }
+    .card b{color:#eaf2ff}
+    .tag{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(30,99,255,.55);
+      background:rgba(0,70,255,.10);
+      color:#dff1ff;
+      font-weight:900;
+      font-size:12px;
+      margin:6px 0 10px;
+    }
+
+    .notice{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:16px;
+      border:1px solid rgba(255,223,110,.28);
+      background:rgba(255,223,110,.08);
+      color:rgba(255,248,214,.92);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .foot{
+      padding:14px 18px 22px;
+      border-top:1px solid #0a2b57;
+      background:linear-gradient(180deg,#0b1f40,#0a1730);
+      border-radius:0 0 18px 18px;
+      text-align:center;
+      color:#aab;
+      font-size:12px;
+    }
+
+    @media (max-width: 980px){
+      .shell{padding:12px;padding-bottom:calc(12px + var(--safe-bottom))}
+      .cabinet{width:100vw;border-radius:0}
+      .marquee{padding:12px;border-radius:0}
+      .play{margin:8px 12px}
+      .screen{padding:10px}
+      .hud{gap:8px;padding:10px}
+      .grid2{grid-template-columns:1fr}
+    }
+
+    /* Background stars */
+    @media (prefers-reduced-motion: reduce){
+      #fx{display:none}
+    }
+  </style>
 </head>
+
 <body>
-  <!--#include file=\"/partials/header.html\" -->
-  <div id="site-header"></div><h1>쿠키 정책</h1><p>필수/선택 쿠키, 보관 기간, 거부 방법 등을 명시하세요.</p>  <div id="site-footer"></div>
+  <!--#include file="/partials/header.html" -->
+  <div id="site-header"></div>
+
+  <canvas id="fx"></canvas>
+
+  <div class="shell">
+    <section class="cabinet" aria-label="cookie policy cabinet">
+      <header class="marquee">
+        <div class="title">
+          <h1>쿠키/분석 안내</h1>
+          <div class="subtitle">COOKIES · ADS · ANALYTICS</div>
+        </div>
+      </header>
+
+      <div class="hud">
+        <!-- ✅ HOME 버튼(필수) -->
+        <a class="btnMini" href="/index.html" aria-label="홈으로 이동">HOME</a>
+        <a class="btnMini" href="/legal/privacy.html" aria-label="개인정보 안내">PRIVACY</a>
+        <a class="btnMini" href="/legal/terms.html" aria-label="이용약관">TERMS</a>
+      </div>
+
+      <main class="play">
+        <div class="screen">
+          <div class="bezel">
+            <article class="doc" role="document" aria-label="쿠키 및 분석 안내 본문">
+              <h2>RETRO GAMES의 쿠키/분석 사용 안내</h2>
+
+              <p>
+                RETRO GAMES는 서비스 운영 및 품질 개선, 그리고 광고 제공을 위해 쿠키 및 유사 기술(예: 로컬 스토리지, 기기 식별자)을 사용할 수 있습니다.
+                본 페이지는 쿠키의 목적과 관리 방법을 안내합니다.
+              </p>
+
+              <div class="notice">
+                <b>중요:</b> 본 사이트는 Google AdSense 등 <b>제3자 광고 서비스</b>를 사용할 수 있으며,
+                이 과정에서 <b>Google 및 제3자</b>가 쿠키를 사용해 광고를 제공/측정할 수 있습니다.
+              </div>
+
+              <h3>1) 쿠키란?</h3>
+              <p>
+                쿠키(Cookie)는 웹사이트가 사용자의 브라우저에 저장하는 작은 텍스트 파일입니다.
+                쿠키를 통해 사용자의 환경 설정을 기억하거나, 사이트 이용 현황을 파악하거나, 광고를 표시/측정할 수 있습니다.
+              </p>
+
+              <h3>2) RETRO GAMES에서 사용하는 쿠키/유사 기술의 목적</h3>
+              <div class="grid2" aria-label="쿠키 목적 요약">
+                <div class="card">
+                  <div class="tag">필수(기능) · Essential</div>
+                  <p>
+                    <b>서비스 기능 제공</b>을 위해 필요한 저장 기능입니다.
+                    예) 일부 설정/선호 저장, 오류 방지, 기본 보안 기능 등.
+                    (브라우저/기기 환경에 따라 쿠키 대신 <code>localStorage</code>를 사용할 수 있습니다.)
+                  </p>
+                </div>
+                <div class="card">
+                  <div class="tag">분석(선택) · Analytics</div>
+                  <p>
+                    <b>이용 통계</b>를 통해 페이지 성능 및 UX를 개선합니다.
+                    예) 방문 페이지, 대략적인 트래픽 규모, 오류 이벤트 등.
+                    (분석 도구를 사용하는 경우, 본 사이트는 동의 상태에 따라 실행될 수 있습니다.)
+                  </p>
+                </div>
+                <div class="card">
+                  <div class="tag">광고 · Ads (Google AdSense)</div>
+                  <p>
+                    <b>광고 제공/측정</b>을 위해 Google 및 제3자가 쿠키를 사용할 수 있습니다.
+                    예) 광고의 노출/클릭 측정, 빈도 제한, 사기/악용 방지 등.
+                  </p>
+                </div>
+                <div class="card">
+                  <div class="tag">개인화 광고(가능) · Personalized Ads</div>
+                  <p>
+                    사용자의 관심사 기반으로 광고가 개인화될 수 있습니다.
+                    개인화 광고는 <b>광고 설정</b>에서 관리/해제할 수 있습니다.
+                    (지역/브라우저 정책에 따라 개인화 여부는 달라질 수 있습니다.)
+                  </p>
+                </div>
+              </div>
+
+              <h3>3) Google AdSense 및 제3자 쿠키 고지</h3>
+              <p>
+                본 사이트는 Google AdSense를 포함한 광고 파트너를 사용할 수 있습니다.
+                Google을 포함한 제3자는 쿠키를 사용해 사용자가 본 사이트 또는 다른 사이트에서 방문한 내용에 기반하여 광고를 제공할 수 있습니다.
+              </p>
+              <ul>
+                <li>
+                  Google의 광고 쿠키 사용에 대한 정보:
+                  <a href="https://policies.google.com/technologies/ads" rel="noopener noreferrer" target="_blank">Google 광고 기술(Ads) 안내</a>
+                </li>
+                <li>
+                  개인화 광고 설정/해제:
+                  <a href="https://adssettings.google.com/" rel="noopener noreferrer" target="_blank">Google 광고 설정</a>
+                </li>
+                <li>
+                  (가능한 경우) 제3자 개인화 광고 관리:
+                  <a href="https://www.aboutads.info/choices/" rel="noopener noreferrer" target="_blank">YourAdChoices(옵트아웃)</a>
+                </li>
+              </ul>
+
+              <h3>4) 쿠키 보관 기간</h3>
+              <p>
+                쿠키의 보관 기간은 쿠키 종류에 따라 다를 수 있습니다.
+                일부는 브라우저를 닫으면 삭제되는 <b>세션 쿠키</b>이고,
+                일부는 일정 기간 저장되는 <b>영구 쿠키</b>일 수 있습니다.
+                광고/분석 쿠키의 보관 기간은 제공자(Google 등)의 정책에 따라 달라질 수 있습니다.
+              </p>
+
+              <h3>5) 쿠키/유사 기술의 거부 및 관리 방법</h3>
+              <p>
+                사용자는 브라우저 설정을 통해 쿠키 저장을 거부하거나 삭제할 수 있습니다.
+                다만 쿠키를 차단하면 일부 기능이 정상 동작하지 않을 수 있습니다.
+              </p>
+              <ul>
+                <li>Chrome: 설정 → 개인정보 및 보안 → 쿠키 및 기타 사이트 데이터</li>
+                <li>Safari(iOS): 설정 → Safari → 고급 → 모든 쿠키 차단(또는 사이트 데이터 관리)</li>
+                <li>Edge: 설정 → 쿠키 및 사이트 권한 → 쿠키 및 사이트 데이터</li>
+              </ul>
+
+              <h3>6) 문의</h3>
+              <p>
+                쿠키/분석/광고 관련 문의: <a href="mailto:jinbizman@gmail.com">jinbizman@gmail.com</a>
+              </p>
+
+              <div class="notice">
+                <b>업데이트:</b> 본 안내는 서비스 운영 방식 또는 법/정책 변화에 따라 변경될 수 있습니다.
+                변경 시 본 페이지에 반영합니다.
+              </div>
+            </article>
+          </div>
+        </div>
+      </main>
+
+      <div class="foot">
+        © RETRO GAMES · Cookies & Ads Notice
+      </div>
+    </section>
+  </div>
+
+  <div id="site-footer"></div>
+
+  <!-- consent.js (이미 사용 중이면 유지) -->
   <script defer src="/assets/js/consent.js"></script>
-<!--#include file="/partials/header.html" --></body></html>
+
+  <script>
+    /* Neon background (stars) */
+    (function(){
+      const c=document.getElementById('fx'); if(!c) return;
+      const g=c.getContext('2d');
+      function fit(){
+        const d=Math.min(2, window.devicePixelRatio||1);
+        c.width=Math.floor(innerWidth*d); c.height=Math.floor(innerHeight*d);
+        g.setTransform(d,0,0,d,0,0);
+      }
+      fit(); addEventListener('resize',fit,{passive:true});
+      const N=80;
+      const pts=new Array(N).fill(0).map(()=>({
+        x:Math.random()*innerWidth,
+        y:Math.random()*innerHeight*0.9,
+        r:Math.random()*2+0.5,
+        s:Math.random()*0.6+0.2,
+        ph:Math.random()*6.283
+      }));
+      function loop(t){
+        g.clearRect(0,0,c.width,c.height);
+        for(const p of pts){
+          g.beginPath(); g.arc(p.x,p.y,p.r,0,Math.PI*2);
+          const a=0.3+Math.sin(t*0.002+p.ph)*0.25;
+          g.fillStyle=`rgba(43,123,255,${a})`;
+          g.fill();
+          p.y+=p.s;
+          if(p.y>innerHeight){ p.y=-10; p.x=Math.random()*innerWidth; }
+        }
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    })();
+
+    /* Keep cabinet visible */
+    function fitCabinet(){
+      const cab=document.querySelector('.cabinet'); if(!cab) return;
+      const margin=16;
+      cab.style.transform='none';
+      const w=cab.offsetWidth, h=cab.offsetHeight;
+      const vw=window.innerWidth, vh=window.innerHeight;
+      const needScale=(w>vw-margin*2)||(h>vh-margin*2);
+      const scale=needScale ? Math.min(1,(vw-margin*2)/w,(vh-margin*2)/h) : 1;
+      cab.style.transform=`scale(${scale})`;
+    }
+    window.addEventListener('resize', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+    window.addEventListener('orientationchange', ()=>requestAnimationFrame(fitCabinet), {passive:true});
+    setTimeout(fitCabinet, 0);
+  </script>
+
+  <!--#include file="/partials/footer.html" -->
+</body>
+</html>

@@ -110,14 +110,6 @@
 
   /* Records Modal */
   #recModal{display:none;position:fixed;inset:0;background:rgba(5,0,20,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999}
-  /* Ad Modal */
-  #adModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:1000}
-  #adBox{width:min(680px,92vw);min-height:280px;border:2px solid #3e2b7b;border-radius:20px;box-shadow:0 30px 60px #000a,inset 0 0 24px #2a0085;padding:18px;display:flex;flex-direction:column;gap:10px;
-    background:radial-gradient(circle at 50% -60%,#1f0d48,#0c0626 70%)}
-  #adHead{display:flex;justify-content:space-between;align-items:center}
-  #adClose{border:0;background:#1b2b7a;color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-  .adPlaceholder{display:grid;place-items:center;height:220px;border-radius:14px;border:1px dashed #3952c3;
-    background:linear-gradient(135deg,#18224a,#0e1636)}
 
   /* ===== Mobile tweaks ===== */
   @media (max-width: 980px){
@@ -367,50 +359,7 @@
     </div>
   </div>
 
-  <!-- Ad Modal -->
-  <div id="adModal" role="dialog" aria-modal="true" aria-labelledby="adTitle">
-    <div id="adBox">
-      <div id="adHead">
-        <h3 id="adTitle" style="margin:0;color:#ffdf6e">광고</h3>
-        <button id="adClose">닫기</button>
-      </div>
-      <div id="adContainer" class="adPlaceholder">
-        <div style="text-align:center;opacity:.9">
-          <div style="font-weight:900;margin-bottom:6px">여기에 광고가 표시됩니다</div>
-          <div style="font-size:12px;opacity:.8">개발/테스트 환경에서는 플레이스홀더가 보입니다</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
 <script>
-/***** AdSense 연동 *****/
-const AD_CLIENT = 'ca-pub-6713974265397310';
-const AD_SLOT   = '';
-function fallbackAdHTML(){
-  return '<div class="adPlaceholder" style="height:220px;display:grid;place-items:center"><div style="text-align:center"><div style="font-weight:900;margin-bottom:6px">Ad Placeholder</div><div style="font-size:12px;opacity:.8">AdSense 설정 후 실제 광고가 여기에 표시됩니다</div></div></div>';
-}
-function showInterstitialAd(){
-  const box=document.getElementById('adContainer');
-  box.innerHTML='';
-  const ins=document.createElement('ins');
-  ins.className='adsbygoogle';
-  ins.style.display='block';
-  ins.setAttribute('data-ad-client', AD_CLIENT);
-  if(AD_SLOT) ins.setAttribute('data-ad-slot', AD_SLOT);
-  ins.setAttribute('data-ad-format','auto');
-  ins.setAttribute('data-full-width-responsive','true');
-  box.appendChild(ins);
-  try{ (window.adsbygoogle=window.adsbygoogle||[]).push({}); }
-  catch(e){ console.warn(e); box.innerHTML = fallbackAdHTML(); }
-  document.getElementById('adModal').style.display='flex';
-}
-let _afterAd=null;
-function showAdThen(fn){ _afterAd = (typeof fn==='function') ? fn : null; showInterstitialAd(); }
-document.getElementById('adClose').addEventListener('click',()=>{
-  document.getElementById('adModal').style.display='none';
-  const f=_afterAd; _afterAd=null; if(f) try{ f(); }catch(e){ console.error(e); }
-});
 
 /***** Neon FX *****/
 (function(){
@@ -455,7 +404,6 @@ function addPlay(){
   localStorage.setItem(LS_KEYS.plays, String(plays));
   localStorage.setItem(LS_KEYS.tickets, String(tickets));
   updateTicketUI();
-  if(plays % 8 === 0){ showInterstitialAd(); }
 }
 function addRecord(score, points){
   const recs=loadJSON(LS_KEYS.records,[]); const now=new Date();
@@ -556,13 +504,13 @@ function difficultyMult(){
     bindDeck(){
       $('#newBtn').addEventListener('click',()=>{ this.running=true; this.paused=false; this.reset(); });
       $('#undoBtn').addEventListener('click',()=>{ if(this.running) this.paused=!this.paused; });
-      $('#endBtn').addEventListener('click',()=> showAdThen(()=>{
+      $('#endBtn').addEventListener('click',()=> {
         this.gameOver();
         window.location.href = '/index.html';
-      }));
+      });
 
-      /* HOME: 광고 후 메인 이동 */
-      $('#homeBtn').addEventListener('click',()=> showAdThen(()=>{ window.location.href = '/index.html'; }));
+      /* HOME: 즉시 메인 이동 (팝업 광고 제거) */
+      $('#homeBtn').addEventListener('click',()=> { window.location.href = '/index.html'; });
 
       const tier=$('#tier'), lvl=$('#lvlRange');
       const applyTier=t=>{ let lv={beginner:1,intermediate:11,advanced:21,hell:40,doom:50,insane:100}[t]||1; lvl.value=lv; this.setLevel(lv); };
@@ -893,10 +841,10 @@ document.addEventListener('visibilitychange', () => {
 </script>
 
   <div id="cookieBanner" class="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics consent">
-    <div>서비스 품질 향상을 위한 분석(쿠키) 사용에 동의하시나요?</div>
+    <div>Do you agree with the use of analysis (cookie) to improve service quality?</div>
     <div class="spacer"></div>
-    <button class="deny" type="button">거부</button>
-    <button class="agree" type="button">동의</button>
+    <button class="deny" type="button">Refusal</button>
+    <button class="agree" type="button">Consent</button>
   </div>
 
 
